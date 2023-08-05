@@ -42,7 +42,6 @@ $out .= '</span>';
 $out .= '</label>';
 $out .= '</fieldset>';
 $out .= '</form>';
-$out .= '<hr>';
 
 foreach ($files as $v) {
     $content = "";

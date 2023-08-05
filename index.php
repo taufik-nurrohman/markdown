@@ -297,6 +297,12 @@ namespace x\markdown {
         }
         return ['p', $row, [], $dent];
     }
+    function row(?string $content, array $lot = []): array {
+        if ("" === \trim($content ?? "")) {
+            return [[], $lot];
+        }
+        // TODO
+    }
     function rows(?string $content, array $lot = []): array {
         // List of reference(s), abbreviation(s), and foot-note(s)
         $lot = \array_replace([[], [], []], $lot);
