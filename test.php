@@ -1,5 +1,9 @@
 <?php
 
+define('D', DIRECTORY_SEPARATOR);
+define('P', "\u{001A}");
+define('PATH', __DIR__);
+
 $files = glob(__DIR__ . D . 'test' . D . ($test = $_GET['test'] ?? 'p') . D . '*.md', GLOB_NOSORT);
 
 usort($files, static function ($a, $b) {
