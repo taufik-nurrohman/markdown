@@ -4,6 +4,8 @@ define('D', DIRECTORY_SEPARATOR);
 define('P', "\u{001A}");
 define('PATH', __DIR__);
 
+require __DIR__ . D . 'index.php';
+
 $files = glob(__DIR__ . D . 'test' . D . ($test = $_GET['test'] ?? 'p') . D . '*.md', GLOB_NOSORT);
 
 usort($files, static function ($a, $b) {
@@ -12,19 +14,34 @@ usort($files, static function ($a, $b) {
     return strcasecmp($a, $b);
 });
 
-$out = '<p>';
-$out .= '<b>Test:</b>';
-$out .= ' ';
-$out .= '*' === $test ? '<a aria-current="page">*</a>' : '<a href="?test=*">*</a>';
+$out = '<form method="get">';
+$out .= '<fieldset>';
+$out .= '<legend>';
+$out .= 'Tests';
+$out .= '</legend>';
+$out .= '<button' . ('*' === $test ? ' disabled' : "") . ' name="test" type="submit" value="*">';
+$out .= '*';
+$out .= '</button>';
 foreach (glob(__DIR__ . D . 'test' . D . '*', GLOB_ONLYDIR) as $v) {
     $out .= ' ';
-    if ($test === ($n = basename($v))) {
-        $out .= '<a aria-current="page">' . $n . '</a>';
-    } else {
-        $out .= '<a href="?test=' . urlencode($n) . '">' . $n . '</a>';
-    }
+    $out .= '<button' . ($test === ($n = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . $n . '">';
+    $out .= $n;
+    $out .= '</button>';
 }
-$out .= '</p>';
+$out .= '</fieldset>';
+$out .= '<fieldset>';
+$out .= '<legend>';
+$out .= 'Options';
+$out .= '</legend>';
+$out .= '<label>';
+$out .= '<input' . (isset($_GET['blocks']) ? ' checked' : "") . ' name="blocks" type="checkbox" value="1">';
+$out .= ' ';
+$out .= '<span>';
+$out .= 'Show Blocks';
+$out .= '</span>';
+$out .= '</label>';
+$out .= '</fieldset>';
+$out .= '</form>';
 $out .= '<hr>';
 
 foreach ($files as $v) {

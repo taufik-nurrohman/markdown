@@ -13,7 +13,7 @@ namespace x\markdown {
         if ("" === ($info ?? "")) {
             return $raw ? [] : null;
         }
-        $attributes = [];
+        $attr = [];
         $class = [];
         $id = "";
         if ('{' === $info[0] && '}' === \substr($info, -1)) {
@@ -22,49 +22,55 @@ namespace x\markdown {
             }
             foreach (\preg_split('/([#.](?:\\\\[#.]|[a-z\d:-])+|(?:[a-z\d:.-]+(?:=(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\S+)?)?))/', $info, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
                 if ("" === \trim($v)) {
-                    continue;
+                    continue; // Skip the space(s)
                 }
+                // `{#a}`
                 if ('#' === $v[0]) {
                     if ("" === $id) {
                         $id = \substr($v, 1);
                     }
                     continue;
                 }
+                // `{.a}`
                 if ('.' === $v[0]) {
                     $class[] = \substr($v, 1);
                     continue;
                 }
+                // `{a=b}`
                 if (false !== \strpos($v, '=')) {
                     $v = \explode('=', $v, 2);
+                    // `{a=}`
                     if ("" === $v[1]) {
-                        $attributes[$v[0]] = "";
+                        $attr[$v[0]] = "";
                         continue;
                     }
+                    // `{a="b"}` or `{a='b'}`
                     if ('"' === $v[1][0] || "'" === $v[1][0]) {
                         $v[1] = \x\markdown\v(\substr($v[1], 1, -1));
                     }
                     if ('class' === $v[0]) {
-                        $class[] = $v[1];
+                        $class[] = $v[1]; // Merge class value(s)
                         continue;
                     }
-                    $attributes[$v[0]] = $v[1];
+                    $attr[$v[0]] = $v[1];
                     continue;
                 }
-                $attributes[$v] = true;
+                // `{a}`
+                $attr[$v] = true;
             }
             if ($class) {
                 \sort($class);
-                $attributes['class'] = \implode(' ', $class);
+                $attr['class'] = \implode(' ', $class);
             }
             if ($id) {
-                $attributes['id'] = $id;
+                $attr['id'] = $id;
             }
-            $attributes && \ksort($attributes);
+            $attr && \ksort($attr);
             if ($raw) {
-                return $attributes;
+                return $attr;
             }
             $out = [];
-            foreach ($attributes as $k => $v) {
+            foreach ($attr as $k => $v) {
                 $out[] = true === $v ? $k : $k . '="' . \htmlspecialchars($v) . '"';
             }
             if ($out) {
@@ -88,17 +94,17 @@ namespace x\markdown {
         }
         if ($class) {
             \sort($class);
-            $attributes['class'] = \implode(' ', $class);
+            $attr['class'] = \implode(' ', $class);
         }
         if ($id) {
-            $attributes['id'] = $id;
+            $attr['id'] = $id;
         }
-        $attributes && \ksort($attributes);
+        $attr && \ksort($attr);
         if ($raw) {
-            return $attributes;
+            return $attr;
         }
         $out = [];
-        foreach ($attributes as $k => $v) {
+        foreach ($attr as $k => $v) {
             $out[] = $k . '="' . \htmlspecialchars($v) . '"';
         }
         if ($out) {
@@ -107,7 +113,20 @@ namespace x\markdown {
         }
         return null;
     }
-    function e(array $info) {
+    function e(array $info): string {
+        if (false === $info[0]) {
+            if (\is_array($info[1])) {
+                $out = "";
+                foreach ($info[1] as $v) {
+                    $out .= \is_array($v) ? \x\markdown\e($v) : $v;
+                }
+                return $out;
+            }
+            return $info[1];
+        }
+        if (\is_int($info[0])) {
+            return "";
+        }
         $out = '<' . $info[0];
         if (!empty($info[2])) {
             foreach ($info[2] as $k => $v) {
@@ -116,7 +135,13 @@ namespace x\markdown {
         }
         $out .= '>';
         if (false !== $info[1]) {
-            $out .= $info[1];
+            if (\is_array($info[1])) {
+                foreach ($info[1] as $v) {
+                    $out .= \is_array($v) ? \x\markdown\e($v) : $v;
+                }
+            } else {
+                $out .= $info[1];
+            }
             $out .= '</' . $info[0] . '>';
         }
         return $out;
@@ -145,7 +170,7 @@ namespace x\markdown {
             }
             // `# …`
             if ($n === \strpos($row, ' ')) {
-                if (false !== \strpos($row, '{') && \preg_match('/^(.*?)(\{.*?\})\s*$/', $row, $m)) {
+                if (false !== \strpos($row, '{') && \preg_match('/^(.*?)\s+(\{.*?\})\s*$/', $row, $m)) {
                     return ['h' . $n, $m[1], \x\markdown\a($m[2], true), $dent, $n, '#'];
                 }
                 return ['h' . $n, $row, [], $dent, $n, '#'];
@@ -246,7 +271,7 @@ namespace x\markdown {
             // ````…`
             if (0 === \strpos($row, '```')) {
                 $fence = \substr($row, 0, \strrpos($row, '`') + 1);
-                return ['pre', $row, [], $dent, [$fence, \trim(\substr($row, \strlen($fence)))]];
+                return ['pre', $row, \x\markdown\a(\trim(\substr($row, \strlen($fence))), true), $dent, $fence];
             }
             return ['p', $row, [], $dent];
         }
@@ -259,7 +284,7 @@ namespace x\markdown {
             // `~~~…`
             if (0 === \strpos($row, '~~~')) {
                 $fence = \substr($row, 0, \strrpos($row, '~') + 1);
-                return ['pre', $row, [], $dent, [$fence, \trim(\substr($row, \strlen($fence)))]];
+                return ['pre', $row, \x\markdown\a(\trim(\substr($row, \strlen($fence))), true), $dent, $fence];
             }
             return ['p', $row, [], $dent];
         }
@@ -612,7 +637,7 @@ namespace x\markdown {
         [$rows, $lot] = \x\markdown\rows($content);
         $blocks = [];
         foreach ($rows as $row) {
-            $attributes = $row[2];
+            $attr = $row[2];
             $content = $row[1];
             $tag = $row[0];
             if ('blockquote' === $tag) {
@@ -621,7 +646,7 @@ namespace x\markdown {
                     $content = \substr(\strtr($content, ["\n " => "\n"]), 1);
                 }
                 $content = "" !== $content ? "\n" . \x\markdown\from($content, $lot) . "\n" : "";
-                $blocks[] = \x\markdown\e([$tag, $content, $attributes]);
+                $blocks[] = \x\markdown\e([$tag, $content, $attr]);
                 continue;
             }
             if ('dl' === $tag) {
@@ -644,11 +669,11 @@ namespace x\markdown {
                     $b[$k] = '<dd>' . $v . '</dd>';
                 }
                 $content = \implode("\n", $a) . "\n" . \implode("\n", $b);
-                $blocks[] = \x\markdown\e([$tag, "\n" . $content . "\n", $attributes]);
+                $blocks[] = \x\markdown\e([$tag, "\n" . $content . "\n", $attr]);
                 continue;
             }
             if ('hr' === $tag) {
-                $blocks[] = \x\markdown\e([$tag, false, $attributes]);
+                $blocks[] = \x\markdown\e([$tag, false, $attr]);
                 continue;
             }
             if ('h1' === $tag || 'h2' === $tag || 'h3' === $tag || 'h4' === $tag || 'h5' === $tag || 'h6' === $tag) {
@@ -661,7 +686,7 @@ namespace x\markdown {
                         }
                     }
                 }
-                $blocks[] = \x\markdown\e([$tag, $content, $attributes]);
+                $blocks[] = \x\markdown\e([$tag, $content, $attr]);
                 continue;
             }
             if ('ol' === $tag) {
@@ -678,18 +703,14 @@ namespace x\markdown {
                     }
                     $list[$k] = '<li>' . $v . '</li>';
                 }
-                $blocks[] = \x\markdown\e([$tag, "\n" . \implode("\n", $list) . "\n", $attributes]);
+                $blocks[] = \x\markdown\e([$tag, "\n" . \implode("\n", $list) . "\n", $attr]);
                 continue;
             }
             if ('pre' === $tag) {
                 $content = \htmlspecialchars($content);
                 if (isset($row[4])) {
-                    $content = \substr(\strstr($content, "\n"), 1, -\strlen($row[4][0]));
-                    if ("" !== ($info = $row[4][1])) {
-                        $blocks[] = \x\markdown\e([$tag, \x\markdown\e(['code', $content, \x\markdown\a($info, true)]), []]);
-                        continue;
-                    }
-                    $blocks[] = \x\markdown\e([$tag, \x\markdown\e(['code', $content, []]), []]);
+                    $content = \substr(\strstr($content, "\n"), 1, -\strlen($row[4]));
+                    $blocks[] = \x\markdown\e([$tag, \x\markdown\e(['code', $content, $attr]), []]);
                     continue;
                 }
                 $blocks[] = \x\markdown\e([$tag, \x\markdown\e(['code', $content . "\n", []]), []]);
@@ -709,14 +730,14 @@ namespace x\markdown {
                     }
                     $list[$k] = '<li>' . $v . '</li>';
                 }
-                $blocks[] = \x\markdown\e([$tag, "\n" . \implode("\n", $list) . "\n", $attributes]);
+                $blocks[] = \x\markdown\e([$tag, "\n" . \implode("\n", $list) . "\n", $attr]);
                 continue;
             }
             if (false === $tag) {
                 $blocks[] = $content;
                 continue;
             }
-            $blocks[] = \x\markdown\e([$tag, $content, $attributes]);
+            $blocks[] = \x\markdown\e([$tag, $content, $attr]);
         }
         $content = \implode("\n", $blocks);
         // Merge sequence of definition list into single definition list
@@ -766,10 +787,4 @@ namespace x\markdown {
         ]) : $content;
     }
     function x(string $content): string {}
-}
-
-namespace {
-    if (\is_file($test = __DIR__ . \D . 'test.php')) {
-        require $test;
-    }
 }
