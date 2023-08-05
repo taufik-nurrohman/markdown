@@ -1,0 +1,32 @@
+{
+  "archive": {
+    "exclude": ["/.git", "/test", "/test.php"]
+  },
+  "authors": [
+    {
+      "homepage": "https://github.com/taufik-nurrohman",
+      "name": "Taufik Nurrohman",
+      "role": "Developer"
+    }
+  ],
+  "description": "Obviously, a Markdown to HTML converter.",
+  "funding": [
+    {
+      "type": "other",
+      "url": "https://paypal.me/tatautaufik"
+    }
+  ],
+  "homepage": "https://github.com/taufik-nurrohman/markdown",
+  "keywords": [
+    "commonmark",
+    "extra",
+    "markdown"
+  ],
+  "license": "MIT",
+  "name": "taufik-nurrohman/markdown",
+  "support": {
+    "docs": "https://github.com/taufik-nurrohman/markdown#readme",
+    "issues": "https://github.com/taufik-nurrohman/markdown/issues"
+  },
+  "type": "library"
+}
