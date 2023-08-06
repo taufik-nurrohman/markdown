@@ -113,6 +113,24 @@ namespace x\markdown {
         }
         return null;
     }
+    function attr(string $row) {
+        $part = [$row, []];
+        if ("" === ($row = \rtrim($row))) {
+            return $part;
+        }
+        if ('}' !== \substr($row, -1) || '\\}' === \substr($row, -2)) {
+            return $part;
+        }
+        $a = \strpos($row, '{');
+        if (false !== $a && ($a - 1) !== \strpos($row, '\\') && \preg_match('/^(.+?)\s*(\{.+?\})\s*$/', $row, $m)) {
+            if ('{}' === \strtr($m[2], [' ' => ""])) {
+                return $part;
+            }
+            $part[0] = $m[1];
+            $part[1] = \x\markdown\a($m[2], true);
+        }
+        return $part;
+    }
     function e(array $info): string {
         if (false === $info[0]) {
             if (\is_array($info[1])) {
@@ -170,9 +188,9 @@ namespace x\markdown {
             }
             // `# …`
             if ($n === \strpos($row, ' ')) {
-                $a = \strpos($row, '{');
-                if (false !== $a && ($a - 1) !== \strpos($row, "\\") && '}' === \substr(\rtrim($row), -1) && \preg_match('/^(.+?)\s*(\{\s*\S.*?\s*?\})\s*$/', $row, $m)) {
-                    return ['h' . $n, $m[1], \x\markdown\a($m[2], true), $dent, $n, '#'];
+                $part = \x\markdown\attr($row, []);
+                if ($part[1]) {
+                    return ['h' . $n, $part[0], $part[1], $dent, $n, '#'];
                 }
                 return ['h' . $n, $row, [], $dent, $n, '#'];
             }
@@ -544,10 +562,10 @@ namespace x\markdown {
                 }
                 // Found Setext header marker level 1 right below a paragraph block
                 if ('h1' === $current[0] && '=' === $current[1][0] && 'p' === $prev[0]) {
-                    $a = \strpos($prev[1], '{');
-                    if (false !== $a && ($a - 1) !== \strpos($prev[1], "\\") && '}' === \substr(\rtrim($prev[1]), -1) && \preg_match('/^(.+?)\s*(\{\s*\S.*?\s*?\})\s*$/', $prev[1], $m)) {
-                        $blocks[$block][1] = $m[1];
-                        $blocks[$block][2] = \x\markdown\a($m[2], true);
+                    $part = \x\markdown\attr($prev[1]);
+                    if ($part[1]) {
+                        $blocks[$block][1] = $part[0];
+                        $blocks[$block][2] = $part[1];
                     }
                     $blocks[$block][1] .= "\n" . $current[1];
                     $blocks[$block++][0] = $current[0]; // Treat the previous block as Setext header level 1
@@ -555,10 +573,10 @@ namespace x\markdown {
                 }
                 // Found Setext header marker level 2 right below a paragraph block
                 if ('h2' === $current[0] && '-' === $current[1][0] && 'p' === $prev[0]) {
-                    $a = \strpos($prev[1], '{');
-                    if (false !== $a && ($a - 1) !== \strpos($prev[1], "\\") && '}' === \substr(\rtrim($prev[1]), -1) && \preg_match('/^(.+?)\s*(\{\s*\S.*?\s*?\})\s*$/', $prev[1], $m)) {
-                        $blocks[$block][1] = $m[1];
-                        $blocks[$block][2] = \x\markdown\a($m[2], true);
+                    $part = \x\markdown\attr($prev[1]);
+                    if ($part[1]) {
+                        $blocks[$block][1] = $part[0];
+                        $blocks[$block][2] = $part[1];
                     }
                     $blocks[$block][1] .= "\n" . $current[1];
                     $blocks[$block++][0] = $current[0]; // Treat the previous block as Setext header level 2
@@ -566,10 +584,10 @@ namespace x\markdown {
                 }
                 // Found thematic break that sits right below a paragraph block
                 if ('hr' === $current[0] && '-' === $current[4] && 'p' === $prev[0]) {
-                    $a = \strpos($prev[1], '{');
-                    if (false !== $a && ($a - 1) !== \strpos($prev[1], "\\") && '}' === \substr(\rtrim($prev[1]), -1) && \preg_match('/^(.+?)\s*(\{\s*\S.*?\s*?\})\s*$/', $prev[1], $m)) {
-                        $blocks[$block][1] = $m[1];
-                        $blocks[$block][2] = \x\markdown\a($m[2], true);
+                    $part = \x\markdown\attr($prev[1]);
+                    if ($part[1]) {
+                        $blocks[$block][1] = $part[0];
+                        $blocks[$block][2] = $part[1];
                     }
                     $blocks[$block][1] .= "\n" . $current[1];
                     $blocks[$block++][0] = 'h2'; // Treat the previous block as Setext header level 2
