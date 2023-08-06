@@ -170,7 +170,8 @@ namespace x\markdown {
             }
             // `# …`
             if ($n === \strpos($row, ' ')) {
-                if (false !== \strpos($row, '{') && \preg_match('/^(.*?)\s+(\{.*?\})\s*$/', $row, $m)) {
+                $a = \strpos($row, '{');
+                if (false !== $a && ($a - 1) !== \strpos($row, "\\") && '}' === \substr(\rtrim($row), -1) && \preg_match('/^(.+?)\s*(\{\s*\S.*?\s*?\})\s*$/', $row, $m)) {
                     return ['h' . $n, $m[1], \x\markdown\a($m[2], true), $dent, $n, '#'];
                 }
                 return ['h' . $n, $row, [], $dent, $n, '#'];
@@ -275,10 +276,6 @@ namespace x\markdown {
             }
             return ['p', $row, [], $dent];
         }
-        // `|…`
-        if (0 === \strpos($row, '|')) {
-            return ['table', $row, [], $dent]; // Look like a table row
-        }
         // `~…`
         if (0 === \strpos($row, '~')) {
             // `~~~…`
@@ -301,7 +298,46 @@ namespace x\markdown {
         if ("" === \trim($content ?? "")) {
             return [[], $lot];
         }
-        // TODO
+        $chunks = [];
+        // Priority: escape, code, raw, image, link, other(s)
+        while ("" !== $content) {
+            if ($n = \strcspn($content, '\\`<![*_&')) {
+                $chunks[] = [false, \substr($content, 0, $n)];
+                $content = \substr($content, $n);
+            }
+            if (0 === \strpos($content, '![')) {}
+            if (0 === \strpos($content, '&')) {}
+            if (0 === \strpos($content, '**')) {}
+            if (0 === \strpos($content, '*') && \preg_match('/^([*].*?[*])(.*)$/', $content, $m)) {
+                $chunks[] = ['em', \substr($m[1], 1, -1)];
+                $content = $m[2];
+                continue;
+            }
+            if (0 === \strpos($content, '<') && \preg_match('/^(<[^>]+>)(.*)$/', $content, $m)) {
+                $chunks[] = [false, $m[1]];
+                $content = $m[2];
+                continue;
+            }
+            if (0 === \strpos($content, '[')) {}
+            if (0 === \strpos($content, '[^')) {}
+            if (0 === \strpos($content, '\\')) {
+                $chunks[] = [false, \substr($content, 1, 1)];
+                $content = \substr($content, 2);
+                continue;
+            }
+            if (0 === \strpos($content, '__')) {}
+            if (0 === \strpos($content, '_')) {}
+            if (0 === \strpos($content, '`') && \preg_match('/^(`.*?`)(.*)$/', $content, $m)) {
+                $chunks[] = ['code', \substr($m[1], 1, -1)];
+                $content = $m[2];
+                continue;
+            }
+            if ("" !== $content) {
+                $chunks[] = [false, $content];
+                $content = "";
+            }
+        }
+        return $chunks;
     }
     function rows(?string $content, array $lot = []): array {
         // List of reference(s), abbreviation(s), and foot-note(s)
@@ -508,16 +544,34 @@ namespace x\markdown {
                 }
                 // Found Setext header marker level 1 right below a paragraph block
                 if ('h1' === $current[0] && '=' === $current[1][0] && 'p' === $prev[0]) {
+                    $a = \strpos($prev[1], '{');
+                    if (false !== $a && ($a - 1) !== \strpos($prev[1], "\\") && '}' === \substr(\rtrim($prev[1]), -1) && \preg_match('/^(.+?)\s*(\{\s*\S.*?\s*?\})\s*$/', $prev[1], $m)) {
+                        $blocks[$block][1] = $m[1];
+                        $blocks[$block][2] = \x\markdown\a($m[2], true);
+                    }
+                    $blocks[$block][1] .= "\n" . $current[1];
                     $blocks[$block++][0] = $current[0]; // Treat the previous block as Setext header level 1
                     continue;
                 }
                 // Found Setext header marker level 2 right below a paragraph block
                 if ('h2' === $current[0] && '-' === $current[1][0] && 'p' === $prev[0]) {
+                    $a = \strpos($prev[1], '{');
+                    if (false !== $a && ($a - 1) !== \strpos($prev[1], "\\") && '}' === \substr(\rtrim($prev[1]), -1) && \preg_match('/^(.+?)\s*(\{\s*\S.*?\s*?\})\s*$/', $prev[1], $m)) {
+                        $blocks[$block][1] = $m[1];
+                        $blocks[$block][2] = \x\markdown\a($m[2], true);
+                    }
+                    $blocks[$block][1] .= "\n" . $current[1];
                     $blocks[$block++][0] = $current[0]; // Treat the previous block as Setext header level 2
                     continue;
                 }
                 // Found thematic break that sits right below a paragraph block
                 if ('hr' === $current[0] && '-' === $current[4] && 'p' === $prev[0]) {
+                    $a = \strpos($prev[1], '{');
+                    if (false !== $a && ($a - 1) !== \strpos($prev[1], "\\") && '}' === \substr(\rtrim($prev[1]), -1) && \preg_match('/^(.+?)\s*(\{\s*\S.*?\s*?\})\s*$/', $prev[1], $m)) {
+                        $blocks[$block][1] = $m[1];
+                        $blocks[$block][2] = \x\markdown\a($m[2], true);
+                    }
+                    $blocks[$block][1] .= "\n" . $current[1];
                     $blocks[$block++][0] = 'h2'; // Treat the previous block as Setext header level 2
                     continue;
                 }
@@ -636,118 +690,127 @@ namespace x\markdown {
         }
         return [$blocks, $lot];
     }
-    function from(?string $content, array $lot = []): ?string {
+    function from(?string $content, array $lot = [], $block = true): ?string {
         if ("" === \trim($content ?? "")) {
             return null;
         }
         [$rows, $lot] = \x\markdown\rows($content);
-        $blocks = [];
+        $out = [];
         foreach ($rows as $row) {
-            $attr = $row[2];
-            $content = $row[1];
-            $tag = $row[0];
-            if ('blockquote' === $tag) {
-                $content = \substr(\strtr($content, ["\n>" => "\n"]), 1);
-                if (0 === \strpos($content, ' ')) {
-                    $content = \substr(\strtr($content, ["\n " => "\n"]), 1);
-                }
-                $content = "" !== $content ? "\n" . \x\markdown\from($content, $lot) . "\n" : "";
-                $blocks[] = \x\markdown\e([$tag, $content, $attr]);
+            if (false === $row[0]) {
+                $out[] = $row[1];
                 continue;
             }
-            if ('dl' === $tag) {
-                [$a, $b] = \preg_split('/\n+(?=:[ ])/', $content, 2);
+            if ('blockquote' === $row[0]) {
+                $row[1] = \substr(\strtr($row[1], ["\n>" => "\n"]), 1);
+                if (0 === \strpos($row[1], ' ')) {
+                    $row[1] = \substr(\strtr($row[1], ["\n " => "\n"]), 1);
+                }
+                $row[1] = \x\markdown\from($row[1]);
+                $out[] = \x\markdown\e($row);
+                continue;
+            }
+            if ('dl' === $row[0]) {
+                [$a, $b] = \preg_split('/\n+(?=:[ ])/', $row[1], 2);
                 $a = \explode("\n", $a);
                 $b = \preg_split('/\n+(?=:[ ])/', $b);
-                $tight = false === \strpos($content, "\n\n");
+                $tight = false === \strpos($row[1], "\n\n");
                 foreach ($a as $k => $v) {
-                    $a[$k] = '<dt>' . $v . '</dt>';
+                    $a[$k] = ['dt', $v];
                 }
                 foreach ($b as $k => $v) {
                     $v = \substr($v, 2); // Length of `: ` character(s)
-                    $v = "\n" . \x\markdown\from($v, $lot) . "\n";
+                    $v = \x\markdown\from($v, $lot);
                     if ($tight) {
                         $v = \strtr($v, [
-                            "</p>\n" => "",
-                            "\n<p>" => ""
+                            '</p>' => "",
+                            '<p>' => ""
                         ]);
                     }
-                    $b[$k] = '<dd>' . $v . '</dd>';
+                    $b[$k] = ['dd', $v];
                 }
-                $content = \implode("\n", $a) . "\n" . \implode("\n", $b);
-                $blocks[] = \x\markdown\e([$tag, "\n" . $content . "\n", $attr]);
+                $row[1] = \array_merge($a, $b);
+                $out[] = \x\markdown\e($row);
                 continue;
             }
-            if ('hr' === $tag) {
-                $blocks[] = \x\markdown\e([$tag, false, $attr]);
+            if ('hr' === $row[0]) {
+                $row[1] = false;
+                $out[] = \x\markdown\e($row);
                 continue;
             }
-            if ('h1' === $tag || 'h2' === $tag || 'h3' === $tag || 'h4' === $tag || 'h5' === $tag || 'h6' === $tag) {
+            if ('h1' === $row[0] || 'h2' === $row[0] || 'h3' === $row[0] || 'h4' === $row[0] || 'h5' === $row[0] || 'h6' === $row[0]) {
                 if (isset($row[5]) && '#' === $row[5]) {
-                    $content = \trim(\substr($row[1], \strspn($row[1], '#')));
-                    if ('#' === \substr($content, -1)) {
-                        $content = \substr($content, 0, \strpos($content, '#'));
-                        if (' ' === \substr($content, -1)) {
-                            $content = \substr($content, 0, -1);
+                    $row[1] = \trim(\substr($row[1], \strspn($row[1], '#')));
+                    if ('#' === \substr($row[1], -1)) {
+                        $v = \substr($row[1], 0, \strpos($row[1], '#'));
+                        if (' ' === \substr($v, -1)) {
+                            $row[1] = \substr($v, 0, -1);
                         }
                     }
+                } else if (false !== \strpos($row[1], "\n=")) {
+                    $row[1] = \substr($row[1], 0, \strpos($row[1], "\n="));
+                } else if (false !== \strpos($row[1], "\n-")) {
+                    $row[1] = \substr($row[1], 0, \strpos($row[1], "\n-"));
                 }
-                $blocks[] = \x\markdown\e([$tag, $content, $attr]);
+                $row[1] = \x\markdown\row($row[1]);
+                $out[] = \x\markdown\e($row);
                 continue;
             }
-            if ('ol' === $tag) {
-                $list = \preg_split('/\n(?=\d+[).][ ])/', $content);
-                $tight = false === \strpos($content, "\n\n");
+            if ('ol' === $row[0]) {
+                $list = \preg_split('/\n(?=\d+[).][ ])/', $row[1]);
+                $tight = false === \strpos($row[1], "\n\n");
                 foreach ($list as $k => $v) {
                     $v = \substr(\strtr($v, ["\n" . \str_repeat(' ', $row[3][1]) => "\n"]), $row[3][1]);
-                    $v = "\n" . \x\markdown\from($v, $lot) . "\n";
+                    $v = \x\markdown\from($v, $lot);
                     if ($tight) {
                         $v = \strtr($v, [
-                            "</p>\n" => "",
-                            "\n<p>" => ""
+                            '</p>' => "",
+                            '<p>' => ""
                         ]);
                     }
-                    $list[$k] = '<li>' . $v . '</li>';
+                    $list[$k] = ['li', $v];
                 }
-                $blocks[] = \x\markdown\e([$tag, "\n" . \implode("\n", $list) . "\n", $attr]);
+                $row[1] = $list;
+                $out[] = \x\markdown\e($row);
                 continue;
             }
-            if ('pre' === $tag) {
-                $content = \htmlspecialchars($content);
+            if ('pre' === $row[0]) {
+                $row[1] = \htmlspecialchars($row[1]);
                 if (isset($row[4])) {
-                    $content = \substr(\strstr($content, "\n"), 1, -\strlen($row[4]));
-                    $blocks[] = \x\markdown\e([$tag, \x\markdown\e(['code', $content, $attr]), []]);
+                    $row[1] = [['code', \substr(\strstr($row[1], "\n"), 1, -\strlen($row[4])), $row[2]]];
+                    $row[2] = [];
+                    $out[] = \x\markdown\e($row);
                     continue;
                 }
-                $blocks[] = \x\markdown\e([$tag, \x\markdown\e(['code', $content . "\n", []]), []]);
+                $row[1] = [['code', $row[1] . "\n", $row[2]]];
+                $row[2] = [];
+                $out[] = \x\markdown\e($row);
                 continue;
             }
-            if ('ul' === $tag) {
-                $list = \preg_split('/\n(?=[*+-][ ])/', $content);
-                $tight = false === \strpos($content, "\n\n");
+            if ('ul' === $row[0]) {
+                $list = \preg_split('/\n(?=[*+-][ ])/', $row[1]);
+                $tight = false === \strpos($row[1], "\n\n");
                 foreach ($list as $k => $v) {
                     $v = \substr(\strtr($v, ["\n" . \str_repeat(' ', $row[3][1]) => "\n"]), $row[3][1]);
-                    $v = "\n" . \x\markdown\from($v, $lot) . "\n";
+                    $v = \x\markdown\from($v, $lot);
                     if ($tight) {
                         $v = \strtr($v, [
-                            "</p>\n" => "",
-                            "\n<p>" => ""
+                            '</p>' => "",
+                            '<p>' => ""
                         ]);
                     }
-                    $list[$k] = '<li>' . $v . '</li>';
+                    $list[$k] = ['li', $v];
                 }
-                $blocks[] = \x\markdown\e([$tag, "\n" . \implode("\n", $list) . "\n", $attr]);
+                $row[1] = $list;
+                $out[] = \x\markdown\e($row);
                 continue;
             }
-            if (false === $tag) {
-                $blocks[] = $content;
-                continue;
-            }
-            $blocks[] = \x\markdown\e([$tag, $content, $attr]);
+            $row[1] = \x\markdown\row($row[1]);
+            $out[] = \x\markdown\e($row);
         }
-        $content = \implode("\n", $blocks);
+        $content = \implode("", $out);
         // Merge sequence of definition list into single definition list
-        $content = \strtr($content, ["\n</dl>\n<dl>\n" => "\n"]);
+        $content = \strtr($content, ['</dl><dl>' => ""]);
         return $content;
     }
     function to(?string $content, array $lot = []): ?string {

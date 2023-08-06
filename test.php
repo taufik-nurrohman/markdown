@@ -6,7 +6,11 @@ define('PATH', __DIR__);
 
 require __DIR__ . D . 'index.php';
 
-$files = glob(__DIR__ . D . 'test' . D . ($test = $_GET['test'] ?? 'p') . D . '*.md', GLOB_NOSORT);
+$blocks = isset($_GET['blocks']);
+$test = $_GET['test'] ?? 'p';
+$view = isset($_GET['view']);
+
+$files = glob(__DIR__ . D . 'test' . D . $test . D . '*.md', GLOB_NOSORT);
 
 usort($files, static function ($a, $b) {
     $a = dirname($a) . D . basename($a, '.md');
@@ -14,7 +18,17 @@ usort($files, static function ($a, $b) {
     return strcasecmp($a, $b);
 });
 
-$out = '<form method="get">';
+$out = '<!DOCTYPE html>';
+$out .= '<html dir="ltr">';
+$out .= '<head>';
+$out .= '<meta charset="utf-8">';
+$out .= '<title>';
+$out .= 'Test';
+$out .= '</title>';
+$out .= '</head>';
+$out .= '<body>';
+
+$out .= '<form method="get">';
 $out .= '<fieldset>';
 $out .= '<legend>';
 $out .= 'Tests';
@@ -34,10 +48,18 @@ $out .= '<legend>';
 $out .= 'Options';
 $out .= '</legend>';
 $out .= '<label>';
-$out .= '<input' . (isset($_GET['blocks']) ? ' checked' : "") . ' name="blocks" type="checkbox" value="1">';
+$out .= '<input' . ($blocks ? ' checked' : "") . ' name="blocks" type="checkbox" value="1">';
 $out .= ' ';
 $out .= '<span>';
 $out .= 'Show Blocks';
+$out .= '</span>';
+$out .= '</label>';
+$out .= '<br>';
+$out .= '<label>';
+$out .= '<input' . ($view ? ' checked' : "") . ' name="view" type="checkbox" value="1">';
+$out .= ' ';
+$out .= '<span>';
+$out .= 'Show HTML';
 $out .= '</span>';
 $out .= '</label>';
 $out .= '</fieldset>';
@@ -47,16 +69,16 @@ foreach ($files as $v) {
     $content = "";
     $raw = file_get_contents($v);
     $start = microtime(true);
-    if (isset($_GET['blocks'])) {
-        [$blocks, $lot] = x\markdown\rows($raw);
-        $block = array_shift($blocks);
-        $content .= '<span style="background:' . (false === $block[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;">';
-        $content .= htmlspecialchars(var_export($block, true));
+    if ($blocks) {
+        [$rows, $lot] = x\markdown\rows($raw);
+        $row = array_shift($rows);
+        $content .= '<span style="background:' . (false === $row[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;" title="' . htmlspecialchars(var_export($row, true)) . '">';
+        $content .= htmlspecialchars($row[1]);
         $content .= '</span>';
-        while ($block = array_shift($blocks)) {
+        while ($row = array_shift($rows)) {
             $content .= "\n";
-            $content .= '<span style="background:' . (false === $block[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;">';
-            $content .= htmlspecialchars(var_export($block, true));
+            $content .= '<span style="background:' . (false === $row[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;" title="' . htmlspecialchars(var_export($row, true)) . '">';
+            $content .= htmlspecialchars($row[1]);
             $content .= '</span>';
         }
         if ($lot = array_filter($lot)) {
@@ -75,8 +97,8 @@ foreach ($files as $v) {
     $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
     $out .= $content;
     $out .= '</pre>';
-    if (!isset($_GET['blocks'])) {
-        $out .= '<div style="border:1px solid;flex:1;">';
+    if (!$blocks && $view) {
+        $out .= '<div style="border:1px solid;box-shadow:inset 0 0 0 1em #eee;flex:1;padding:1em;">';
         $out .= htmlspecialchars_decode($content);
         $out .= '</div>';
     }
@@ -84,5 +106,8 @@ foreach ($files as $v) {
     $time = round(($end - $start) * 1000, 2);
     $out .= '<p style="color:#' . ($time >= 1 ? '800' : '080') . ';">Parsed in ' . $time . ' ms.</p>';
 }
+
+$out .= '</body>';
+$out .= '</html>';
 
 echo $out;
