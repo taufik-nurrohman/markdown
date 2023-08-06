@@ -79,7 +79,7 @@ namespace x\markdown {
             }
             return null;
         }
-        foreach (\preg_split('/\s+|(?=[#.])/', $info, -1, \PREG_SPLIT_NO_EMPTY) as $v) {
+        foreach (\preg_split('/\s++|(?=[#.])/', $info, -1, \PREG_SPLIT_NO_EMPTY) as $v) {
             if ('#' === $v[0]) {
                 if ("" === $id) {
                     $id = \substr($v, 1);
@@ -711,9 +711,9 @@ namespace x\markdown {
                 continue;
             }
             if ('dl' === $row[0]) {
-                [$a, $b] = \preg_split('/\n+(?=:[ ])/', $row[1], 2);
+                [$a, $b] = \preg_split('/\n++(?=:[ ])/', $row[1], 2);
                 $a = \explode("\n", $a);
-                $b = \preg_split('/\n+(?=:[ ])/', $b);
+                $b = \preg_split('/\n++(?=:[ ])/', $b);
                 $tight = false === \strpos($row[1], "\n\n");
                 foreach ($a as $k => $v) {
                     $a[$k] = ['dt', $v];
@@ -757,7 +757,7 @@ namespace x\markdown {
                 continue;
             }
             if ('ol' === $row[0]) {
-                $list = \preg_split('/\n(?=\d+[).][ ])/', $row[1]);
+                $list = \preg_split('/\n(?=\d++[).][ ])/', $row[1]);
                 $tight = false === \strpos($row[1], "\n\n");
                 foreach ($list as $k => $v) {
                     $v = \substr(\strtr($v, ["\n" . \str_repeat(' ', $row[3][1]) => "\n"]), $row[3][1]);
