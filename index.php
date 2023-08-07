@@ -662,34 +662,35 @@ namespace x\markdown {
                     continue;
                 }
                 // Match a reference, or foot-note
-                if (!\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\')\s*)?)$/', $v[1], $m)) {
+                if (\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\')\s*)?)$/', $v[1], $m)) {
+                    // Remove reference and foot-note block from the structure
+                    unset($blocks[$k]);
+                    // <https://spec.commonmark.org/0.30#matches>
+                    $m[1] = \strtolower(\preg_replace('/\s+/', ' ', $m[1]));
+                    // Match a foot-note
+                    if (1 === \strpos($m[1], '^')) {
+                        // TODO
+                        continue;
+                    }
+                    // <https://spec.commonmark.org/0.30#example-204>
+                    if (isset($lot[$v[0]][$m[1]])) {
+                        continue;
+                    }
+                    $link = $m[2] ?? "";
+                    $title = $m[3] ?? "";
+                    if ($link && '<' === $link[0] && '>' === \substr($link, -1)) {
+                        $link = \substr($link, 1, -1);
+                    }
+                    if ($title && (
+                        "'" === $title[0] && "'" === \substr($title, -1) ||
+                        '"' === $title[0] && '"' === \substr($title, -1)
+                    )) {
+                        $title = \x\markdown\v(\substr($title, 1, -1));
+                    }
+                    // Queue the reference data to be used later
+                    $lot[$v[0]][$m[1]] = [$link, $title];
                     continue;
                 }
-                // Remove reference and foot-note block from the structure
-                unset($blocks[$k]);
-                // <https://spec.commonmark.org/0.30#matches>
-                $m[1] = \strtolower(\preg_replace('/\s+/', ' ', $m[1]));
-                if (1 === \strpos($m[1], '^')) {
-                    // TODO
-                    continue;
-                }
-                // <https://spec.commonmark.org/0.30#example-204>
-                if (isset($lot[$v[0]][$m[1]])) {
-                    continue;
-                }
-                $link = $m[2] ?? "";
-                $title = $m[3] ?? "";
-                if ($link && '<' === $link[0] && '>' === \substr($link, -1)) {
-                    $link = \substr($link, 1, -1);
-                }
-                if ($title && (
-                    "'" === $title[0] && "'" === \substr($title, -1) ||
-                    '"' === $title[0] && '"' === \substr($title, -1)
-                )) {
-                    $title = \x\markdown\v(\substr($title, 1, -1));
-                }
-                // Queue the reference data to be used later
-                $lot[$v[0]][$m[1]] = [$link, $title];
             }
             if ('blockquote' === $v[0]) {
                 $v[1] = \substr(\strtr($v[1], ["\n>" => "\n"]), 1);
