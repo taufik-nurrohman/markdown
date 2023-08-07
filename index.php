@@ -429,11 +429,11 @@ namespace x\markdown {
                 // current paragraph to a part of the definition list.
                 if ('p' === $prev[0] && null === $current[0]) {
                     $back = 0;
-                    // Move the array pointer forward until reaching a non-empty row
+                    // Move the array pointer forward until reaching a non-blank row
                     while (false !== ($next = \next($rows))) {
                         ++$back;
                         if (0 === \strpos($next, ': ')) {
-                            // If the next non-empty row appears to be a definition data row, consider the current empty
+                            // If the next non-blank row appears to be a definition data row, consider the current blank
                             // row as part of the definition list
                             $current[0] = 'dl';
                             break;
@@ -561,7 +561,7 @@ namespace x\markdown {
                     }
                     // Enter/exit raw HTML
                     // CommonMark is not concerned with HTML tag balancing. It only concerned about blank line(s). Any
-                    // non-empty block that sits right next to or below the opening/closing tag other than `<pre>`,
+                    // non-blank line that sits right next to or below the opening/closing tag other than `<pre>`,
                     // `<script>`, `<style>`, and `<textarea> tag(s) will be interpreted as raw HTML. From that point
                     // forward, there will be no Markdown processing will be performed.
                     //
@@ -661,7 +661,7 @@ namespace x\markdown {
                     $lot[$v[0]][$m[1]] = \trim($m[2] ?? "");
                     continue;
                 }
-                // Match a reference, or foot-note
+                // Match a reference, or a foot-note
                 if (\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\')\s*)?)$/', $v[1], $m)) {
                     // Remove reference and foot-note block from the structure
                     unset($blocks[$k]);
