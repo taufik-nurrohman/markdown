@@ -110,7 +110,7 @@ namespace x\markdown {
         }
         return null;
     }
-    // Takes out attribute(s) from its content
+    // Takes out attribute(s) from its row
     function attr(string $row) {
         $attr = [$row, []];
         if ("" === ($row = \rtrim($row))) {
@@ -310,65 +310,92 @@ namespace x\markdown {
         }
         return ['p', $row, [], $dent];
     }
-    function raw(?string $content, array $lot = []): array {
-
-    }
     function row(?string $content, array $lot = []): array {
         if ("" === \trim($content ?? "")) {
             return [[], $lot];
         }
-        $chunks = [];
+        $chops = [];
         // Priority: escape, code, raw, image, link, other(s)
         while ("" !== $content) {
-            if ($n = \strcspn($content, "\\`<![*_&\n")) {
-                $chunks[] = [false, \substr($content, 0, $n)];
+            if ($n = \strcspn($content, '\\`<![*_&' . "\n")) {
+                $chops[] = [false, \substr($content, 0, $n)];
                 $content = \substr($content, $n);
             }
             if (0 === \strpos($content, "\n")) {
-                $last = \count($chunks) - 1;
-                if ('  ' === \substr($chunks[$last][1], -2)) {
-                    $chunks[$last][1] = \rtrim($chunks[$last][1]);
-                    $chunks[] = ['br', false];
+                $last = \count($chops) - 1;
+                if ('  ' === \substr($chops[$last][1], -2)) {
+                    $chops[$last][1] = \rtrim($chops[$last][1]);
+                    $chops[] = ['br', false];
                     $content = \ltrim(\substr($content, 1));
                     continue;
                 }
-                $chunks[] = [false, $content[0]];
+                $chops[] = [false, "\n"];
                 $content = \substr($content, 1);
                 continue;
             }
             if (0 === \strpos($content, '![')) {}
             if (0 === \strpos($content, '&')) {}
-            if (0 === \strpos($content, '**')) {}
-            if (0 === \strpos($content, '*') && \preg_match('/^([*].*?[*])(.*)$/', $content, $m)) {
-                $chunks[] = ['em', \substr($m[1], 1, -1)];
-                $content = $m[2];
+            if (0 === \strpos($content, '*') && isset($content[2])) {
+                if (0 === \strpos($content, '**')) {
+                    // TODO
+                    continue;
+                }
+                if (\preg_match('/^[*]([\p{Ps}][\s\S]*?[\p{Pe}])[*]/u', $content, $m)) {
+                    $chops[] = ['em', \x\markdown\row($m[1], $lot)[0]];
+                    $content = \substr($content, \strlen($m[0]));
+                    continue;
+                }
+                if (\preg_match('/^[*]([^\p{P}\p{Z}][\s\S]*?[^\p{P}\p{Z}])[*]/u', $content, $m)) {
+                    $chops[] = ['em', \x\markdown\row($m[1], $lot)[0]];
+                    $content = \substr($content, \strlen($m[0]));
+                    continue;
+                }
+                $chops[] = [false, '*'];
+                $content = \substr($content, 1);
                 continue;
             }
             if (0 === \strpos($content, '<') && \preg_match('/^(<[^>]+>)(.*)$/', $content, $m)) {
-                $chunks[] = [false, $m[1]];
+                $chops[] = [false, $m[1]];
                 $content = $m[2];
                 continue;
             }
             if (0 === \strpos($content, '[')) {}
             if (0 === \strpos($content, '[^')) {}
             if (0 === \strpos($content, '\\')) {
-                $chunks[] = [false, \substr($content, 1, 1)];
+                $chops[] = [false, \substr($content, 1, 1)];
                 $content = \substr($content, 2);
                 continue;
             }
-            if (0 === \strpos($content, '__')) {}
-            if (0 === \strpos($content, '_')) {}
+            if (0 === \strpos($content, '_') && isset($content[2])) {
+                if (0 === \strpos($content, '__')) {
+                    // TODO
+                    continue;
+                }
+                if (\preg_match('/^[_]([\p{Ps}][\s\S]*?[\p{Pe}])[_]/u', $content, $m)) {
+                    $chops[] = ['em', \x\markdown\row($m[1], $lot)[0]];
+                    $content = \substr($content, \strlen($m[0]));
+                    continue;
+                }
+                if (\preg_match('/^[_]([^\p{P}\p{Z}][\s\S]*?[^\p{P}\p{Z}])[_]/u', $content, $m)) {
+                    $chops[] = ['em', \x\markdown\row($m[1], $lot)[0]];
+                    $content = \substr($content, \strlen($m[0]));
+                    continue;
+                }
+                $chops[] = [false, '_'];
+                $content = \substr($content, 1);
+                continue;
+            }
             if (0 === \strpos($content, '`') && \preg_match('/^(`.*?`)(.*)$/', $content, $m)) {
-                $chunks[] = ['code', \substr($m[1], 1, -1)];
+                $chops[] = ['code', \substr($m[1], 1, -1)];
                 $content = $m[2];
                 continue;
             }
             if ("" !== $content) {
-                $chunks[] = [false, $content];
+                $chops[] = [false, $content];
                 $content = "";
             }
         }
-        return $chunks;
+        return [$chops, $lot];
     }
     function rows(?string $content, array $lot = []): array {
         // List of reference(s), abbreviation(s), and foot-note(s)
@@ -624,19 +651,22 @@ namespace x\markdown {
                 continue;
             }
             if (\is_int($v[0]) && \strpos($v[1], ']:') > 1) {
-                // Match a reference, abbreviation, or foot-note
-                $pattern = '/^[*]?\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\')\s*)?)$/';
-                if (!\preg_match($pattern, $v[1], $m)) {
-                    continue;
-                }
-                unset($blocks[$k]); // Remove block from the structure
-                if (0 === \strpos($m[0], '*')) {
+                // Match an abbreviation
+                if (\preg_match('/^[*]\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:([\s\S]*?)$/', $v[1], $m)) {
+                    // Remove abbreviation block from the structure
+                    unset($blocks[$k]);
                     // Abbreviation(s) is not part of the CommonMark spec, but I assume it to behave similar to the reference(s)
                     $m[1] = \preg_replace('/\s+/', ' ', $m[1]);
                     // Queue the abbreviation data to be used later
-                    $lot[1][$m[1]] = $m[2] ?? "";
+                    $lot[$v[0]][$m[1]] = \trim($m[2] ?? "");
                     continue;
                 }
+                // Match a reference, or foot-note
+                if (!\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\')\s*)?)$/', $v[1], $m)) {
+                    continue;
+                }
+                // Remove reference and foot-note block from the structure
+                unset($blocks[$k]);
                 // <https://spec.commonmark.org/0.30#matches>
                 $m[1] = \strtolower(\preg_replace('/\s+/', ' ', $m[1]));
                 if (1 === \strpos($m[1], '^')) {
@@ -681,12 +711,6 @@ namespace x\markdown {
                 foreach ($b as &$vv) {
                     $vv = \substr($vv, 2); // Length of `: ` character(s)
                     $vv = \x\markdown\rows($vv, $lot)[0];
-                    if ($tight) {
-                        $vv = \strtr($vv, [
-                            '</p>' => "",
-                            '<p>' => ""
-                        ]);
-                    }
                     $vv = ['dd', $vv];
                 }
                 unset($vv);
@@ -717,7 +741,7 @@ namespace x\markdown {
                     $v[1] = $attr[0];
                     $v[2] = \array_replace($v[2], $attr[1]);
                 }
-                $v[1] = \x\markdown\row($v[1]);
+                $v[1] = \x\markdown\row($v[1], $lot)[0];
                 continue;
             }
             if ('ol' === $v[0]) {
@@ -726,12 +750,6 @@ namespace x\markdown {
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]);
                     $vv = \x\markdown\rows($vv, $lot)[0];
-                    if ($tight) {
-                        $vv = \strtr($vv, [
-                            '</p>' => "",
-                            '<p>' => ""
-                        ]);
-                    }
                     $vv = ['li', $vv];
                 }
                 unset($vv);
@@ -755,21 +773,15 @@ namespace x\markdown {
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]);
                     $vv = \x\markdown\rows($vv, $lot)[0];
-                    if ($tight) {
-                        $vv = \strtr($vv, [
-                            '</p>' => "",
-                            '<p>' => ""
-                        ]);
-                    }
-                    $list[$k] = ['li', $vv];
+                    $vv = ['li', $vv];
                 }
                 unset($vv);
                 $v[1] = $list;
                 continue;
             }
-        }
-        if (\is_string($v[1])) {
-            $v[1] = \x\markdown\row(\rtrim($v[1]), $lot);
+            if (\is_string($v[1])) {
+                $v[1] = \x\markdown\row(\rtrim($v[1]), $lot)[0];
+            }
         }
         unset($v);
         return [$blocks, $lot];
@@ -778,9 +790,30 @@ namespace x\markdown {
         if ("" === \trim($content ?? "")) {
             return null;
         }
-        $data = \x\markdown\rows($content);
+        $data = \x\markdown\rows($content, $lot);
+        $alter_0 = [];
+        $alter_1 = [];
+        $alter_2 = [];
+        if (!empty($data[1][0])) {}
+        if (!empty($data[1][1])) {
+            foreach ($data[1][1] as $k => $v) {
+                $alter_1[$k] = \x\markdown\tag(['abbr', $k, ['title' => $v]]);
+            }
+        }
+        if (!empty($data[1][2])) {}
         $out = [];
         foreach ($data[0] as $row) {
+            // Late abbreviation parsing
+            if (\is_string($row[0]) && $alter_1) {
+                foreach ($row[1] as &$v) {
+                    if (false !== $v[0]) {
+                        continue;
+                    }
+                    // Only process raw chop(s)
+                    $v[1] = \strtr($v[1], $alter_1);
+                }
+                unset($v);
+            }
             $out[] = \x\markdown\tag($row);
         }
         $content = \implode("", $out);

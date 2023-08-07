@@ -72,13 +72,13 @@ foreach ($files as $v) {
     if ($blocks) {
         [$rows, $lot] = x\markdown\rows($raw);
         $row = array_shift($rows);
-        $content .= '<span style="background:' . (false === $row[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;" title="' . htmlspecialchars(var_export($row, true)) . '">';
-        $content .= htmlspecialchars($row[1]);
+        $content .= '<span style="background:' . (false === $row[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;">';
+        $content .= htmlspecialchars(var_export($row, true));
         $content .= '</span>';
         while ($row = array_shift($rows)) {
             $content .= "\n";
-            $content .= '<span style="background:' . (false === $row[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;" title="' . htmlspecialchars(var_export($row, true)) . '">';
-            $content .= htmlspecialchars($row[1]);
+            $content .= '<span style="background:' . (false === $row[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;">';
+            $content .= htmlspecialchars(var_export($row, true));
             $content .= '</span>';
         }
         if ($lot = array_filter($lot)) {
@@ -92,9 +92,12 @@ foreach ($files as $v) {
     $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
     $out .= '<div style="display:flex;gap:1em;">';
     $out .= '<pre style="background:#ccc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
-    $out .= preg_replace_callback('/^[ ]+|[ ]+$/m', static function ($m) {
-        return \str_repeat('&middot;', \strlen($m[0]));
+    $raw = preg_replace_callback('/^[ ]+|[ ]+$/m', static function ($m) {
+        return str_repeat('·', \strlen($m[0]));
     }, htmlspecialchars($raw));
+    $out .= strtr($raw, [
+        '·' => '<span style="opacity:.5">·</span>'
+    ]);
     $out .= '</pre>';
     $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
     $out .= $content;
