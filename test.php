@@ -86,13 +86,15 @@ foreach ($files as $v) {
             $content .= '$lot = ' . htmlspecialchars(var_export($lot, true)) . ';';
         }
     } else {
-        $content .= htmlspecialchars(x\markdown\from($raw));
+        $content .= htmlspecialchars(x\markdown\convert($raw));
     }
     $end = microtime(true);
     $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
     $out .= '<div style="display:flex;gap:1em;">';
     $out .= '<pre style="background:#ccc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
-    $out .= htmlspecialchars($raw);
+    $out .= preg_replace_callback('/^[ ]+|[ ]+$/m', static function ($m) {
+        return \str_repeat('&middot;', \strlen($m[0]));
+    }, htmlspecialchars($raw));
     $out .= '</pre>';
     $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
     $out .= $content;

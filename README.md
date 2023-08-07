@@ -12,9 +12,9 @@ Usage
 ~~~ php
 <?php
 
-use function x\markdown\from as from_markdown;
+use function x\markdown\convert;
 
 require __DIR__ . '/index.php';
 
-echo from_markdown('# asdf {#a}'); // Returns `'<h1 id="a">asdf</h1>'`
+echo convert('# asdf {#a}'); // Returns `'<h1 id="a">asdf</h1>'`
 ~~~
