@@ -1,5 +1,11 @@
 <?php
 
+error_reporting(E_ALL | E_STRICT);
+
+ini_set('display_errors', true);
+ini_set('display_startup_errors', true);
+ini_set('html_errors', 1);
+
 define('D', DIRECTORY_SEPARATOR);
 define('P', "\u{001A}");
 define('PATH', __DIR__);
