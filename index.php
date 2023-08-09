@@ -299,7 +299,7 @@ namespace x\markdown {
             return [[], $lot];
         }
         $chops = [];
-        $prev = ""; // Capture previous chunk for left-flanking test
+        $prev = ""; // Capture previous chunk for left-flank test
         while ("" !== $content) {
             if ($n = \strcspn($content, '\\<`![*_&' . "\n")) {
                 $chops[] = [false, \htmlspecialchars($prev = \substr($content, 0, $n)), [], -1];
@@ -332,10 +332,79 @@ namespace x\markdown {
                 continue;
             }
             if (\strlen($content) > 2 && false !== \strpos('*_', $content[0])) {
+                // A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode white-space, and
+                // either (2a) not followed by a Unicode punctuation character, or (2b) followed by a Unicode
+                // punctuation character and preceded by Unicode white-space or a Unicode punctuation character. For
+                // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
+                // A right-flanking delimiter run is a delimiter run that is (1) not preceded by Unicode white-space,
+                // and either (2a) not preceded by a Unicode punctuation character, or (2b) preceded by a Unicode
+                // punctuation character and followed by Unicode white-space or a Unicode punctuation character. For
+                // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
+                //
                 // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
-                $v = $content[0];
-                if (\preg_match('/(?:[' . $v . '](?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $v . '](?=[\p{P}]))((?:[^' . $v . '\\\\]*(?:\\\\.[^' . $v . '\\\\]*)*|(?R))+?)(?:(?<![\p{P}\s])[' . $v . ']|(?<=[\p{P}])[' . $v . '](?=[\p{P}\s]|$))/u', $prev . $content, $m)) {
-                    $chops[] = ['em', \x\markdown\rows(\substr($prev = $m[0], 1, -1), $lot)[0][0][1], [], -1];
+                $v = $content[0]; // Either `*` or `_` character
+                // `***asdf***`
+                if (0 === \strpos($content, $v . $v . $v)) {
+                    if (\preg_match('/(?:' .
+                        // Left 1, 2a
+                        '[' . $v . ']{3}(?![\p{P}\s])' .
+                    '|' .
+                        // Left 2b
+                        '(?<=^|[\p{P}\s])[' . $v . ']{3}(?=[\p{P}])' .
+                    ')(' .
+                        '(?:\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
+                    ')(?:' .
+                        // Right 1, 2a
+                        '(?<![\p{P}\s])[' . $v . ']{3}' .
+                    '|' .
+                        // Right 2b
+                        '(?<=[\p{P}])[' . $v . ']{3}(?=[\p{P}\s]|$)' .
+                    ')/u', \substr($prev, -1) . $content, $m)) {
+                        // Prefer `<em><strong>asdf</strong></em>`
+                        $chops[] = ['em', \x\markdown\row(\substr($prev = $m[0], 1, -1), $lot)[0], [], -1];
+                        $content = \substr($content, \strlen($m[0]));
+                        continue;
+                    }
+                }
+                // `**asdf**`
+                if (0 === \strpos($content, $v . $v)) {
+                    if (\preg_match('/(?:' .
+                        // Left 1, 2a
+                        '[' . $v . ']{2}(?![\p{P}\s])' .
+                    '|' .
+                        // Left 2b
+                        '(?<=^|[\p{P}\s])[' . $v . ']{2}(?=[\p{P}])' .
+                    ')(' .
+                        '(?:\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
+                    ')(?:' .
+                        // Right 1, 2a
+                        '(?<![\p{P}\s])[' . $v . ']{2}' .
+                    '|' .
+                        // Right 2b
+                        '(?<=[\p{P}])[' . $v . ']{2}(?=[\p{P}\s]|$)' .
+                    ')/u', \substr($prev, -1) . $content, $m)) {
+                        $chops[] = ['strong', \x\markdown\row(\substr($prev = $m[0], 2, -2), $lot)[0], [], -1];
+                        $content = \substr($content, \strlen($m[0]));
+                        continue;
+                    }
+                }
+                // `*asdf*`
+                if (\preg_match('/(?:' .
+                    // Left 1, 2a
+                    '[' . $v . '](?![\p{P}\s])' .
+                '|' .
+                    // Left 2b
+                    '(?<=^|[\p{P}\s])[' . $v . '](?=[\p{P}])' .
+                ')(' .
+                    '(?:\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
+                ')(?:' .
+                    // Right 1, 2a
+                    '(?<![\p{P}\s])[' . $v . ']' .
+                '|' .
+                    // Right 2b
+                    '(?<=[\p{P}])[' . $v . '](?=[\p{P}\s]|$)' .
+                ')/u', \substr($prev, -1) . $content, $m)) {
+                    $chops[] = ['em', \x\markdown\row(\substr($prev = $m[0], 1, -1), $lot)[0], [], -1];
                     $content = \substr($content, \strlen($m[0]));
                     continue;
                 }
@@ -810,7 +879,7 @@ namespace x\markdown {
                     $v[1] = $attr[0];
                     $v[2] = \array_replace($v[2], $attr[1]);
                 }
-                $v[1] = \x\markdown\rows($v[1], $lot)[0][0][1];
+                $v[1] = \x\markdown\row($v[1], $lot)[0];
                 continue;
             }
             if ('ol' === $v[0]) {
