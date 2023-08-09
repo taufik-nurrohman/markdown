@@ -126,36 +126,14 @@ namespace x\markdown {
         return $attr;
     }
     function convert(?string $content, array $lot = [], $block = true): ?string {
-        if ("" === \trim($content ?? "")) {
+        $rows = \x\markdown\rows($content, $lot);
+        if (!$rows[0]) {
             return null;
         }
-        $data = \x\markdown\rows($content, $lot);
-        $alter_0 = [];
-        $alter_1 = [];
-        $alter_2 = [];
-        if (!empty($data[1][0])) {}
-        if (!empty($data[1][1])) {
-            foreach ($data[1][1] as $k => $v) {
-                $alter_1[$k] = \x\markdown\up(['abbr', $k, ['title' => $v]]);
-            }
+        foreach ($rows[0] as &$row) {
+            $row = \x\markdown\up($row);
         }
-        if (!empty($data[1][2])) {}
-        $out = [];
-        foreach ($data[0] as $row) {
-            // Late abbreviation parsing
-            if (\is_string($row[0]) && $alter_1) {
-                foreach ($row[1] as &$v) {
-                    if (false !== $v[0]) {
-                        continue;
-                    }
-                    // Only process raw chop(s)
-                    $v[1] = \strtr($v[1], $alter_1);
-                }
-                unset($v);
-            }
-            $out[] = \x\markdown\up($row);
-        }
-        $content = \implode("", $out);
+        $content = \implode("", $rows[0]);
         // Merge sequence of definition list into single definition list
         $content = \strtr($content, ['</dl><dl>' => ""]);
         return $content;
@@ -334,9 +312,7 @@ namespace x\markdown {
             }
             if (0 === \strpos($content, '![')) {}
             if (0 === \strpos($content, '&')) {
-                // <https://github.com/commonmark/commonmark.js/blob/9a16ff4fb8111bc0f71e03206f5e3bdbf7c69e8d/lib/common.js#L8>
-                $pattern = '/^&(?:#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i';
-                if (false === ($n = \strpos($content, ';')) || $n < 2 || !\preg_match($pattern, $content, $m)) {
+                if (false === ($n = \strpos($content, ';')) || $n < 2 || !\preg_match('/^&(?:#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $content, $m)) {
                     $chops[] = [false, \htmlspecialchars($prev = '&'), [], -1];
                     $content = \substr($content, 1);
                     continue;
@@ -353,7 +329,7 @@ namespace x\markdown {
                 // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
                 $v = $content[0];
                 if (\preg_match('/(?:[' . $v . '](?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $v . '](?=[\p{P}]))((?:[^' . $v . '\\\\]*(?:\\\\.[^' . $v . '\\\\]*)*|(?R))+?)(?:(?<![\p{P}\s])[' . $v . ']|(?<=[\p{P}])[' . $v . '](?=[\p{P}\s]|$))/u', $prev . $content, $m)) {
-                    $chops[] = ['em', \x\markdown\row(\substr($prev = $m[0], 1, -1), $lot)[0], [], -1];
+                    $chops[] = ['em', \x\markdown\rows(\substr($prev = $m[0], 1, -1), $lot)[0][0][1], [], -1];
                     $content = \substr($content, \strlen($m[0]));
                     continue;
                 }
@@ -527,6 +503,11 @@ namespace x\markdown {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
+                // <https://spec.commonmark.org/0.30#example-304>
+                if ('p' === $prev[0] && 'ol' === $current[0] && 1 !== $current[5]) {
+                    $blocks[$block][1] .= "\n" . $row;
+                    continue;
+                }
                 // List block is so complex that I decided to concatenate all remaining line(s) until the very end of
                 // the file by default when a list pattern is found. To exit the list, we will do so manually while we
                 // are in the list block.
@@ -643,21 +624,27 @@ namespace x\markdown {
                     continue;
                 }
                 // Found Setext header marker level 1 right below a paragraph block
-                if ('h1' === $current[0] && '=' === $current[1][0] && 'p' === $prev[0]) {
+                if ('h1' === $current[0] && '=' === $current[5] && 'p' === $prev[0]) {
+                    $blocks[$block][0] = $current[0]; // Treat the previous block as Setext header level 1
                     $blocks[$block][1] .= "\n" . $current[1];
-                    $blocks[$block++][0] = $current[0]; // Treat the previous block as Setext header level 1
+                    $blocks[$block][5] = $current[5];
+                    $block += 1;
                     continue;
                 }
                 // Found Setext header marker level 2 right below a paragraph block
                 if ('h2' === $current[0] && '-' === $current[1][0] && 'p' === $prev[0]) {
+                    $blocks[$block][0] = $current[0]; // Treat the previous block as Setext header level 2
                     $blocks[$block][1] .= "\n" . $current[1];
-                    $blocks[$block++][0] = $current[0]; // Treat the previous block as Setext header level 2
+                    $blocks[$block][5] = $current[5];
+                    $block += 1;
                     continue;
                 }
                 // Found thematic break that sits right below a paragraph block
                 if ('hr' === $current[0] && '-' === $current[4] && 'p' === $prev[0]) {
+                    $blocks[$block][0] = 'h2'; // Treat the previous block as Setext header level 2
                     $blocks[$block][1] .= "\n" . $current[1];
-                    $blocks[$block++][0] = 'h2'; // Treat the previous block as Setext header level 2
+                    $blocks[$block][5] = '-';
+                    $block += 1;
                     continue;
                 }
                 // Default action is to merge current block with the previous block that has the same type
@@ -688,7 +675,7 @@ namespace x\markdown {
                     continue;
                 }
                 // Look like Setext header level 1 but preceded by a blank line, treat it as a paragraph block
-                if ('h1' === $current[0] && '=' === $current[1][0] && !isset($blocks[$block][0])) {
+                if ('h1' === $current[0] && '=' === $current[5] && !isset($blocks[$block][0])) {
                     $current[0] = 'p';
                     $blocks[++$block] = $current;
                     continue;
@@ -781,6 +768,14 @@ namespace x\markdown {
                 foreach ($b as &$vv) {
                     $vv = \substr($vv, 2); // Length of `: ` character(s)
                     $vv = \x\markdown\rows($vv, $lot)[0];
+                    if ($list_is_tight && $vv) {
+                        foreach ($vv as &$vvv) {
+                            if ('p' === $vvv[0]) {
+                                $vvv[0] = false;
+                            }
+                        }
+                        unset($vvv);
+                    }
                     $vv = ['dd', $vv];
                 }
                 unset($vv);
@@ -792,7 +787,7 @@ namespace x\markdown {
                 continue;
             }
             if ('h1' === $v[0] || 'h2' === $v[0] || 'h3' === $v[0] || 'h4' === $v[0] || 'h5' === $v[0] || 'h6' === $v[0]) {
-                if (isset($v[5]) && '#' === $v[5]) {
+                if ('#' === $v[5]) {
                     $v[1] = \trim(\substr($v[1], \strspn($v[1], '#')));
                     if ('#' === \substr($v[1], -1)) {
                         $vv = \substr($v[1], 0, \strpos($v[1], '#'));
@@ -800,10 +795,8 @@ namespace x\markdown {
                             $v[1] = \substr($vv, 0, -1);
                         }
                     }
-                } else if (false !== \strpos($v[1], "\n=")) {
-                    $v[1] = \substr($v[1], 0, \strpos($v[1], "\n="));
-                } else if (false !== \strpos($v[1], "\n-")) {
-                    $v[1] = \substr($v[1], 0, \strpos($v[1], "\n-"));
+                } else if ('-' === $v[5] || '=' === $v[5]) {
+                    $v[1] = \substr($v[1], 0, \strpos($v[1], "\n" . $v[5]));
                 }
                 // Late attribute parsing
                 $attr = \x\markdown\attr($v[1]);
@@ -820,6 +813,14 @@ namespace x\markdown {
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]);
                     $vv = \x\markdown\rows($vv, $lot)[0];
+                    if ($list_is_tight && $vv) {
+                        foreach ($vv as &$vvv) {
+                            if ('p' === $vvv[0]) {
+                                $vvv[0] = false;
+                            }
+                        }
+                        unset($vvv);
+                    }
                     $vv = ['li', $vv];
                 }
                 unset($vv);
@@ -843,6 +844,14 @@ namespace x\markdown {
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]);
                     $vv = \x\markdown\rows($vv, $lot)[0];
+                    if ($list_is_tight && $vv) {
+                        foreach ($vv as &$vvv) {
+                            if ('p' === $vvv[0]) {
+                                $vvv[0] = false;
+                            }
+                        }
+                        unset($vvv);
+                    }
                     $vv = ['li', $vv];
                 }
                 unset($vv);
@@ -853,31 +862,40 @@ namespace x\markdown {
                 $v[1] = \x\markdown\row(\rtrim($v[1]), $lot)[0];
             }
         }
-        $alter_0 = [];
-        $alter_1 = [];
-        $alter_2 = [];
-        if (!empty($lot[1][0])) {}
-        if (!empty($lot[1][1])) {
-            foreach ($lot[1][1] as $k => $v) {
-                $alter_1[$k] = \x\markdown\tag(['abbr', $k, ['title' => $v]]);
+        unset($v);
+        // Late reference parsing
+        if (!empty($lot[0])) {}
+        // Late abbreviation parsing
+        if (!empty($lot[1])) {
+            $abbr = [];
+            foreach ($lot[1] as $k => $v) {
+                $abbr[] = \preg_quote($k, '/');
             }
-        }
-        if (!empty($lot[1][2])) {}
-        foreach ($blocks as $k => &$v) {
-            // Late abbreviation parsing, make sure that current block has a type
-            if (\is_string($v[0]) && $alter_1) {
+            $abbr = '/\b(' . \implode('|', $abbr) . ')\b/';
+            foreach ($blocks as &$v) {
+                if (!\is_string($v[0])) {
+                    continue;
+                }
                 foreach ($v[1] as &$vv) {
                     if (false !== $vv[0]) {
                         continue;
                     }
-                    // Only process raw chop(s)
-                    // TODO: Use regular expression here
-                    $vv[1] = \strtr($vv[1], $alter_1);
+                    $chops = [];
+                    foreach (\preg_split($abbr, $vv[1], -1, \PREG_SPLIT_DELIM_CAPTURE) as $vvv) {
+                        if (isset($lot[1][$vvv])) {
+                            $chops[] = ['abbr', $vvv, ['title' => $lot[1][$vvv]]];
+                            continue;
+                        }
+                        $chops[] = $vvv;
+                    }
+                    $vv[1] = $chops;
                 }
                 unset($vv);
             }
+            unset($v);
         }
-        unset($v);
+        // Late foot-note parsing
+        if (!empty($lot[2])) {}
         return [$blocks, $lot];
     }
     function up(array $info): string {
@@ -895,12 +913,7 @@ namespace x\markdown {
             return "";
         }
         if ('&' === $info[0]) {
-            $out = \html_entity_decode($info[1], \ENT_HTML5 | \ENT_QUOTES, 'UTF-8');
-            // Keep HTML special character(s) as-is
-            if (false !== \strpos('"&\'<>', $out)) {
-                return $info[1];
-            }
-            return $out;
+            return \htmlspecialchars(\html_entity_decode($info[1], \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
         }
         $out = '<' . $info[0];
         if (!empty($info[2])) {
