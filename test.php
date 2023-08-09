@@ -21,7 +21,7 @@ $files = glob(__DIR__ . D . 'test' . D . $test . D . '*.md', GLOB_NOSORT);
 usort($files, static function ($a, $b) {
     $a = dirname($a) . D . basename($a, '.md');
     $b = dirname($b) . D . basename($b, '.md');
-    return strcasecmp($a, $b);
+    return strnatcmp($a, $b);
 });
 
 $out = '<!DOCTYPE html>';

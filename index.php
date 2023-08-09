@@ -160,9 +160,6 @@ namespace x\markdown {
         $content = \strtr($content, ['</dl><dl>' => ""]);
         return $content;
     }
-    function flank(?string $rest, ?string $prev) {
-        return [];
-    }
     function info(?string $row): array {
         if ("" === ($row ?? "")) {
             return [null, $row, [], 0];
@@ -284,8 +281,12 @@ namespace x\markdown {
         if (0 === \strpos($row, '`')) {
             // ````…`
             if (0 === \strpos($row, '```')) {
-                $fence = \substr($row, 0, \strrpos($row, '`') + 1);
-                $info = \trim(\substr($row, \strlen($fence)));
+                $fence = \substr($row, 0, $v = \strspn($row, '`'));
+                $info = \trim(\substr($row, $v));
+                // <https://spec.commonmark.org/0.30#example-145>
+                if (false !== \strpos($info, '`')) {
+                    return ['p', $row, [], $dent];
+                }
                 return ['pre', $row, \x\markdown\a($info, true), $dent, $fence];
             }
             return ['p', $row, [], $dent];
@@ -294,8 +295,8 @@ namespace x\markdown {
         if (0 === \strpos($row, '~')) {
             // `~~~…`
             if (0 === \strpos($row, '~~~')) {
-                $fence = \substr($row, 0, \strrpos($row, '~') + 1);
-                $info = \trim(\substr($row, \strlen($fence)));
+                $fence = \substr($row, 0, $v = \strspn($row, '~'));
+                $info = \trim(\substr($row, $v));
                 return ['pre', $row, \x\markdown\a($info, true), $dent, $fence];
             }
             return ['p', $row, [], $dent];
@@ -314,86 +315,150 @@ namespace x\markdown {
             return [[], $lot];
         }
         $chops = [];
-        // Priority: escape, raw, code, image, link, other(s)
+        $prev = ""; // Capture previous chunk for left-flanking test
         while ("" !== $content) {
             if ($n = \strcspn($content, '\\<`![*_&' . "\n")) {
-                $chops[] = [false, \substr($content, 0, $n), [], -1];
+                $chops[] = [false, \htmlspecialchars($prev = \substr($content, 0, $n)), [], -1];
                 $content = \substr($content, $n);
             }
             if (0 === \strpos($content, "\n")) {
-                $last = \count($chops) - 1;
-                if ('  ' === \substr($chops[$last][1], -2)) {
-                    $chops[$last][1] = \rtrim($chops[$last][1]);
+                if ('  ' === \substr($prev, -2)) {
+                    $chops[\count($chops) - 1][1] = $prev = \rtrim($prev);
                     $chops[] = ['br', false, [], -1];
                     $content = \ltrim(\substr($content, 1));
                     continue;
                 }
-                $chops[] = [false, "\n", [], -1];
+                $chops[] = [false, $prev = "\n", [], -1];
                 $content = \substr($content, 1);
                 continue;
             }
             if (0 === \strpos($content, '![')) {}
-            if (0 === \strpos($content, '&')) {}
-            if (0 === \strpos($content, '*') && isset($content[2])) {
-                if (0 === \strpos($content, '**')) {
-                    // TODO
+            if (0 === \strpos($content, '&')) {
+                // <https://github.com/commonmark/commonmark.js/blob/9a16ff4fb8111bc0f71e03206f5e3bdbf7c69e8d/lib/common.js#L8>
+                $pattern = '/^&(?:#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i';
+                if (false === ($n = \strpos($content, ';')) || $n < 2 || !\preg_match($pattern, $content, $m)) {
+                    $chops[] = [false, \htmlspecialchars($prev = '&'), [], -1];
+                    $content = \substr($content, 1);
                     continue;
                 }
-                if (\preg_match('/^[*]([\p{Ps}][\s\S]*?[\p{Pe}])[*]/u', $content, $m)) {
-                    $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
+                // <https://spec.commonmark.org/0.30#example-26>
+                if ('&#0;' === $m[0]) {
+                    $m[0] = '&#xfffd;';
+                }
+                $chops[] = ['&', $prev = $m[0], [], -1];
+                $content = \substr($content, \strlen($m[0]));
+                continue;
+            }
+            if (\strlen($content) > 2 && false !== \strpos('*_', $content[0])) {
+                // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
+                $v = $content[0];
+                if (\preg_match('/(?:[' . $v . '](?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $v . '](?=[\p{P}]))((?:[^' . $v . '\\\\]*(?:\\\\.[^' . $v . '\\\\]*)*|(?R))+?)(?:(?<![\p{P}\s])[' . $v . ']|(?<=[\p{P}])[' . $v . '](?=[\p{P}\s]|$))/u', $prev . $content, $m)) {
+                    $chops[] = ['em', \x\markdown\row(\substr($prev = $m[0], 1, -1), $lot)[0], [], -1];
                     $content = \substr($content, \strlen($m[0]));
                     continue;
                 }
-                if (\preg_match('/^[*]([^\p{P}\p{Z}][\s\S]*?[^\p{P}\p{Z}])[*]/u', $content, $m)) {
-                    $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
-                    $content = \substr($content, \strlen($m[0]));
-                    continue;
-                }
-                $chops[] = [false, '*', [], -1];
+                $chops[] = [false, $prev = $v, [], -1];
                 $content = \substr($content, 1);
                 continue;
             }
-            if (0 === \strpos($content, '<') && \preg_match('/^(<[^>]+>)(.*)$/', $content, $m)) {
-                $chops[] = [false, $m[1], [], -1];
-                $content = $m[2];
-                continue;
-            }
+            if (0 === \strpos($content, '<')) {}
             if (0 === \strpos($content, '[')) {}
-            if (0 === \strpos($content, '[^')) {}
-            if (0 === \strpos($content, '\\')) {
-                $chops[] = [false, \substr($content, 1, 1), [], -1];
+            if (0 === \strpos($content, '\\') && isset($content[1])) {
+                // <https://spec.commonmark.org/0.30#example-644>
+                if (1 === \strpos($content, "\n")) {
+                    $chops[] = ['br', false, [], -1];
+                    $content = \ltrim(\substr($content, 2));
+                    continue;
+                }
+                $chops[] = [false, $prev = \substr($content, 1, 1), [], -1];
                 $content = \substr($content, 2);
                 continue;
             }
-            if (0 === \strpos($content, '_') && isset($content[2])) {
-                if (0 === \strpos($content, '__')) {
-                    // TODO
-                    continue;
-                }
-                if (\preg_match('/^[_]([\p{Ps}][\s\S]*?[\p{Pe}])[_]/u', $content, $m)) {
-                    $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
-                    $content = \substr($content, \strlen($m[0]));
-                    continue;
-                }
-                if (\preg_match('/^[_]([^\p{P}\p{Z}][\s\S]*?[^\p{P}\p{Z}])[_]/u', $content, $m)) {
-                    $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
-                    $content = \substr($content, \strlen($m[0]));
-                    continue;
-                }
-                $chops[] = [false, '_', [], -1];
-                $content = \substr($content, 1);
-                continue;
-            }
-            if (0 === \strpos($content, '`') && \preg_match('/^(`.*?`)(.*)$/', $content, $m)) {
-                $chops[] = ['code', \substr($m[1], 1, -1), [], -1];
-                $content = $m[2];
-                continue;
-            }
             if ("" !== $content) {
-                $chops[] = [false, $content, [], -1];
+                $chops[] = [false, \htmlspecialchars($content), [], -1];
                 $content = "";
             }
         }
+
+        // {
+        //     if ($n = \strcspn($content, '\\<`![*_&' . "\n")) {
+        //         $chops[] = [false, \substr($content, 0, $n), [], -1];
+        //         $content = \substr($content, $n);
+        //     }
+        //     if (0 === \strpos($content, "\n")) {
+        //         $last = \count($chops) - 1;
+        //         if ('  ' === \substr($chops[$last][1], -2)) {
+        //             $chops[$last][1] = \rtrim($chops[$last][1]);
+        //             $chops[] = ['br', false, [], -1];
+        //             $content = \ltrim(\substr($content, 1));
+        //             continue;
+        //         }
+        //         $chops[] = [false, "\n", [], -1];
+        //         $content = \substr($content, 1);
+        //         continue;
+        //     }
+        //     if (0 === \strpos($content, '![')) {}
+        //     if (0 === \strpos($content, '&')) {}
+        //     if (0 === \strpos($content, '*') && isset($content[2])) {
+        //         if (0 === \strpos($content, '**')) {
+        //             // TODO
+        //             continue;
+        //         }
+        //         if (\preg_match('/^[*]([\p{Ps}][\s\S]*?[\p{Pe}])[*]/u', $content, $m)) {
+        //             $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
+        //             $content = \substr($content, \strlen($m[0]));
+        //             continue;
+        //         }
+        //         if (\preg_match('/^[*]([^\p{P}\p{Z}][\s\S]*?[^\p{P}\p{Z}])[*]/u', $content, $m)) {
+        //             $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
+        //             $content = \substr($content, \strlen($m[0]));
+        //             continue;
+        //         }
+        //         $chops[] = [false, '*', [], -1];
+        //         $content = \substr($content, 1);
+        //         continue;
+        //     }
+        //     if (0 === \strpos($content, '<') && \preg_match('/^(<[^>]+>)(.*)$/', $content, $m)) {
+        //         $chops[] = [false, $m[1], [], -1];
+        //         $content = $m[2];
+        //         continue;
+        //     }
+        //     if (0 === \strpos($content, '[')) {}
+        //     if (0 === \strpos($content, '[^')) {}
+        //     if (0 === \strpos($content, '\\')) {
+        //         $chops[] = [false, \substr($content, 1, 1), [], -1];
+        //         $content = \substr($content, 2);
+        //         continue;
+        //     }
+        //     if (0 === \strpos($content, '_') && isset($content[2])) {
+        //         if (0 === \strpos($content, '__')) {
+        //             // TODO
+        //             continue;
+        //         }
+        //         if (\preg_match('/^[_]([\p{Ps}][\s\S]*?[\p{Pe}])[_]/u', $content, $m)) {
+        //             $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
+        //             $content = \substr($content, \strlen($m[0]));
+        //             continue;
+        //         }
+        //         if (\preg_match('/^[_]([^\p{P}\p{Z}][\s\S]*?[^\p{P}\p{Z}])[_]/u', $content, $m)) {
+        //             $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
+        //             $content = \substr($content, \strlen($m[0]));
+        //             continue;
+        //         }
+        //         $chops[] = [false, '_', [], -1];
+        //         $content = \substr($content, 1);
+        //         continue;
+        //     }
+        //     if (0 === \strpos($content, '`') && \preg_match('/^(`.*?`)(.*)$/', $content, $m)) {
+        //         $chops[] = ['code', \substr($m[1], 1, -1), [], -1];
+        //         $content = $m[2];
+        //         continue;
+        //     }
+        //     if ("" !== $content) {
+        //         $chops[] = [false, $content, [], -1];
+        //         $content = "";
+        //     }
+        // }
         return [$chops, $lot];
     }
     function rows(?string $content, array $lot = []): array {
@@ -527,9 +592,9 @@ namespace x\markdown {
                     continue;
                 }
                 // Fenced code block
-                if ('pre' === $prev[0] && isset($prev[4][0])) {
+                if ('pre' === $prev[0] && isset($prev[4])) {
                     // Exit fenced code block
-                    if ('pre' === $current[0] && isset($current[4][0]) && $prev[4][0] === $current[4][0]) {
+                    if ('pre' === $current[0] && isset($current[4]) && $prev[4] === $current[4]) {
                         $blocks[$block++][1] .= "\n" . $row;
                         continue;
                     }
@@ -605,7 +670,7 @@ namespace x\markdown {
             // Any other named block(s) will be processed from here
             if (\is_string($current[0])) {
                 // Enter fenced code block
-                if ('pre' === $current[0] && isset($current[4][0])) {
+                if ('pre' === $current[0] && isset($current[4])) {
                     $blocks[++$block] = $current;
                     continue;
                 }
@@ -829,14 +894,22 @@ namespace x\markdown {
         if (\is_int($info[0])) {
             return "";
         }
+        if ('&' === $info[0]) {
+            $out = \html_entity_decode($info[1], \ENT_HTML5 | \ENT_QUOTES, 'UTF-8');
+            // Keep HTML special character(s) as-is
+            if (false !== \strpos('"&\'<>', $out)) {
+                return $info[1];
+            }
+            return $out;
+        }
         $out = '<' . $info[0];
         if (!empty($info[2])) {
             foreach ($info[2] as $k => $v) {
                 $out .= ' ' . $k . (true === $v ? "" : '="' . \htmlspecialchars($v) . '"');
             }
         }
-        $out .= '>';
         if (false !== $info[1]) {
+            $out .= '>';
             if (\is_array($info[1])) {
                 foreach ($info[1] as $v) {
                     $out .= \is_array($v) ? \x\markdown\up($v) : $v;
@@ -845,6 +918,8 @@ namespace x\markdown {
                 $out .= $info[1];
             }
             $out .= '</' . $info[0] . '>';
+        } else {
+            $out .= ' />';
         }
         return $out;
     }
