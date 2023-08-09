@@ -281,6 +281,12 @@ namespace x\markdown {
         }
         // `1…`
         $n = \strspn($row, '0123456789');
+        // TODO: `1)` or `1.`
+        // <https://spec.commonmark.org/0.30#example-283>
+        if ($n && false !== \strpos(').', \substr($row, $n, 1))) {
+            $start = (int) \substr($row, 0, $n);
+            return ['ol', $row, 1 !== $start ? ['start' => $start] : [], [$dent, $dent + $n + 1], \substr($row, -1), $start];
+        }
         // `1) …` or `1. …`
         if ($n === \strpos($row, ') ') || $n === \strpos($row, '. ')) {
             $start = (int) \substr($row, 0, $n);
@@ -804,7 +810,7 @@ namespace x\markdown {
                     $v[1] = $attr[0];
                     $v[2] = \array_replace($v[2], $attr[1]);
                 }
-                $v[1] = \x\markdown\row($v[1], $lot)[0];
+                $v[1] = \x\markdown\rows($v[1], $lot)[0][0][1];
                 continue;
             }
             if ('ol' === $v[0]) {
