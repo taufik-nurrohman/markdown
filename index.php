@@ -125,38 +125,43 @@ namespace x\markdown {
         }
         return $attr;
     }
-    function tag(array $info): string {
-        if (false === $info[0]) {
-            if (\is_array($info[1])) {
-                $out = "";
-                foreach ($info[1] as $v) {
-                    $out .= \is_array($v) ? \x\markdown\tag($v) : $v;
+    function convert(?string $content, array $lot = [], $block = true): ?string {
+        if ("" === \trim($content ?? "")) {
+            return null;
+        }
+        $data = \x\markdown\rows($content, $lot);
+        $alter_0 = [];
+        $alter_1 = [];
+        $alter_2 = [];
+        if (!empty($data[1][0])) {}
+        if (!empty($data[1][1])) {
+            foreach ($data[1][1] as $k => $v) {
+                $alter_1[$k] = \x\markdown\up(['abbr', $k, ['title' => $v]]);
+            }
+        }
+        if (!empty($data[1][2])) {}
+        $out = [];
+        foreach ($data[0] as $row) {
+            // Late abbreviation parsing
+            if (\is_string($row[0]) && $alter_1) {
+                foreach ($row[1] as &$v) {
+                    if (false !== $v[0]) {
+                        continue;
+                    }
+                    // Only process raw chop(s)
+                    $v[1] = \strtr($v[1], $alter_1);
                 }
-                return $out;
+                unset($v);
             }
-            return $info[1];
+            $out[] = \x\markdown\up($row);
         }
-        if (\is_int($info[0])) {
-            return "";
-        }
-        $out = '<' . $info[0];
-        if (!empty($info[2])) {
-            foreach ($info[2] as $k => $v) {
-                $out .= ' ' . $k . (true === $v ? "" : '="' . \htmlspecialchars($v) . '"');
-            }
-        }
-        $out .= '>';
-        if (false !== $info[1]) {
-            if (\is_array($info[1])) {
-                foreach ($info[1] as $v) {
-                    $out .= \is_array($v) ? \x\markdown\tag($v) : $v;
-                }
-            } else {
-                $out .= $info[1];
-            }
-            $out .= '</' . $info[0] . '>';
-        }
-        return $out;
+        $content = \implode("", $out);
+        // Merge sequence of definition list into single definition list
+        $content = \strtr($content, ['</dl><dl>' => ""]);
+        return $content;
+    }
+    function flank(?string $rest, ?string $prev) {
+        return [];
     }
     function info(?string $row): array {
         if ("" === ($row ?? "")) {
@@ -224,7 +229,7 @@ namespace x\markdown {
             }
             // `--`
             if ('-' === $row || '--' === $row) {
-                return ['h2', $row, [], $dent]; // Look like a Setext header level 2
+                return ['h2', $row, [], $dent, 2, '-']; // Look like a Setext header level 2
             }
             return ['p', $row, [], $dent];
         }
@@ -251,7 +256,7 @@ namespace x\markdown {
         // `=…`
         if (0 === \strpos($row, '=')) {
             if (\strspn($row, '=') === \strlen($row)) {
-                return ['h1', $row, [], $dent, 1]; // Look like a Setext header level 1
+                return ['h1', $row, [], $dent, 1, '=']; // Look like a Setext header level 1
             }
             return ['p', $row, [], $dent];
         }
@@ -280,7 +285,8 @@ namespace x\markdown {
             // ````…`
             if (0 === \strpos($row, '```')) {
                 $fence = \substr($row, 0, \strrpos($row, '`') + 1);
-                return ['pre', $row, \x\markdown\a(\trim(\substr($row, \strlen($fence))), true), $dent, $fence];
+                $info = \trim(\substr($row, \strlen($fence)));
+                return ['pre', $row, \x\markdown\a($info, true), $dent, $fence];
             }
             return ['p', $row, [], $dent];
         }
@@ -289,7 +295,8 @@ namespace x\markdown {
             // `~~~…`
             if (0 === \strpos($row, '~~~')) {
                 $fence = \substr($row, 0, \strrpos($row, '~') + 1);
-                return ['pre', $row, \x\markdown\a(\trim(\substr($row, \strlen($fence))), true), $dent, $fence];
+                $info = \trim(\substr($row, \strlen($fence)));
+                return ['pre', $row, \x\markdown\a($info, true), $dent, $fence];
             }
             return ['p', $row, [], $dent];
         }
@@ -622,7 +629,6 @@ namespace x\markdown {
                     continue;
                 }
             }
-            if (\is_int($current[0])) {}
             // Default action is to break every block by blank line(s)
             if (null === $current[0]) {
                 if ($prev && 'dl' === $prev[0]) {
@@ -809,18 +815,38 @@ namespace x\markdown {
         unset($v);
         return [$blocks, $lot];
     }
-    function convert(?string $content, array $lot = [], $block = true): ?string {
-        if ("" === \trim($content ?? "")) {
-            return null;
+    function up(array $info): string {
+        if (false === $info[0]) {
+            if (\is_array($info[1])) {
+                $out = "";
+                foreach ($info[1] as $v) {
+                    $out .= \is_array($v) ? \x\markdown\up($v) : $v;
+                }
+                return $out;
+            }
+            return $info[1];
         }
-        $rows = [];
-        foreach (\x\markdown\rows($content, $lot)[0] as $row) {
-            $rows[] = \x\markdown\tag($row);
+        if (\is_int($info[0])) {
+            return "";
         }
-        $content = \implode("", $rows);
-        // Merge sequence of definition list into single definition list
-        $content = \strtr($content, ['</dl><dl>' => ""]);
-        return $content;
+        $out = '<' . $info[0];
+        if (!empty($info[2])) {
+            foreach ($info[2] as $k => $v) {
+                $out .= ' ' . $k . (true === $v ? "" : '="' . \htmlspecialchars($v) . '"');
+            }
+        }
+        $out .= '>';
+        if (false !== $info[1]) {
+            if (\is_array($info[1])) {
+                foreach ($info[1] as $v) {
+                    $out .= \is_array($v) ? \x\markdown\up($v) : $v;
+                }
+            } else {
+                $out .= $info[1];
+            }
+            $out .= '</' . $info[0] . '>';
+        }
+        return $out;
     }
     // <https://spec.commonmark.org/0.30#example-12>
     function v(string $content): string {
