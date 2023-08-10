@@ -682,9 +682,10 @@ namespace x\markdown {
                     continue;
                 }
                 // Found thematic break that sits right below a paragraph block
-                if ('hr' === $current[0] && '-' === $current[4] && 'p' === $prev[0]) {
+                if ('hr' === $current[0] && '-' === $current[4] && 'p' === $prev[0] && \strspn($current[1], $current[4]) === \strlen($current[1])) {
                     $blocks[$block][0] = 'h2'; // Treat the previous block as Setext header level 2
                     $blocks[$block][1] .= "\n" . $current[1];
+                    $blocks[$block][4] = 2;
                     $blocks[$block][5] = '-';
                     $block += 1;
                     continue;
@@ -709,10 +710,10 @@ namespace x\markdown {
                     $blocks[++$block] = $current;
                     continue;
                 }
-                // Enter ATX header block
-                if ('h' === $current[0][0] && '#' === $current[1][0]) {
+                // Enter ATX header block or thematic break
+                if ('h' === $current[0][0]) {
                     $blocks[++$block] = $current;
-                    // Exit ATX header block (force to start a new block)
+                    // Exit ATX header block or thematic break (force to start a new block)
                     $block += 1;
                     continue;
                 }

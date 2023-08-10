@@ -12,9 +12,8 @@ define('PATH', __DIR__);
 
 require __DIR__ . D . 'index.php';
 
-$blocks = isset($_GET['blocks']);
 $test = $_GET['test'] ?? 'p';
-$view = isset($_GET['view']);
+$view = $_GET['view'] ?? 'source';
 
 $files = glob(__DIR__ . D . 'test' . D . $test . D . '*.md', GLOB_NOSORT);
 
@@ -51,63 +50,46 @@ foreach (glob(__DIR__ . D . 'test' . D . '*', GLOB_ONLYDIR) as $v) {
 $out .= '</fieldset>';
 $out .= '<fieldset>';
 $out .= '<legend>';
-$out .= 'Options';
+$out .= 'Preview';
 $out .= '</legend>';
-$out .= '<label>';
-$out .= '<input' . ($blocks ? ' checked' : "") . ' name="blocks" type="checkbox" value="1">';
+$out .= '<select name="view">';
+$out .= '<option' . ('result' === $view ? ' selected' : "") . ' value="result">HTML</option>';
+$out .= '<option' . ('raw' === $view ? ' selected' : "") . ' value="raw">Raw</option>';
+$out .= '<option' . ('source' === $view ? ' selected' : "") . ' value="source">Source</option>';
+$out .= '</select>';
 $out .= ' ';
-$out .= '<span>';
-$out .= 'Show Blocks';
-$out .= '</span>';
-$out .= '</label>';
-$out .= '<br>';
-$out .= '<label>';
-$out .= '<input' . ($view ? ' checked' : "") . ' name="view" type="checkbox" value="1">';
-$out .= ' ';
-$out .= '<span>';
-$out .= 'Show HTML';
-$out .= '</span>';
-$out .= '</label>';
+$out .= '<button name="test" type="submit" value="' . $test . '">';
+$out .= 'Update';
+$out .= '</button>';
 $out .= '</fieldset>';
 $out .= '</form>';
 
 foreach ($files as $v) {
     $content = "";
     $raw = file_get_contents($v);
-    $start = microtime(true);
-    if ($blocks) {
-        [$rows, $lot] = x\markdown\rows($raw);
-        $row = array_shift($rows);
-        $content .= '<span style="background:' . (false === $row[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;">';
-        $content .= htmlspecialchars(var_export($row, true));
-        $content .= '</span>';
-        while ($row = array_shift($rows)) {
-            $content .= "\n";
-            $content .= '<span style="background:' . (false === $row[0] ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.125)') . ';display:block;">';
-            $content .= htmlspecialchars(var_export($row, true));
-            $content .= '</span>';
-        }
-        if ($lot = array_filter($lot)) {
-            $content .= "\n\n";
-            $content .= '$lot = ' . htmlspecialchars(var_export($lot, true)) . ';';
-        }
-    } else {
-        $content .= htmlspecialchars(x\markdown\convert($raw));
-    }
-    $end = microtime(true);
     $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
     $out .= '<div style="display:flex;gap:1em;">';
     $out .= '<pre style="background:#ccc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
     $out .= strtr(htmlspecialchars($raw), [' ' => '<span style="opacity:.5">·</span>']);
     $out .= '</pre>';
-    $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
-    $out .= $content;
-    $out .= '</pre>';
-    if (!$blocks && $view) {
+    $start = microtime(true);
+    if ('raw' === $view) {
+        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
+        $rows = x\markdown\rows($raw);
+        $out .= htmlspecialchars('$blocks = ' . var_export($rows[0], true) . ';');
+        $out .= "\n\n";
+        $out .= htmlspecialchars('$lot = ' . var_export($rows[1], true) . ';');
+        $out .= '</pre>';
+    } else if ('result' === $view) {
         $out .= '<div style="border:1px solid;box-shadow:inset 0 0 0 1em #eee;flex:1;padding:1em;">';
-        $out .= htmlspecialchars_decode($content);
+        $out .= x\markdown\convert($raw);
         $out .= '</div>';
+    } else if ('source' === $view) {
+        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
+        $out .= htmlspecialchars(x\markdown\convert($raw));
+        $out .= '</pre>';
     }
+    $end = microtime(true);
     $out .= '</div>';
     $time = round(($end - $start) * 1000, 2);
     $out .= '<p style="color:#' . ($time >= 1 ? '800' : '080') . ';">Parsed in ' . $time . ' ms.</p>';
