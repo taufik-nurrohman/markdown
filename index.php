@@ -299,7 +299,7 @@ namespace x\markdown {
             return [[], $lot];
         }
         $chops = [];
-        $prev = ""; // Capture previous chunk for left-flank test
+        $prev = ""; // Capture the previous chunk
         while ("" !== $content) {
             if ($n = \strcspn($content, '\\<`![*_&' . "\n")) {
                 $chops[] = [false, \htmlspecialchars($prev = \substr($content, 0, $n)), [], -1];
@@ -342,74 +342,41 @@ namespace x\markdown {
                 // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
                 //
                 // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
-                $v = $content[0]; // Either `*` or `_` character
-                // `***asdf***`
-                if (0 === \strpos($content, $v . $v . $v)) {
-                    if (\preg_match('/(?:' .
-                        // Left 1, 2a
-                        '[' . $v . ']{3}(?![\p{P}\s])' .
-                    '|' .
-                        // Left 2b
-                        '(?<=^|[\p{P}\s])[' . $v . ']{3}(?=[\p{P}])' .
-                    ')(' .
-                        '(?:\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
-                    ')(?:' .
-                        // Right 1, 2a
-                        '(?<![\p{P}\s])[' . $v . ']{3}' .
-                    '|' .
-                        // Right 2b
-                        '(?<=[\p{P}])[' . $v . ']{3}(?=[\p{P}\s]|$)' .
-                    ')/u', \substr($prev, -1) . $content, $m)) {
-                        // Prefer `<em><strong>asdf</strong></em>`
-                        $chops[] = ['em', \x\markdown\row(\substr($prev = $m[0], 1, -1), $lot)[0], [], -1];
-                        $content = \substr($content, \strlen($m[0]));
-                        continue;
-                    }
-                }
-                // `**asdf**`
-                if (0 === \strpos($content, $v . $v)) {
-                    if (\preg_match('/(?:' .
-                        // Left 1, 2a
-                        '[' . $v . ']{2}(?![\p{P}\s])' .
-                    '|' .
-                        // Left 2b
-                        '(?<=^|[\p{P}\s])[' . $v . ']{2}(?=[\p{P}])' .
-                    ')(' .
-                        '(?:\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
-                    ')(?:' .
-                        // Right 1, 2a
-                        '(?<![\p{P}\s])[' . $v . ']{2}' .
-                    '|' .
-                        // Right 2b
-                        '(?<=[\p{P}])[' . $v . ']{2}(?=[\p{P}\s]|$)' .
-                    ')/u', \substr($prev, -1) . $content, $m)) {
-                        $chops[] = ['strong', \x\markdown\row(\substr($prev = $m[0], 2, -2), $lot)[0], [], -1];
-                        $content = \substr($content, \strlen($m[0]));
-                        continue;
-                    }
-                }
-                // `*asdf*`
+                $n = \strspn($content, $v = $content[0]);
+                $n = $n > 3 ? 3 : $n;
+                $r = 1 === $n ? "" : '{' . $n . '}';
                 if (\preg_match('/(?:' .
                     // Left 1, 2a
-                    '[' . $v . '](?![\p{P}\s])' .
+                    ('_' === $v ? '(?<=^|[\p{P}\s])' : "") . '[' . $v . ']' . $r . '(?![\p{P}\s])' .
                 '|' .
                     // Left 2b
-                    '(?<=^|[\p{P}\s])[' . $v . '](?=[\p{P}])' .
+                    '(?<=^|[\p{P}\s])[' . $v . ']' . $r . '(?=[\p{P}])' .
                 ')(' .
                     '(?:\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
                 ')(?:' .
                     // Right 1, 2a
-                    '(?<![\p{P}\s])[' . $v . ']' .
+                    '(?<![\p{P}\s])[' . $v . ']' . $r . ('_' === $v ? '(?=[\p{P}\s]|$)' : "") .
                 '|' .
                     // Right 2b
-                    '(?<=[\p{P}])[' . $v . '](?=[\p{P}\s]|$)' .
-                ')/u', \substr($prev, -1) . $content, $m)) {
-                    $chops[] = ['em', \x\markdown\row(\substr($prev = $m[0], 1, -1), $lot)[0], [], -1];
-                    $content = \substr($content, \strlen($m[0]));
+                    '(?<=[\p{P}])[' . $v . ']' . $r . '(?=[\p{P}\s]|$)' .
+                ')/u', $content, $m, \PREG_OFFSET_CAPTURE)) {
+                    if ($m[0][1] > 0) {
+                        $chops[] = \substr($content, 0, $m[0][1]);
+                        $content = \substr($content, $m[0][1]);
+                    }
+                    // `*…*` or `***…***`
+                    if (1 === $n || 3 === $n) {
+                        // Prefer `<em><strong>…</strong></em>`
+                        $chops[] = ['em', \x\markdown\row(\substr($prev = $m[0][0], 1, -1), $lot)[0], [], -1];
+                    // `**…**`
+                    } else {
+                        $chops[] = ['strong', \x\markdown\row(\substr($prev = $m[0][0], 2, -2), $lot)[0], [], -1];
+                    }
+                    $content = \substr($content, \strlen($m[0][0]));
                     continue;
                 }
-                $chops[] = [false, $prev = $v, [], -1];
-                $content = \substr($content, 1);
+                $chops[] = [false, $prev = \str_repeat($v, $n), [], -1];
+                $content = \substr($content, $n);
                 continue;
             }
             if (0 === \strpos($content, '<')) {}
@@ -955,10 +922,15 @@ namespace x\markdown {
                     if (false !== $vv[0]) {
                         continue;
                     }
+                    // Optimize if current chunk is just an abbreviation
+                    if (isset($lot[1][$vv[1]])) {
+                        $vv[1] = ['abbr', $vv[1], ['title' => $lot[1][$vv[1]]], -1];
+                        continue;
+                    }
                     $chops = [];
                     foreach (\preg_split($abbr, $vv[1], -1, \PREG_SPLIT_DELIM_CAPTURE) as $vvv) {
                         if (isset($lot[1][$vvv])) {
-                            $chops[] = ['abbr', $vvv, ['title' => $lot[1][$vvv]]];
+                            $chops[] = ['abbr', $vvv, ['title' => $lot[1][$vvv]], -1];
                             continue;
                         }
                         $chops[] = $vvv;
