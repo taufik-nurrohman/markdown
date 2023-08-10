@@ -43,8 +43,8 @@ $out .= '*';
 $out .= '</button>';
 foreach (glob(__DIR__ . D . 'test' . D . '*', GLOB_ONLYDIR) as $v) {
     $out .= ' ';
-    $out .= '<button' . ($test === ($n = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . $n . '">';
-    $out .= $n;
+    $out .= '<button' . ($test === ($n = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . htmlspecialchars($n) . '">';
+    $out .= htmlspecialchars($n);
     $out .= '</button>';
 }
 $out .= '</fieldset>';
