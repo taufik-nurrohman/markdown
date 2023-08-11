@@ -237,11 +237,7 @@ function data(?string $row): array {
             if (0 === \strpos($n, '![')) {
                 $n = \substr($n, 0, \strrpos($n, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
             }
-            // <https://spec.commonmark.org/0.30#html-blocks>
-            if (false !== \strpos('!?', $n[0]) || false !== \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,param,section,source,summary,table,tbody,td,tfoot,th,thead,title,tr,track,ul,', ',' . \ltrim($n, '/') . ',')) {
-                return [false, $row, [], $dent, $n]; // Look like a raw HTML
-            }
-            return ['p', $row, [], $dent]; // Maybe a raw-span HTML
+            return [false, $row, [], $dent, $n]; // Look like a raw HTML
         }
         return ['p', $row, [], $dent];
     }
