@@ -574,6 +574,10 @@ function rows(?string $content, array $lot = []): array {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
+                if (false !== \strpos(',del,', ',' . $prev[4] . ',') && false !== ($n = \strpos($prev[1], '</' . $prev[4] . '>')) && "\n" !== \substr($prev[1], $n - 1, 1)) {
+                    $blocks[$block][0] = 'p'; // Wrap in a paragraph block
+                    continue;
+                }
                 // CommonMark is not concerned with HTML tag balancing. It only concerned about blank line(s). Any
                 // non-blank line that sits right next to or below the opening/closing tag other than `<pre>`,
                 // `<script>`, `<style>`, and `<textarea> tag(s) will be interpreted as raw HTML. From that point
@@ -689,11 +693,16 @@ function rows(?string $content, array $lot = []): array {
             }
             // Here goes the bullet list block
             if ('ul' === $prev[0]) {
-                // An empty bullet marker, followed by a new line and a paragraph block with indent less than 2
+                // An empty bullet marker, followed by a new paragraph block with indent less than 2
                 // <https://spec.commonmark.org/0.30#example-278>
-                if (1 === $prev[3][1] && $current[3] < 2) {
-                    $blocks[$block] = ['p', $blocks[$block][1] . "\n" . $prev[4] . "\n" . $row, [], $prev[3][0]];
-                    continue;
+                if (1 === $prev[3][1]) {
+                    if ($current[3] < 2) {
+                        $blocks[$block] = ['p', ("" !== $prev[1] ? $prev[1] . "\n" : "") . $prev[4] . "\n" . $row, [], $prev[3][0]];
+                        continue;
+                    }
+                    // Normalize
+                    $prev[3][0] = 1;
+                    $blocks[$block][3][1] = $prev[3][1] = 2;
                 }
                 // To exit the list, use a different bullet character.
                 if ('ul' === $current[0] && $current[4] !== $prev[4] && $current[3][0] === $prev[3][0]) {
