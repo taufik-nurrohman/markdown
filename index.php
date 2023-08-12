@@ -295,10 +295,9 @@ function data(?string $row): array {
     // `1…`
     $n = \strspn($row, '0123456789');
     // `1)` or `1.`
-    // <https://spec.commonmark.org/0.30#example-283>
-    if ($n && false !== \strpos(').', \substr($row, $n, 1))) {
-        $start = (int) \substr($row, 0, $n);
-        return ['ol', $row, 1 !== $start ? ['start' => $start] : [], [$dent, $dent + $n + 1], \substr($row, $n, 1), $start];
+    if ($n && ($n + 1) === \strlen($row) && false !== \strpos(').', \substr($row, -1))) {
+        $start = (int) \substr($row, 0, -1);
+        return ['ol', "", 1 !== $start ? ['start' => $start] : [], [$dent, $dent + $n + 1], \substr($row, -1), $start];
     }
     // `1) …` or `1. …`
     if ($n === \strpos($row, ') ') || $n === \strpos($row, '. ')) {
@@ -636,8 +635,9 @@ function rows(?string $content, array $lot = []): array {
                 continue;
             }
             if ('p' === $prev[0]) {
+                // <https://spec.commonmark.org/0.30#example-285>
                 // <https://spec.commonmark.org/0.30#example-304>
-                if ('ol' === $current[0] && 1 !== $current[5]) {
+                if ('ol' === $current[0] && ("" === $current[1] || 1 !== $current[5])) {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
@@ -659,6 +659,12 @@ function rows(?string $content, array $lot = []): array {
             // the file by default when a list pattern is found. To exit the list, we will do so manually while we
             // are in the list block.
             if ('ol' === $prev[0]) {
+                // <https://spec.commonmark.org/0.30#example-278> but the indent is less than the minimum required
+                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3][1]) {
+                    $current[1] = $prev[5] . $prev[4] . "\n" . $current[1];
+                    $blocks[$block] = $current;
+                    continue;
+                }
                 // To exit the list, either start a new list pattern with a lower number than the previous list
                 // number or use a different number suffix. For example, use `1)` to separate the previous list
                 // that was using `1.` as the list marker.
@@ -693,16 +699,11 @@ function rows(?string $content, array $lot = []): array {
             }
             // Here goes the bullet list block
             if ('ul' === $prev[0]) {
-                // An empty bullet marker, followed by a new paragraph block with indent less than 2
-                // <https://spec.commonmark.org/0.30#example-278>
-                if (1 === $prev[3][1]) {
-                    if ($current[3] < 2) {
-                        $blocks[$block] = ['p', ("" !== $prev[1] ? $prev[1] . "\n" : "") . $prev[4] . "\n" . $row, [], $prev[3][0]];
-                        continue;
-                    }
-                    // Normalize
-                    $prev[3][0] = 1;
-                    $blocks[$block][3][1] = $prev[3][1] = 2;
+                // <https://spec.commonmark.org/0.30#example-278> but the indent is less than the minimum required
+                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3][1]) {
+                    $current[1] = $prev[4] . "\n" . $current[1];
+                    $blocks[$block] = $current;
+                    continue;
                 }
                 // To exit the list, use a different bullet character.
                 if ('ul' === $current[0] && $current[4] !== $prev[4] && $current[3][0] === $prev[3][0]) {
