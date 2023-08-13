@@ -15,13 +15,16 @@ require __DIR__ . D . 'index.php';
 $test = $_GET['test'] ?? 'p';
 $view = $_GET['view'] ?? 'source';
 
-$files = glob(__DIR__ . D . 'test' . D . $test . D . '*.md', GLOB_NOSORT);
-
-usort($files, static function ($a, $b) {
-    $a = dirname($a) . D . basename($a, '.md');
-    $b = dirname($b) . D . basename($b, '.md');
-    return strnatcmp($a, $b);
-});
+if ('README' === $test) {
+    $files = [__DIR__ . D . 'README.md'];
+} else {
+    $files = glob(__DIR__ . D . 'test' . D . $test . D . '*.md', GLOB_NOSORT);
+    usort($files, static function ($a, $b) {
+        $a = dirname($a) . D . basename($a, '.md');
+        $b = dirname($b) . D . basename($b, '.md');
+        return strnatcmp($a, $b);
+    });
+}
 
 $out = '<!DOCTYPE html>';
 $out .= '<html dir="ltr">';
@@ -47,6 +50,12 @@ foreach (glob(__DIR__ . D . 'test' . D . '*', GLOB_ONLYDIR) as $v) {
     $out .= htmlspecialchars($n);
     $out .= '</button>';
 }
+
+$out .= ' ';
+$out .= '<button' . ('README' === $test ? ' disabled' : "") . ' name="test" type="submit" value="README">';
+$out .= 'README';
+$out .= '</button>';
+
 $out .= '</fieldset>';
 $out .= '<fieldset>';
 $out .= '<legend>';
