@@ -206,7 +206,7 @@ function data(?string $row): array {
     }
     // `--`
     if ('--' === \rtrim($row)) {
-        return ['h2', $row, [], $dent, 2, '-']; // Look like a Setext header level 2
+        return ['h2', $row, [], $dent, 2, '-']; // Look like a Setext-header level 2
     }
     // `-…`
     if (0 === \strpos($row, '-')) {
@@ -239,7 +239,7 @@ function data(?string $row): array {
             if ($n > 1 && $n < 33 && $n === \strspn($test, '+-.0123456789abcdefghijklmnopqrstuvwxyz')) {
                 return ['p', $row, [], $dent];
             }
-            // The `@` character is not a valid part of an HTML element name, so it must be an email link syntax
+            // The `@` character is not a valid part of a HTML element name, so it must be an email link syntax
             if (\strpos($t, '@') > 0) {
                 return ['p', $row, [], $dent];
             }
@@ -258,7 +258,7 @@ function data(?string $row): array {
     // `=…`
     if (0 === \strpos($row, '=')) {
         if (\strspn($row, '=') === \strlen($row)) {
-            return ['h1', $row, [], $dent, 1, '=']; // Look like a Setext header level 1
+            return ['h1', $row, [], $dent, 1, '=']; // Look like a Setext-header level 1
         }
         return ['p', $row, [], $dent];
     }
@@ -371,8 +371,8 @@ function row(?string $content, array $lot = []): array {
             if ('&#0;' === $m[0]) {
                 $m[0] = '&#xfffd;';
             }
-            $chops[] = ['&', $prev = $m[0], [], -1];
-            $content = \substr($content, \strlen($m[0]));
+            $chops[] = ['&', $m[0], [], -1];
+            $content = \substr($content, \strlen($prev = $m[0]));
             continue;
         }
         if (\strlen($content) > 2 && false !== \strpos('*_', $content[0])) {
@@ -410,12 +410,12 @@ function row(?string $content, array $lot = []): array {
                 // `*…*` or `***…***`
                 if (1 === $n || 3 === $n) {
                     // Prefer `<em><strong>…</strong></em>`
-                    $chops[] = ['em', \x\markdown\row(\substr($prev = $m[0][0], 1, -1), $lot)[0], [], -1];
+                    $chops[] = ['em', \x\markdown\row(\substr($m[0][0], 1, -1), $lot)[0], [], -1];
                 // `**…**`
                 } else {
-                    $chops[] = ['strong', \x\markdown\row(\substr($prev = $m[0][0], 2, -2), $lot)[0], [], -1];
+                    $chops[] = ['strong', \x\markdown\row(\substr($m[0][0], 2, -2), $lot)[0], [], -1];
                 }
-                $content = \substr($content, \strlen($m[0][0]));
+                $content = \substr($content, \strlen($prev = $m[0][0]));
                 continue;
             }
             $chops[] = [false, $prev = \str_repeat($v, $n), [], -1];
@@ -423,22 +423,23 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($content, '<')) {
+            $test = (string) \strstr($content, '>', true);
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
-            // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
-            if (\preg_match('/^<([a-z\d.!#$%&\'*+\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*|[a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $content, $m)) {
-                if (\strpos($link = $m[1], '@') > 0) {
-                    // <https://spec.commonmark.org/0.30#example-605>
-                    if (false !== \strpos($link, '\\')) {
-                        $chops[] = [false, \htmlspecialchars($prev = $m[0]), [], -1];
-                        $content = \substr($content, \strlen($m[0]));
-                        continue;
-                    }
-                    if (0 !== \strpos($link, 'mailto:')) {
-                        $link = 'mailto:' . $link;
-                    }
+            if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d.!#$%&\'*+\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i', $content, $m)) {
+                // <https://spec.commonmark.org/0.30#example-605>
+                if (false !== \strpos($email = $m[1], '\\')) {
+                    $chops[] = [false, \htmlspecialchars($m[0]), [], -1];
+                    $content = \substr($content, \strlen($prev = $m[0]));
+                    continue;
                 }
-                $chops[] = ['a', \htmlspecialchars($m[1]), ['href' => $link], -1];
+                $chops[] = ['a', \htmlspecialchars($m[1]), ['href' => 'mailto:' . $email], -1];
                 $content = \substr($content, \strlen($m[0]));
+                continue;
+            }
+            // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
+            if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $content, $m)) {
+                $chops[] = ['a', \htmlspecialchars($m[1]), ['href' => $m[1]], -1];
+                $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
             // TODO
@@ -452,9 +453,10 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($content, '[')) {
+            $at = '(?:\s*(\{(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|[^{}]+)\}))?';
             // `[asdf](asdf)`
-            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]\((\S+)?(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\)))?\)/', $content, $m)) {
-                $anchor = \x\markdown\row($m[1], $lot)[0];
+            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]\((\S+)?(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\)))?\)' . $at . '/', $content, $m)) {
+                $row = \x\markdown\row($m[1], $lot)[0];
                 if ($link = $m[2] ?? null) {
                     if ('<' === $link[0] && '>' === \substr($link, -1)) {
                         $link = \substr($link, 1, -1);
@@ -469,31 +471,40 @@ function row(?string $content, array $lot = []): array {
                         $title = \x\markdown\v(\substr($title, 1, -1));
                     }
                 }
-                $chops[] = ['a', $anchor, [
+                if ($attr = $m[4] ?? []) {
+                    $attr = \x\markdown\a($attr);
+                }
+                $chops[] = ['a', $row, \array_replace([
                     'href' => $link,
                     'title' => $title
-                ], -1];
-                $content = \substr($content, \strlen($m[0]));
+                ], $attr), -1];
+                $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
             // `[asdf][asdf]`
-            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]/', $content, $m) && isset($lot[0][$k = \strtolower($m[2])])) {
-                $anchor = \x\markdown\row($m[1], $lot)[0];
-                $chops[] = ['a', $anchor, [
+            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]' . $at . '/', $content, $m) && isset($lot[0][$k = \strtolower($m[2])])) {
+                $row = \x\markdown\row($m[1], $lot)[0];
+                if ($attr = $m[3] ?? []) {
+                    $attr = \x\markdown\a($attr);
+                }
+                $chops[] = ['a', $row, \array_replace([
                     'href' => $lot[0][$k][0] ?? null,
                     'title' => $lot[0][$k][1] ?? null
-                ], -1];
-                $content = \substr($content, \strlen($m[0]));
+                ], $lot[0][$k][2] ?? [], $attr), -1];
+                $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
             // `[asdf][]` or `[asdf]`
-            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\](?:\[\])?/', $content, $m) && isset($lot[0][$k = \strtolower($m[1])])) {
-                $anchor = \x\markdown\row($m[1], $lot)[0];
-                $chops[] = ['a', $anchor, [
+            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\](?:\[\])?' . $at . '/', $content, $m) && isset($lot[0][$k = \strtolower($m[1])])) {
+                $row = \x\markdown\row($m[1], $lot)[0];
+                if ($attr = $m[2] ?? []) {
+                    $attr = \x\markdown\a($attr);
+                }
+                $chops[] = ['a', $row, \array_replace([
                     'href' => $lot[0][$k][0] ?? null,
                     'title' => $lot[0][$k][1] ?? null
-                ], -1];
-                $content = \substr($content, \strlen($m[0]));
+                ], $lot[0][$k][2] ?? [], $attr), -1];
+                $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
             $chops[] = [false, $prev = '[', [], -1];
@@ -505,6 +516,7 @@ function row(?string $content, array $lot = []): array {
             if (1 === \strpos($content, "\n")) {
                 $chops[] = ['br', false, [], -1];
                 $content = \ltrim(\substr($content, 2));
+                $prev = '\\';
                 continue;
             }
             $chops[] = [false, $prev = \substr($content, 1, 1), [], -1];
@@ -528,7 +540,7 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if ("" !== $content) {
-            $chops[] = [false, \htmlspecialchars($content), [], -1];
+            $chops[] = [false, \htmlspecialchars($prev = $content), [], -1];
             $content = "";
         }
     }
@@ -694,20 +706,20 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
             }
-            // List block is so complex that I decided to concatenate all remaining line(s) until the very end of
-            // the file by default when a list pattern is found. To exit the list, we will do so manually while we
-            // are in the list block.
+            // List block is so complex that I decided to blindly concatenate all of the remaining line(s) until the
+            // very end of the stream by default when the first list marker is found. To exit the list, we will do so
+            // manually while we are in the list block.
             if ('ol' === $prev[0]) {
-                // <https://spec.commonmark.org/0.30#example-278> but the indent is less than the minimum required
+                // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
                 if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3][1]) {
                     $current[1] = $prev[5] . $prev[4] . "\n" . $current[1];
                     $blocks[$block] = $current;
                     continue;
                 }
-                // To exit the list, either start a new list pattern with a lower number than the previous list
-                // number or use a different number suffix. For example, use `1)` to separate the previous list
-                // that was using `1.` as the list marker.
-                if ('ol' === $current[0] && ($current[4] !== $prev[4] || $current[5] < $prev[5]) && $current[3][0] === $prev[3][0]) {
+                // To exit the list, either start a new list marker with a lower number than the previous list number or
+                // use a different number suffix. For example, use `1)` to separate the previous list that was using
+                // `1.` as the list marker.
+                if ('ol' === $current[0] && $current[3][0] === $prev[3][0] && ($current[4] !== $prev[4] || $current[5] < $prev[5])) {
                     // Remove final line break
                     $blocks[$block][1] = \rtrim($prev[1], "\n");
                     $blocks[++$block] = $current;
@@ -738,14 +750,14 @@ function rows(?string $content, array $lot = []): array {
             }
             // Here goes the bullet list block
             if ('ul' === $prev[0]) {
-                // <https://spec.commonmark.org/0.30#example-278> but the indent is less than the minimum required
+                // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
                 if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3][1]) {
                     $current[1] = $prev[4] . "\n" . $current[1];
                     $blocks[$block] = $current;
                     continue;
                 }
-                // To exit the list, use a different bullet character.
-                if ('ul' === $current[0] && $current[4] !== $prev[4] && $current[3][0] === $prev[3][0]) {
+                // To exit the list, use a different list marker.
+                if ('ul' === $current[0] && $current[3][0] === $prev[3][0] && $current[4] !== $prev[4]) {
                     // Remove final line break
                     $blocks[$block][1] = \rtrim($prev[1], "\n");
                     $blocks[++$block] = $current;
@@ -794,32 +806,32 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
             }
-            // Found Setext header marker level 1 right below a paragraph block
+            // Found Setext-header marker level 1 right below a paragraph block
             if ('h1' === $current[0] && '=' === $current[5] && 'p' === $prev[0]) {
-                $blocks[$block][0] = $current[0]; // Treat the previous block as Setext header level 1
+                $blocks[$block][0] = $current[0]; // Treat the previous block as Setext-header level 1
                 $blocks[$block][1] .= "\n" . $current[1];
                 $blocks[$block][5] = $current[5];
-                $block += 1;
+                $block += 1; // Start a new block after this
                 continue;
             }
-            // Found Setext header marker level 2 right below a paragraph block
+            // Found Setext-header marker level 2 right below a paragraph block
             if ('h2' === $current[0] && '-' === $current[5] && 'p' === $prev[0]) {
-                $blocks[$block][0] = $current[0]; // Treat the previous block as Setext header level 2
+                $blocks[$block][0] = $current[0]; // Treat the previous block as Setext-header level 2
                 $blocks[$block][1] .= "\n" . $current[1];
                 $blocks[$block][5] = $current[5];
-                $block += 1;
+                $block += 1; // Start a new block after this
                 continue;
             }
             // Found thematic break that sits right below a paragraph block
             if ('hr' === $current[0] && '-' === $current[4] && 'p' === $prev[0] && \strspn($current[1], $current[4]) === \strlen($current[1])) {
-                $blocks[$block][0] = 'h2'; // Treat the previous block as Setext header level 2
+                $blocks[$block][0] = 'h2'; // Treat the previous block as Setext-header level 2
                 $blocks[$block][1] .= "\n" . $current[1];
                 $blocks[$block][4] = 2;
                 $blocks[$block][5] = '-';
-                $block += 1;
+                $block += 1; // Start a new block after this
                 continue;
             }
-            // Default action is to merge current block with the previous block that has the same type
+            // Default action is to join current block with the previous block that has the same type
             if ($current[0] === $prev[0]) {
                 $row = \substr($row, $current[3]);
                 $blocks[$block][1] .= "\n" . $row;
@@ -839,21 +851,20 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[++$block] = $current;
                 continue;
             }
-            // Look like Setext header level 1 but preceded by a blank line, treat it as a paragraph block
+            // Look like a Setext-header level 1, but preceded by a blank line, treat it as a paragraph block
             // <https://spec.commonmark.org/0.30#example-97>
-            if ('h1' === $current[0] && '=' === $current[5] && !isset($blocks[$block][0])) {
+            if ('h1' === $current[0] && '=' === $current[5] && null === $prev[0]) {
                 $blocks[++$block] = ['p', $current[1], [], $current[3]];
                 continue;
             }
-            // Enter ATX header block or thematic break
+            // An ATX-header block or thematic break
             if ('h' === $current[0][0]) {
                 $blocks[++$block] = $current;
-                // Exit ATX header block or thematic break (force to start a new block)
-                $block += 1;
+                $block += 1; // Start a new block after this
                 continue;
             }
         }
-        // Blank line(s)
+        // A blank line
         if (null === $current[0]) {
             // Continue definition list
             if ($prev && 'dl' === $prev[0]) {
@@ -865,7 +876,7 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[$block][1] .= "\n";
                 continue;
             }
-            // Default action is to break every block by blank line(s)
+            // Default action is to start a new block after a blank line
             $block += 1;
             continue;
         }
@@ -881,27 +892,23 @@ function rows(?string $content, array $lot = []): array {
             if (\preg_match('/^[*]\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:([\s\S]*?)$/', $v[1], $m)) {
                 // Remove abbreviation block from the structure
                 unset($blocks[$k]);
-                // Abbreviation is not part of the CommonMark specification, but I assume it to behave similar to
-                // the reference specification.
+                // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave similar
+                // to the reference specification.
                 $m[1] = \preg_replace('/\s+/', ' ', $m[1]);
                 // Queue the abbreviation data to be used later
                 $title = \trim($m[2] ?? "");
                 $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = "" !== $title ? $title : null;
                 continue;
             }
-            // Match a reference, or a foot-note
-            if (\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\))\s*)?)$/', $v[1], $m)) {
-                // Remove reference and foot-note block from the structure
+            // Match a reference
+            $at = '(?:\s*(\{(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|[^{}]+)\}))?';
+            if (\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\))\s*)?)' . $at . '$/', $v[1], $m)) {
+                // Remove reference block from the structure
                 unset($blocks[$k]);
                 // <https://spec.commonmark.org/0.30#matches>
                 $m[1] = \strtolower(\preg_replace('/\s+/', ' ', $m[1]));
-                // Match a foot-note. Foot-note is also not part of the CommonMark specification.
-                if (1 === \strpos($m[1], '^')) {
-                    // TODO
-                    continue;
-                }
-                // Pre-defined reference data from the `$lot` variable can be overridden, but not if it is from the
-                // data that is embedded in the `$content` variable to conform to the CommonMark specification about
+                // Pre-defined reference data from the `$lot` variable can be overridden, but not if it is from the data
+                // that is embedded in the `$content` variable to conform to the CommonMark specification about
                 // reference priority.
                 // <https://spec.commonmark.org/0.30#example-204>
                 if (isset($lot_of_content[$v[0]][$m[1]])) {
@@ -921,8 +928,11 @@ function rows(?string $content, array $lot = []): array {
                         $title = \x\markdown\v(\substr($title, 1, -1));
                     }
                 }
+                if ($attr = $m[4] ?? []) {
+                    $attr = \x\markdown\a($attr);
+                }
                 // Queue the reference data to be used later
-                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [$link, $title];
+                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [$link, $title, $attr];
                 continue;
             }
         }
@@ -964,7 +974,7 @@ function rows(?string $content, array $lot = []): array {
             $v[1] = false;
             continue;
         }
-        if ('h1' === $v[0] || 'h2' === $v[0] || 'h3' === $v[0] || 'h4' === $v[0] || 'h5' === $v[0] || 'h6' === $v[0]) {
+        if ('h' === $v[0][0]) {
             if ('#' === $v[5]) {
                 $v[1] = \trim(\substr($v[1], \strspn($v[1], '#')));
                 if ('#' === \substr($v[1], -1)) {
@@ -986,10 +996,10 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if ('ol' === $v[0]) {
-            $list = \preg_split('/\n(?=\d++[).][ \n])/', $v[1]);
+            $list = \preg_split('/\n(?=\d++[).]\s)/', $v[1]);
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($list as &$vv) {
-                $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]);
+                $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]); // Remove indent(s)
                 $vv = \x\markdown\rows($vv, $lot)[0];
                 if ($list_is_tight && $vv) {
                     foreach ($vv as &$vvv) {
@@ -1017,10 +1027,10 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if ('ul' === $v[0]) {
-            $list = \preg_split('/\n(?=[*+-][ \n])/', $v[1]);
+            $list = \preg_split('/\n(?=[*+-]\s)/', $v[1]);
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($list as &$vv) {
-                $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]);
+                $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]); // Remove indent(s)
                 $vv = \x\markdown\rows($vv, $lot)[0];
                 if ($list_is_tight && $vv) {
                     foreach ($vv as &$vvv) {
@@ -1058,7 +1068,7 @@ function rows(?string $content, array $lot = []): array {
                 if (false !== $vv[0]) {
                     continue;
                 }
-                // Optimize if current chunk is just an abbreviation
+                // Optimize if current chunk is an abbreviation
                 if (isset($lot[1][$vv[1]])) {
                     $vv[1] = ['abbr', $vv[1], ['title' => $lot[1][$vv[1]]], -1];
                     continue;
