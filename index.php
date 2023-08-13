@@ -237,6 +237,10 @@ function data(?string $row): array {
             if (0 === \strpos($n, '![')) {
                 $n = \substr($n, 0, \strrpos($n, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
             }
+            // <https://spec.commonmark.org/0.30#html-blocks>
+            if (false === \strpos('!?', $n[0]) && false === \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($n, '/') . ',') && !\preg_match('/^<' . $n . ('/' === $n[0] ? "" : '(\s[^>]*)?') . '>$/', $row)) {
+                return ['p', $row, [], $dent, $n];
+            }
             return [false, $row, [], $dent, $n]; // Look like a raw HTML
         }
         return ['p', $row, [], $dent];
@@ -399,7 +403,7 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($content, '<')) {
-            if (\preg_match('/<[^<>]+>/', $content, $m)) {
+            if (\preg_match('/<[^>]+>/', $content, $m)) {
                 $chops[] = [false, $m[0], [], -1];
                 $content = \substr($content, \strlen($m[0]));
                 continue;
@@ -418,6 +422,22 @@ function row(?string $content, array $lot = []): array {
             }
             $chops[] = [false, $prev = \substr($content, 1, 1), [], -1];
             $content = \substr($content, 2);
+            continue;
+        }
+        if (0 === \strpos($content, '`')) {
+            $v = \str_repeat('`', $n = \strspn($content, '`'));
+            if (\preg_match('/^' . $v . '((?:\\\\`|[^`]|`' . (1 === $n ? '{2,}' : '{1,' . ($n - 1) . '}') . ')+?)' . $v . '/', $content, $m)) {
+                // <https://spec.commonmark.org/0.30#code-span>
+                $raw = \strtr($m[1], "\n", ' ');
+                if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
+                    $raw = \substr($raw, 1, -1);
+                }
+                $chops[] = ['code', \htmlspecialchars($raw), [], -1];
+                $content = \substr($content, \strlen($prev = $m[0]));
+                continue;
+            }
+            $chops[] = [false, $prev = $v, [], -1];
+            $content = \substr($content, $n);
             continue;
         }
         if ("" !== $content) {
@@ -530,7 +550,7 @@ function rows(?string $content, array $lot = []): array {
             // Raw HTML
             if (false === $prev[0]) {
                 if ('!--' === $prev[4]) {
-                    if (false !== \strpos($prev[1], '-->')) {
+                    if (false !== \strpos($prev[1], '-->') && null !== $current[0]) {
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -542,7 +562,7 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if ('![CDATA[' === $prev[4]) {
-                    if (false !== \strpos($prev[1], ']]>')) {
+                    if (false !== \strpos($prev[1], ']]>') && null !== $current[0]) {
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -553,8 +573,20 @@ function rows(?string $content, array $lot = []): array {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
+                if ('!' === $prev[4][0]) {
+                    if (false !== \strpos($prev[1], '>') && null !== $current[0]) {
+                        $blocks[++$block] = $current;
+                        continue;
+                    }
+                    if (false !== \strpos($row, '>')) {
+                        $blocks[$block++][1] .= "\n" . $row;
+                        continue;
+                    }
+                    $blocks[$block][1] .= "\n" . $row;
+                    continue;
+                }
                 if (false !== \strpos(',pre,script,style,textarea,', ',' . $prev[4] . ',')) {
-                    if (false !== \strpos($prev[1], '</' . $prev[4] . '>')) {
+                    if (false !== \strpos($prev[1], '</' . $prev[4] . '>') && null !== $current[0]) {
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -566,7 +598,7 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if ('?' === $prev[4][0]) {
-                    if (false !== \strpos($prev[1], '?' . '>')) {
+                    if (false !== \strpos($prev[1], '?' . '>') && null !== $current[0]) {
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -577,14 +609,10 @@ function rows(?string $content, array $lot = []): array {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
-                if (false !== \strpos(',del,', ',' . $prev[4] . ',') && false !== ($n = \strpos($prev[1], '</' . $prev[4] . '>')) && "\n" !== \substr($prev[1], $n - 1, 1)) {
-                    $blocks[$block][0] = 'p'; // Wrap in a paragraph block
-                    continue;
-                }
                 // CommonMark is not concerned with HTML tag balancing. It only concerned about blank line(s). Any
                 // non-blank line that sits right next to or below the opening/closing tag other than `<pre>`,
                 // `<script>`, `<style>`, and `<textarea> tag(s) will be interpreted as raw HTML. From that point
-                // forward, there will be no Markdown processing will be performed.
+                // forward, no Markdown processing will be performed.
                 // <https://spec.commonmark.org/0.30#example-161>
                 if ("" !== $current[1]) {
                     $blocks[$block][1] .= "\n" . $row;
