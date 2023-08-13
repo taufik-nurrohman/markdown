@@ -232,16 +232,26 @@ function data(?string $row): array {
     // `<…`
     if (0 === \strpos($row, '<')) {
         // `<asdf…`
-        if ($n = \strtok(\substr($row, 1), " \n\t>")) {
+        if ($t = \strtok(\substr($row, 1), " \n\t>")) {
+            // Rough check for automatic link syntax based on the URL scheme specification
+            // <https://spec.commonmark.org/0.30#scheme>
+            $n = \strlen($test = \strtolower((string) \strstr($t, ':', true)));
+            if ($n > 0 && $n < 32 && $n === \strspn($test, '+-.0123456789abcdefghijklmnopqrstuvwxyz')) {
+                return ['p', $row, [], $dent];
+            }
+            // The `@` character is not a valid part of an HTML element name, so it must be an email link syntax
+            if (\strpos($t, '@') > 0) {
+                return ['p', $row, [], $dent];
+            }
             // `<![…`
-            if (0 === \strpos($n, '![')) {
-                $n = \substr($n, 0, \strrpos($n, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
+            if (0 === \strpos($t, '![')) {
+                $t = \substr($t, 0, \strrpos($t, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
             }
             // <https://spec.commonmark.org/0.30#html-blocks>
-            if (false === \strpos('!?', $n[0]) && false === \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($n, '/') . ',') && !\preg_match('#^<' . $n . ('/' === $n[0] ? "" : '(\s[^>]*)?') . '>$#', $row)) {
-                return ['p', $row, [], $dent, $n];
+            if (false === \strpos('!?', $t[0]) && false === \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($t, '/') . ',') && !\preg_match('#^<' . $t . ('/' === $t[0] ? "" : '(\s[^>]*)?') . '>$#', $row)) {
+                return ['p', $row, [], $dent, $t];
             }
-            return [false, $row, [], $dent, $n]; // Look like a raw HTML
+            return [false, $row, [], $dent, $t]; // Look like a raw HTML
         }
         return ['p', $row, [], $dent];
     }
@@ -413,12 +423,24 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($content, '<')) {
+            // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
+            // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
+            if (\preg_match('/^<([a-z\d.!#$%&\'*+\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*|[a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $content, $m)) {
+                $link = $m[1];
+                if (\strpos($link, '@') > 0 && 0 !== \strpos($link, 'mailto:')) {
+                    $link = 'mailto:' . $link;
+                }
+                $chops[] = ['a', \htmlspecialchars($m[1]), ['href' => $link], -1];
+                $content = \substr($content, \strlen($m[0]));
+                continue;
+            }
+            // TODO
             if (\preg_match('/<[^>]+>/', $content, $m)) {
                 $chops[] = [false, $m[0], [], -1];
                 $content = \substr($content, \strlen($m[0]));
                 continue;
             }
-            $chops[] = [false, '<', [], -1];
+            $chops[] = [false, \htmlspecialchars($prev = '<'), [], -1];
             $content = \substr($content, 1);
             continue;
         }
