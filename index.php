@@ -236,7 +236,7 @@ function data(?string $row): array {
             // Rough check for automatic link syntax based on the URL scheme specification
             // <https://spec.commonmark.org/0.30#scheme>
             $n = \strlen($test = \strtolower((string) \strstr($t, ':', true)));
-            if ($n > 0 && $n < 32 && $n === \strspn($test, '+-.0123456789abcdefghijklmnopqrstuvwxyz')) {
+            if ($n > 1 && $n < 33 && $n === \strspn($test, '+-.0123456789abcdefghijklmnopqrstuvwxyz')) {
                 return ['p', $row, [], $dent];
             }
             // The `@` character is not a valid part of an HTML element name, so it must be an email link syntax
@@ -426,20 +426,27 @@ function row(?string $content, array $lot = []): array {
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
             if (\preg_match('/^<([a-z\d.!#$%&\'*+\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*|[a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $content, $m)) {
-                $link = $m[1];
-                if (\strpos($link, '@') > 0 && 0 !== \strpos($link, 'mailto:')) {
-                    $link = 'mailto:' . $link;
+                if (\strpos($link = $m[1], '@') > 0) {
+                    // <https://spec.commonmark.org/0.30#example-605>
+                    if (false !== \strpos($link, '\\')) {
+                        $chops[] = [false, \htmlspecialchars($prev = $m[0]), [], -1];
+                        $content = \substr($content, \strlen($m[0]));
+                        continue;
+                    }
+                    if (0 !== \strpos($link, 'mailto:')) {
+                        $link = 'mailto:' . $link;
+                    }
                 }
                 $chops[] = ['a', \htmlspecialchars($m[1]), ['href' => $link], -1];
                 $content = \substr($content, \strlen($m[0]));
                 continue;
             }
             // TODO
-            if (\preg_match('/<[^>]+>/', $content, $m)) {
-                $chops[] = [false, $m[0], [], -1];
-                $content = \substr($content, \strlen($m[0]));
-                continue;
-            }
+            // if (\preg_match('/<[^>]+>/', $content, $m)) {
+            //     $chops[] = [false, $m[0], [], -1];
+            //     $content = \substr($content, \strlen($m[0]));
+            //     continue;
+            // }
             $chops[] = [false, \htmlspecialchars($prev = '<'), [], -1];
             $content = \substr($content, 1);
             continue;
