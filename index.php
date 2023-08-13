@@ -366,7 +366,7 @@ function row(?string $content, array $lot = []): array {
             $r = 1 === $n ? "" : '{' . $n . '}';
             if (\preg_match('/(?:' .
                 // Left 1, 2a
-                ('_' === $v ? '(?<=^|[\p{P}\s])' : "") . '[' . $v . ']' . $r . '(?![\p{P}\s])' .
+                '[' . $v . ']' . $r . '(?![\p{P}\s])' .
             '|' .
                 // Left 2b
                 '(?<=^|[\p{P}\s])[' . $v . ']' . $r . '(?=[\p{P}])' .
@@ -374,13 +374,13 @@ function row(?string $content, array $lot = []): array {
                 '(?:\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
             ')(?:' .
                 // Right 1, 2a
-                '(?<![\p{P}\s])[' . $v . ']' . $r . ('_' === $v ? '(?=[\p{P}\s]|$)' : "") .
+                '(?<![\p{P}\s])[' . $v . ']' . $r .
             '|' .
                 // Right 2b
                 '(?<=[\p{P}])[' . $v . ']' . $r . '(?=[\p{P}\s]|$)' .
             ')/u', $content, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
-                    $chops[] = \substr($content, 0, $m[0][1]);
+                    $chops[] = [false, \htmlspecialchars(\substr($content, 0, $m[0][1])), [], -1];
                     $content = \substr($content, $m[0][1]);
                 }
                 // `*…*` or `***…***`
@@ -738,7 +738,7 @@ function rows(?string $content, array $lot = []): array {
             // Fenced code block
             if ('pre' === $prev[0] && isset($prev[4])) {
                 // Exit fenced code block
-                if ('pre' === $current[0] && isset($current[4]) && $prev[4] === $current[4]) {
+                if ('pre' === $current[0] && isset($current[4]) && $prev[4] === $current[1]) {
                     $blocks[$block++][1] .= "\n" . $row;
                     continue;
                 }
