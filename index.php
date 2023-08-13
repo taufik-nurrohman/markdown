@@ -11,7 +11,7 @@ function a(?string $info, $raw = false) {
         if ("" === ($info = \trim(\substr($info, 1, -1)))) {
             return $raw ? [] : null;
         }
-        $pattern = '/([#.](?:\\\\[#.]|[\w:-])+|(?:[\w:.-]+(?:=(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\S+)?)?))/';
+        $pattern = '/([#.](?:\\\\[#.]|[\w:-])+|(?:[\w:.-]+(?:=(?:' . \x\markdown\c() . '|\S+)?)?))/';
         foreach (\preg_split($pattern, $info, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
             if ("" === \trim($v)) {
                 continue; // Skip the space(s)
@@ -124,6 +124,15 @@ function at(string $row) {
         $at[1] = \x\markdown\a($m[2], true);
     }
     return $at;
+}
+
+function c(array $join = ["'", '"']): string {
+    $out = [];
+    foreach ($join as $v) {
+        $v = \preg_quote($v, '/');
+        $out[] = $v . '[^' . $v . '\\\\]*(?:\\\\.[^' . $v . '\\\\]*)*' . $v;
+    }
+    return \implode('|', $out);
 }
 
 function convert(?string $content, array $lot = [], $block = true): ?string {
@@ -356,7 +365,7 @@ function row(?string $content, array $lot = []): array {
                 $content = \ltrim(\substr($content, 1));
                 continue;
             }
-            $chops[] = [false, $prev = "\n", [], -1];
+            $chops[] = [false, $prev = ' ', [], -1];
             $content = \substr($content, 1);
             continue;
         }
@@ -453,9 +462,9 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($content, '[')) {
-            $at = '(?:\s*(\{(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|[^{}]+)\}))?';
+            $at = '(?:\s*(\{(?:' . \x\markdown\c() . '|[^{}]+)\}))?';
             // `[asdf](asdf)`
-            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]\((\S+)?(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\)))?\)' . $at . '/', $content, $m)) {
+            if (\preg_match('/^' . \x\markdown\w() . '\((\S+)?(?:\s+(' . \x\markdown\c() . '|' . \x\markdown\w(['(' => ')'], false) . '))?\)' . $at . '/', $content, $m)) {
                 $row = \x\markdown\row($m[1], $lot)[0];
                 if ($link = $m[2] ?? null) {
                     if ('<' === $link[0] && '>' === \substr($link, -1)) {
@@ -472,7 +481,7 @@ function row(?string $content, array $lot = []): array {
                     }
                 }
                 if ($attr = $m[4] ?? []) {
-                    $attr = \x\markdown\a($attr);
+                    $attr = \x\markdown\a($attr, true);
                 }
                 $chops[] = ['a', $row, \array_replace([
                     'href' => $link,
@@ -482,10 +491,10 @@ function row(?string $content, array $lot = []): array {
                 continue;
             }
             // `[asdf][asdf]`
-            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]' . $at . '/', $content, $m) && isset($lot[0][$k = \strtolower($m[2])])) {
+            if (\preg_match('/^' . \x\markdown\w() . \x\markdown\w() . $at . '/', $content, $m) && isset($lot[0][$k = \strtolower($m[2])])) {
                 $row = \x\markdown\row($m[1], $lot)[0];
                 if ($attr = $m[3] ?? []) {
-                    $attr = \x\markdown\a($attr);
+                    $attr = \x\markdown\a($attr, true);
                 }
                 $chops[] = ['a', $row, \array_replace([
                     'href' => $lot[0][$k][0] ?? null,
@@ -495,10 +504,10 @@ function row(?string $content, array $lot = []): array {
                 continue;
             }
             // `[asdf][]` or `[asdf]`
-            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\](?:\[\])?' . $at . '/', $content, $m) && isset($lot[0][$k = \strtolower($m[1])])) {
+            if (\preg_match('/^' . \x\markdown\w() . '(?:\[\])?' . $at . '/', $content, $m) && isset($lot[0][$k = \strtolower($m[1])])) {
                 $row = \x\markdown\row($m[1], $lot)[0];
                 if ($attr = $m[2] ?? []) {
-                    $attr = \x\markdown\a($attr);
+                    $attr = \x\markdown\a($attr, true);
                 }
                 $chops[] = ['a', $row, \array_replace([
                     'href' => $lot[0][$k][0] ?? null,
@@ -853,7 +862,7 @@ function rows(?string $content, array $lot = []): array {
             }
             // Look like a Setext-header level 1, but preceded by a blank line, treat it as a paragraph block
             // <https://spec.commonmark.org/0.30#example-97>
-            if ('h1' === $current[0] && '=' === $current[5] && null === $prev[0]) {
+            if ('h1' === $current[0] && '=' === $current[5] && (!$prev || null === $prev[0])) {
                 $blocks[++$block] = ['p', $current[1], [], $current[3]];
                 continue;
             }
@@ -889,20 +898,20 @@ function rows(?string $content, array $lot = []): array {
         }
         if (\is_int($v[0]) && \strpos($v[1], ']:') > 1) {
             // Match an abbreviation
-            if (\preg_match('/^[*]\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:([\s\S]*?)$/', $v[1], $m)) {
+            if (\preg_match('/^[*]' . \x\markdown\w() . ':([\s\S]*?)$/', $v[1], $m)) {
                 // Remove abbreviation block from the structure
                 unset($blocks[$k]);
                 // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave similar
                 // to the reference specification.
-                $m[1] = \preg_replace('/\s+/', ' ', $m[1]);
+                $m[1] = \trim(\preg_replace('/\s+/', ' ', $m[1]));
                 // Queue the abbreviation data to be used later
                 $title = \trim($m[2] ?? "");
                 $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = "" !== $title ? $title : null;
                 continue;
             }
             // Match a reference
-            $at = '(?:\s*(\{(?:"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|[^{}]+)\}))?';
-            if (\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\))\s*)?)' . $at . '$/', $v[1], $m)) {
+            $at = '(?:\s*(\{(?:' . \x\markdown\c() . '|[^{}]+)\}))?';
+            if (\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+(' . \x\markdown\c() . '|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\))\s*)?)' . $at . '$/', $v[1], $m)) {
                 // Remove reference block from the structure
                 unset($blocks[$k]);
                 // <https://spec.commonmark.org/0.30#matches>
@@ -929,7 +938,7 @@ function rows(?string $content, array $lot = []): array {
                     }
                 }
                 if ($attr = $m[4] ?? []) {
-                    $attr = \x\markdown\a($attr);
+                    $attr = \x\markdown\a($attr, true);
                 }
                 // Queue the reference data to be used later
                 $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [$link, $title, $attr];
@@ -1170,6 +1179,16 @@ function v(string $content): string {
         '\}' => '}',
         '\~' => '~'
     ]) : $content;
+}
+
+function w(array $join = ['[' => ']'], $group = true): string {
+    $out = [];
+    foreach ($join as $k => $v) {
+        $k = \preg_quote($k, '/');
+        $v = \preg_quote($v, '/');
+        $out[] = $k . ($group ? '(' : "") . '[^' . $k . $v . '\\\\]*(?:\\\\.[^' . $k . $v . '\\\\]*)*' . ($group ? ')' : "") . $v;
+    }
+    return \implode('|', $out);
 }
 
 function x(string $content): string {}
