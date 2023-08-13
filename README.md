@@ -75,12 +75,13 @@ Dialect
 From time to time, the history of Mecha slowly forms the dialect of this Markdown converter. The Markdown extension used
 by Mecha [was first](https://github.com/mecha-cms/mecha/tree/v1.2.2) built with
 [Michel Fortin’s Markdown converter](https://michelf.ca/projects/php-markdown) (which I believe is the very first port
-of a PHP-based Markdown converter originally written by [John Gruber](https://daringfireball.net/projects/markdown) in
-Perl). Until the release of [Mecha version 1.2.3](https://github.com/mecha-cms/mecha/tree/v1.2.3), I decided to switch
-to [Parsedown](https://github.com/erusev/parsedown) because it was quite popular at the time and it can also do the
-conversion process much faster. Emanuil Rusev’s way of detecting the block type
+of a PHP-based Markdown converter originally written in Perl by
+[John Gruber](https://daringfireball.net/projects/markdown)). Until the release of
+[Mecha version 1.2.3](https://github.com/mecha-cms/mecha/tree/v1.2.3), I decided to switch to
+[Parsedown](https://github.com/erusev/parsedown) because it was quite popular at the time. It can also do the conversion
+process much faster. Emanuil Rusev’s way of detecting the block type
 [by reading the first character](https://github.com/erusev/parsedown/tree/1.7.4#questions) is, in my opinion, very
-genius and efficient.
+clever and efficient.
 
 Tests
 -----
