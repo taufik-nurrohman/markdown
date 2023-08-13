@@ -169,8 +169,8 @@ function data(?string $row): array {
         return ['p', $row, [], $dent];
     }
     // `*…`
-    if ('*' === $row) {
-        return ['ul', "", [], [$dent, $dent + 1], $row];
+    if ('*' === \rtrim($row)) {
+        return ['ul', "", [], [$dent, 1], $row[0]];
     }
     if (0 === \strpos($row, '*')) {
         // `*[…`
@@ -184,28 +184,28 @@ function data(?string $row): array {
         }
         // `* …`
         if (1 === \strpos($row, ' ')) {
-            return ['ul', $row, [], [$dent, $dent + 1 + \strspn($row, ' ', 1)], $row[0]];
+            return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
         }
         return ['p', $row, [], $dent];
     }
     // `+`
-    if ('+' === $row) {
-        return ['ul', "", [], [$dent, $dent + 1], $row];
+    if ('+' === \rtrim($row)) {
+        return ['ul', "", [], [$dent, 1], $row[0]];
     }
     // `+…`
     if (0 === \strpos($row, '+')) {
         // `+ …`
         if (1 === \strpos($row, ' ')) {
-            return ['ul', $row, [], [$dent, $dent + 1 + \strspn($row, ' ', 1)], $row[0]];
+            return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
         }
         return ['p', $row, [], $dent];
     }
     // `-`
-    if ('-' === $row) {
-        return ['ul', "", [], [$dent, $dent + 1], $row];
+    if ('-' === \rtrim($row)) {
+        return ['ul', "", [], [$dent, 1], $row[0]];
     }
     // `--`
-    if ('--' === $row) {
+    if ('--' === \rtrim($row)) {
         return ['h2', $row, [], $dent, 2, '-']; // Look like a Setext header level 2
     }
     // `-…`
@@ -217,7 +217,7 @@ function data(?string $row): array {
         }
         // `- …`
         if (1 === \strpos($row, ' ')) {
-            return ['ul', $row, [], [$dent, $dent + 1 + \strspn($row, ' ', 1)], $row[0]];
+            return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
         }
         return ['p', $row, [], $dent];
     }
@@ -294,15 +294,19 @@ function data(?string $row): array {
     }
     // `1…`
     $n = \strspn($row, '0123456789');
+    // <https://spec.commonmark.org/0.30#example-266>
+    if ($n > 9) {
+        return ['p', $row, [], $dent];
+    }
     // `1)` or `1.`
-    if ($n && ($n + 1) === \strlen($row) && false !== \strpos(').', \substr($row, -1))) {
-        $start = (int) \substr($row, 0, -1);
-        return ['ol', "", 1 !== $start ? ['start' => $start] : [], [$dent, $dent + $n + 1], \substr($row, -1), $start];
+    if ($n && ($n + 1) === \strlen(\rtrim($row)) && false !== \strpos(').', \substr(\rtrim($row), -1))) {
+        $start = (int) \substr($row, 0, $n);
+        return ['ol', "", 1 !== $start ? ['start' => $start] : [], [$dent, $n + 1], \substr($row, -1), $start];
     }
     // `1) …` or `1. …`
     if ($n === \strpos($row, ') ') || $n === \strpos($row, '. ')) {
         $start = (int) \substr($row, 0, $n);
-        return ['ol', $row, 1 !== $start ? ['start' => $start] : [], [$dent, $dent + $n + 1 + \strspn($row, ' ', $n + 1)], \substr($row, $n, 1), $start];
+        return ['ol', $row, 1 !== $start ? ['start' => $start] : [], [$dent, $n + 1 + \strspn($row, ' ', $n + 1)], \substr($row, $n, 1), $start];
     }
     if ($n = \substr_count($row, '|')) {
         return ['table', $row, [], $dent, $n];
@@ -596,44 +600,6 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
             }
-            // Probably a definition list with gap(s) between the term(s) and their definition data. Check if the
-            // current paragraph is followed by one or more blank line(s) and a definition data. If so, convert the
-            // current paragraph to a part of the definition list.
-            if ('p' === $prev[0] && null === $current[0]) {
-                $back = 0;
-                // Move the array pointer forward until reaching a non-blank row
-                while (false !== ($next = \next($rows))) {
-                    ++$back;
-                    if (0 === \strpos($next, ': ')) {
-                        // If the next non-blank row appears to be a definition data row, consider the current blank
-                        // row as part of the definition list
-                        $current[0] = 'dl';
-                        break;
-                    }
-                    if ("" !== $next) {
-                        break;
-                    }
-                }
-                // Reset the array pointer to the normal pointer
-                while (--$back >= 0) {
-                    \prev($rows);
-                }
-            }
-            // Verify that the current block has a type of `dl`, and verify that the previous block has a type of
-            // `dl` or `p`. If so, merge the current block with the previous block, then change the type of the
-            // previous block to `dl`.
-            if ('dl' === $current[0] && ('dl' === $prev[0] || 'p' === $prev[0])) {
-                $blocks[$block][0] = 'dl';
-                $blocks[$block][1] .= "\n" . $row;
-                continue;
-            }
-            // Verify that the current block has already been converted to a definition list, then verify that the
-            // next row is a paragraph with initial indentation, then merge it with the previous block.
-            if ('dl' === $prev[0] && \strspn($row, ' ') >= 2) {
-                $row = \substr($row, 2); // Length of `: ` character(s)
-                $blocks[$block][1] .= "\n" . $row;
-                continue;
-            }
             if ('p' === $prev[0]) {
                 // <https://spec.commonmark.org/0.30#example-285>
                 // <https://spec.commonmark.org/0.30#example-304>
@@ -654,6 +620,44 @@ function rows(?string $content, array $lot = []): array {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
+                // Probably a definition list with gap(s) between the term(s) and their definition data. Check if the
+                // current paragraph is followed by one or more blank line(s) and a definition data. If so, convert the
+                // current paragraph to a part of the definition list.
+                if (null === $current[0]) {
+                    $back = 0;
+                    // Move the array pointer forward until reaching a non-blank row
+                    while (false !== ($next = \next($rows))) {
+                        ++$back;
+                        if (0 === \strpos($next, ': ')) {
+                            // If the next non-blank row appears to be a definition data row, consider the current blank
+                            // row as part of the definition list
+                            $current[0] = 'dl';
+                            break;
+                        }
+                        if ("" !== $next) {
+                            break;
+                        }
+                    }
+                    // Reset the array pointer to the normal pointer
+                    while (--$back >= 0) {
+                        \prev($rows);
+                    }
+                }
+            }
+            // Verify that the current block has a type of `dl`, and verify that the previous block has a type of
+            // `dl` or `p`. If so, merge the current block with the previous block, then change the type of the
+            // previous block to `dl`.
+            if ('dl' === $current[0] && ('dl' === $prev[0] || 'p' === $prev[0])) {
+                $blocks[$block][0] = 'dl';
+                $blocks[$block][1] .= "\n" . $row;
+                continue;
+            }
+            // Verify that the current block has already been converted to a definition list, then verify that the
+            // next row is a paragraph with initial indentation, then merge it with the previous block.
+            if ('dl' === $prev[0] && \strspn($row, ' ') >= 2) {
+                $row = \substr($row, 2); // Length of `: ` character(s)
+                $blocks[$block][1] .= "\n" . $row;
+                continue;
             }
             // List block is so complex that I decided to concatenate all remaining line(s) until the very end of
             // the file by default when a list pattern is found. To exit the list, we will do so manually while we
@@ -749,11 +753,11 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
             }
-            // Lazy quote block
-            if ('blockquote' === $prev[0] && 'p' === $current[0]) {
-                // Merge the current paragraph that sits right below the quote block
-                $blocks[$block][1] .= "\n" . $row;
-                continue;
+            if ('blockquote' === $prev[0]) {
+                if ('p' === $current[0]) {
+                    $blocks[$block][1] .= "\n" . $row; // Lazy quote block
+                    continue;
+                }
             }
             // Found Setext header marker level 1 right below a paragraph block
             if ('h1' === $current[0] && '=' === $current[5] && 'p' === $prev[0]) {
@@ -814,16 +818,19 @@ function rows(?string $content, array $lot = []): array {
                 continue;
             }
         }
-        // Default action is to break every block by blank line(s)
+        // Blank line(s)
         if (null === $current[0]) {
+            // Continue definition list
             if ($prev && 'dl' === $prev[0]) {
                 $blocks[$block][1] .= "\n";
                 continue;
             }
+            // Continue code block
             if ($prev && 'pre' === $prev[0]) {
                 $blocks[$block][1] .= "\n";
                 continue;
             }
+            // Default action is to break every block by blank line(s)
             $block += 1;
             continue;
         }
