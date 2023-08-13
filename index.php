@@ -484,8 +484,8 @@ function row(?string $content, array $lot = []): array {
                     $attr = \x\markdown\a($attr, true);
                 }
                 $chops[] = ['a', $row, \array_replace([
-                    'href' => $link,
-                    'title' => $title
+                    'href' => "" !== $link ? $link : null,
+                    'title' => "" !== $title ? $title : null
                 ], $attr), -1];
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
@@ -941,7 +941,11 @@ function rows(?string $content, array $lot = []): array {
                     $attr = \x\markdown\a($attr, true);
                 }
                 // Queue the reference data to be used later
-                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [$link, $title, $attr];
+                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [
+                    "" !== $link ? $link : null,
+                    "" !== $title ? $title : null,
+                    $attr
+                ];
                 continue;
             }
         }
