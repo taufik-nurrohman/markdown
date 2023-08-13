@@ -61,7 +61,7 @@ function a(?string $info, $raw = false) {
         }
         $out = [];
         foreach ($a as $k => $v) {
-            $out[] = true === $v ? $k : $k . '="' . \htmlspecialchars($v) . '"';
+            $out[] = true === $v ? $k : $k . '="' . \htmlspecialchars($v, \ENT_HTML5) . '"';
         }
         if ($out) {
             \sort($out);
@@ -93,7 +93,7 @@ function a(?string $info, $raw = false) {
     }
     $out = [];
     foreach ($a as $k => $v) {
-        $out[] = $k . '="' . \htmlspecialchars($v) . '"';
+        $out[] = $k . '="' . \htmlspecialchars($v, \ENT_HTML5) . '"';
     }
     if ($out) {
         \sort($out);
@@ -355,7 +355,7 @@ function row(?string $content, array $lot = []): array {
     $prev = ""; // Capture the previous chunk
     while ("" !== $content) {
         if ($n = \strcspn($content, '\\<`![*_&' . "\n")) {
-            $chops[] = [false, \htmlspecialchars($prev = \substr($content, 0, $n)), [], -1];
+            $chops[] = [false, \htmlspecialchars($prev = \substr($content, 0, $n), \ENT_HTML5), [], -1];
             $content = \substr($content, $n);
         }
         if (0 === \strpos($content, "\n")) {
@@ -413,7 +413,7 @@ function row(?string $content, array $lot = []): array {
                 '(?<=[\p{P}])[' . $v . ']' . $r . '(?=[\p{P}\s]|$)' .
             ')/u', $content, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
-                    $chops[] = [false, \htmlspecialchars(\substr($content, 0, $m[0][1])), [], -1];
+                    $chops[] = [false, \htmlspecialchars(\substr($content, 0, $m[0][1]), \ENT_HTML5), [], -1];
                     $content = \substr($content, $m[0][1]);
                 }
                 // `*…*` or `***…***`
@@ -437,17 +437,17 @@ function row(?string $content, array $lot = []): array {
             if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d.!#$%&\'*+\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i', $content, $m)) {
                 // <https://spec.commonmark.org/0.30#example-605>
                 if (false !== \strpos($email = $m[1], '\\')) {
-                    $chops[] = [false, \htmlspecialchars($m[0]), [], -1];
+                    $chops[] = [false, \htmlspecialchars($m[0], \ENT_HTML5), [], -1];
                     $content = \substr($content, \strlen($prev = $m[0]));
                     continue;
                 }
-                $chops[] = ['a', \htmlspecialchars($m[1]), ['href' => 'mailto:' . $email], -1];
+                $chops[] = ['a', \htmlspecialchars($m[1], \ENT_HTML5), ['href' => 'mailto:' . $email], -1];
                 $content = \substr($content, \strlen($m[0]));
                 continue;
             }
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
             if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $content, $m)) {
-                $chops[] = ['a', \htmlspecialchars($m[1]), ['href' => $m[1]], -1];
+                $chops[] = ['a', \htmlspecialchars($m[1], \ENT_HTML5), ['href' => $m[1]], -1];
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
@@ -540,7 +540,7 @@ function row(?string $content, array $lot = []): array {
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
                     $raw = \substr($raw, 1, -1);
                 }
-                $chops[] = ['code', \htmlspecialchars($raw), [], -1];
+                $chops[] = ['code', \htmlspecialchars($raw, \ENT_NOQUOTES), [], -1];
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
@@ -549,7 +549,7 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if ("" !== $content) {
-            $chops[] = [false, \htmlspecialchars($prev = $content), [], -1];
+            $chops[] = [false, \htmlspecialchars($prev = $content, \ENT_HTML5), [], -1];
             $content = "";
         }
     }
@@ -1029,7 +1029,7 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if ('pre' === $v[0]) {
-            $v[1] = \htmlspecialchars($v[1]);
+            $v[1] = \htmlspecialchars($v[1], \ENT_NOQUOTES);
             if (isset($v[4])) {
                 $v[1] = [['code', \substr(\strstr($v[1], "\n"), 1, -\strlen($v[4])), $v[2]]];
                 $v[2] = [];
@@ -1120,7 +1120,7 @@ function s(array $data): string {
         return "";
     }
     if ('&' === $data[0]) {
-        return \htmlspecialchars(\html_entity_decode($data[1], \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
+        return \htmlspecialchars(\html_entity_decode($data[1], \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'), \ENT_HTML5);
     }
     $out = '<' . $data[0];
     if (!empty($data[2])) {
@@ -1128,7 +1128,7 @@ function s(array $data): string {
             if (false === $v || null === $v) {
                 continue;
             }
-            $out .= ' ' . $k . (true === $v ? "" : '="' . \htmlspecialchars($v) . '"');
+            $out .= ' ' . $k . (true === $v ? "" : '="' . \htmlspecialchars($v, \ENT_HTML5) . '"');
         }
     }
     if (false !== $data[1]) {
