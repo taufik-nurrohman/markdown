@@ -238,7 +238,7 @@ function data(?string $row): array {
                 $n = \substr($n, 0, \strrpos($n, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
             }
             // <https://spec.commonmark.org/0.30#html-blocks>
-            if (false === \strpos('!?', $n[0]) && false === \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($n, '/') . ',') && !\preg_match('/^<' . $n . ('/' === $n[0] ? "" : '(\s[^>]*)?') . '>$/', $row)) {
+            if (false === \strpos('!?', $n[0]) && false === \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($n, '/') . ',') && !\preg_match('#^<' . $n . ('/' === $n[0] ? "" : '(\s[^>]*)?') . '>$#', $row)) {
                 return ['p', $row, [], $dent, $n];
             }
             return [false, $row, [], $dent, $n]; // Look like a raw HTML
