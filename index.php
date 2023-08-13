@@ -258,6 +258,16 @@ function data(?string $row): array {
     }
     // `[…`
     if (0 === \strpos($row, '[')) {
+        if (
+            // `[asdf](…`
+            \strpos($row, '](') > 0 ||
+            // `[asdf][…`
+            \strpos($row, '][') > 0 ||
+            // `[asdf]` not followed by a `:`
+            false !== ($n = \strpos($row, ']')) && ':' !== \substr($row, $n + 1, 1)
+        ) {
+            return ['p', $row, [], $dent];
+        }
         if (1 === \strpos($row, '^')) {
             return [2, $row, [], $dent];
         }
@@ -305,12 +315,12 @@ function data(?string $row): array {
     // `1)` or `1.`
     if ($n && ($n + 1) === \strlen(\rtrim($row)) && false !== \strpos(').', \substr(\rtrim($row), -1))) {
         $start = (int) \substr($row, 0, $n);
-        return ['ol', "", 1 !== $start ? ['start' => $start] : [], [$dent, $n + 1], \substr($row, -1), $start];
+        return ['ol', "", ['start' => 1 !== $start ? $start : null], [$dent, $n + 1], \substr($row, -1), $start];
     }
     // `1) …` or `1. …`
     if ($n === \strpos($row, ') ') || $n === \strpos($row, '. ')) {
         $start = (int) \substr($row, 0, $n);
-        return ['ol', $row, 1 !== $start ? ['start' => $start] : [], [$dent, $n + 1 + \strspn($row, ' ', $n + 1)], \substr($row, $n, 1), $start];
+        return ['ol', $row, ['start' => 1 !== $start ? $start : null], [$dent, $n + 1 + \strspn($row, ' ', $n + 1)], \substr($row, $n, 1), $start];
     }
     if ($n = \substr_count($row, '|')) {
         return ['table', $row, [], $dent, $n];
@@ -412,7 +422,55 @@ function row(?string $content, array $lot = []): array {
             $content = \substr($content, 1);
             continue;
         }
-        if (0 === \strpos($content, '[')) {}
+        if (0 === \strpos($content, '[')) {
+            // `[asdf](asdf)`
+            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]\((\S+)?(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\)))?\)/', $content, $m)) {
+                $anchor = \x\markdown\row($m[1], $lot)[0];
+                if ($link = $m[2] ?? null) {
+                    if ('<' === $link[0] && '>' === \substr($link, -1)) {
+                        $link = \substr($link, 1, -1);
+                    }
+                }
+                if ($title = $m[3] ?? null) {
+                    if (
+                        "'" === $title[0] && "'" === \substr($title, -1) ||
+                        '"' === $title[0] && '"' === \substr($title, -1) ||
+                        '(' === $title[0] && ')' === \substr($title, -1)
+                    ) {
+                        $title = \x\markdown\v(\substr($title, 1, -1));
+                    }
+                }
+                $chops[] = ['a', $anchor, [
+                    'href' => $link,
+                    'title' => $title
+                ], -1];
+                $content = \substr($content, \strlen($m[0]));
+                continue;
+            }
+            // `[asdf][asdf]`
+            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\]/', $content, $m) && isset($lot[0][$k = \strtolower($m[2])])) {
+                $anchor = \x\markdown\row($m[1], $lot)[0];
+                $chops[] = ['a', $anchor, [
+                    'href' => $lot[0][$k][0] ?? null,
+                    'title' => $lot[0][$k][1] ?? null
+                ], -1];
+                $content = \substr($content, \strlen($m[0]));
+                continue;
+            }
+            // `[asdf][]` or `[asdf]`
+            if (\preg_match('/^\[([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\](?:\[\])?/', $content, $m) && isset($lot[0][$k = \strtolower($m[1])])) {
+                $anchor = \x\markdown\row($m[1], $lot)[0];
+                $chops[] = ['a', $anchor, [
+                    'href' => $lot[0][$k][0] ?? null,
+                    'title' => $lot[0][$k][1] ?? null
+                ], -1];
+                $content = \substr($content, \strlen($m[0]));
+                continue;
+            }
+            $chops[] = [false, $prev = '[', [], -1];
+            $content = \substr($content, 1);
+            continue;
+        }
         if (0 === \strpos($content, '\\') && isset($content[1])) {
             // <https://spec.commonmark.org/0.30#example-644>
             if (1 === \strpos($content, "\n")) {
@@ -426,7 +484,7 @@ function row(?string $content, array $lot = []): array {
         }
         if (0 === \strpos($content, '`')) {
             $v = \str_repeat('`', $n = \strspn($content, '`'));
-            if (\preg_match('/^' . $v . '((?:\\\\`|[^`]|`' . (1 === $n ? '{2,}' : '{1,' . ($n - 1) . '}') . ')+?)' . $v . '/', $content, $m)) {
+            if (\preg_match('/^' . $v . '((?:\\\\`|[^`]|' . (1 === $n ? '``+' : '`' . (2 === $n ? "" : '{1,' . ($n - 1) . '}')) . ')+)' . $v . '/', $content, $m)) {
                 // <https://spec.commonmark.org/0.30#code-span>
                 $raw = \strtr($m[1], "\n", ' ');
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
@@ -445,86 +503,6 @@ function row(?string $content, array $lot = []): array {
             $content = "";
         }
     }
-
-    // {
-    //     if ($n = \strcspn($content, '\\<`![*_&' . "\n")) {
-    //         $chops[] = [false, \substr($content, 0, $n), [], -1];
-    //         $content = \substr($content, $n);
-    //     }
-    //     if (0 === \strpos($content, "\n")) {
-    //         $last = \count($chops) - 1;
-    //         if ('  ' === \substr($chops[$last][1], -2)) {
-    //             $chops[$last][1] = \rtrim($chops[$last][1]);
-    //             $chops[] = ['br', false, [], -1];
-    //             $content = \ltrim(\substr($content, 1));
-    //             continue;
-    //         }
-    //         $chops[] = [false, "\n", [], -1];
-    //         $content = \substr($content, 1);
-    //         continue;
-    //     }
-    //     if (0 === \strpos($content, '![')) {}
-    //     if (0 === \strpos($content, '&')) {}
-    //     if (0 === \strpos($content, '*') && isset($content[2])) {
-    //         if (0 === \strpos($content, '**')) {
-    //             // TODO
-    //             continue;
-    //         }
-    //         if (\preg_match('/^[*]([\p{Ps}][\s\S]*?[\p{Pe}])[*]/u', $content, $m)) {
-    //             $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
-    //             $content = \substr($content, \strlen($m[0]));
-    //             continue;
-    //         }
-    //         if (\preg_match('/^[*]([^\p{P}\p{Z}][\s\S]*?[^\p{P}\p{Z}])[*]/u', $content, $m)) {
-    //             $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
-    //             $content = \substr($content, \strlen($m[0]));
-    //             continue;
-    //         }
-    //         $chops[] = [false, '*', [], -1];
-    //         $content = \substr($content, 1);
-    //         continue;
-    //     }
-    //     if (0 === \strpos($content, '<') && \preg_match('/^(<[^>]+>)(.*)$/', $content, $m)) {
-    //         $chops[] = [false, $m[1], [], -1];
-    //         $content = $m[2];
-    //         continue;
-    //     }
-    //     if (0 === \strpos($content, '[')) {}
-    //     if (0 === \strpos($content, '[^')) {}
-    //     if (0 === \strpos($content, '\\')) {
-    //         $chops[] = [false, \substr($content, 1, 1), [], -1];
-    //         $content = \substr($content, 2);
-    //         continue;
-    //     }
-    //     if (0 === \strpos($content, '_') && isset($content[2])) {
-    //         if (0 === \strpos($content, '__')) {
-    //             // TODO
-    //             continue;
-    //         }
-    //         if (\preg_match('/^[_]([\p{Ps}][\s\S]*?[\p{Pe}])[_]/u', $content, $m)) {
-    //             $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
-    //             $content = \substr($content, \strlen($m[0]));
-    //             continue;
-    //         }
-    //         if (\preg_match('/^[_]([^\p{P}\p{Z}][\s\S]*?[^\p{P}\p{Z}])[_]/u', $content, $m)) {
-    //             $chops[] = ['em', \x\markdown\row($m[1], $lot)[0], [], -1];
-    //             $content = \substr($content, \strlen($m[0]));
-    //             continue;
-    //         }
-    //         $chops[] = [false, '_', [], -1];
-    //         $content = \substr($content, 1);
-    //         continue;
-    //     }
-    //     if (0 === \strpos($content, '`') && \preg_match('/^(`.*?`)(.*)$/', $content, $m)) {
-    //         $chops[] = ['code', \substr($m[1], 1, -1), [], -1];
-    //         $content = $m[2];
-    //         continue;
-    //     }
-    //     if ("" !== $content) {
-    //         $chops[] = [false, $content, [], -1];
-    //         $content = "";
-    //     }
-    // }
     return [$chops, $lot];
 }
 
@@ -878,11 +856,12 @@ function rows(?string $content, array $lot = []): array {
                 // the reference specification.
                 $m[1] = \preg_replace('/\s+/', ' ', $m[1]);
                 // Queue the abbreviation data to be used later
-                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = \trim($m[2] ?? "");
+                $title = \trim($m[2] ?? "");
+                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = "" !== $title ? $title : null;
                 continue;
             }
             // Match a reference, or a foot-note
-            if (\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\')\s*)?)$/', $v[1], $m)) {
+            if (\preg_match('/^\[\s*([^\[\]\\\\]*(?:\\\\.[^\[\]\\\\]*)*)\s*\]:(?:\s*(\S+)(?:\s+("[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\([^()\\\\]*(?:\\\\.[^()\\\\]*)*\))\s*)?)$/', $v[1], $m)) {
                 // Remove reference and foot-note block from the structure
                 unset($blocks[$k]);
                 // <https://spec.commonmark.org/0.30#matches>
@@ -899,16 +878,19 @@ function rows(?string $content, array $lot = []): array {
                 if (isset($lot_of_content[$v[0]][$m[1]])) {
                     continue;
                 }
-                $link = $m[2] ?? "";
-                $title = $m[3] ?? "";
-                if ($link && '<' === $link[0] && '>' === \substr($link, -1)) {
-                    $link = \substr($link, 1, -1);
+                if ($link = $m[2] ?? null) {
+                    if ('<' === $link[0] && '>' === \substr($link, -1)) {
+                        $link = \substr($link, 1, -1);
+                    }
                 }
-                if ($title && (
-                    "'" === $title[0] && "'" === \substr($title, -1) ||
-                    '"' === $title[0] && '"' === \substr($title, -1)
-                )) {
-                    $title = \x\markdown\v(\substr($title, 1, -1));
+                if ($title = $m[3] ?? null) {
+                    if (
+                        "'" === $title[0] && "'" === \substr($title, -1) ||
+                        '"' === $title[0] && '"' === \substr($title, -1) ||
+                        '(' === $title[0] && ')' === \substr($title, -1)
+                    ) {
+                        $title = \x\markdown\v(\substr($title, 1, -1));
+                    }
                 }
                 // Queue the reference data to be used later
                 $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [$link, $title];
@@ -1091,6 +1073,9 @@ function s(array $data): string {
     $out = '<' . $data[0];
     if (!empty($data[2])) {
         foreach ($data[2] as $k => $v) {
+            if (false === $v || null === $v) {
+                continue;
+            }
             $out .= ' ' . $k . (true === $v ? "" : '="' . \htmlspecialchars($v) . '"');
         }
     }
