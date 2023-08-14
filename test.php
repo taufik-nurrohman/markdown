@@ -115,10 +115,10 @@ foreach ($files as $v) {
     $start = microtime(true);
     if ('raw' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
-        $rows = x\markdown\rows($raw);
-        $out .= htmlspecialchars('$blocks = ' . var_export($rows[0], true) . ';');
+        [$blocks, $lot] = x\markdown\raw($raw);
+        $out .= htmlspecialchars('$blocks = ' . var_export($blocks, true) . ';');
         $out .= "\n\n";
-        $out .= htmlspecialchars('$lot = ' . var_export($rows[1], true) . ';');
+        $out .= htmlspecialchars('$lot = ' . var_export($lot, true) . ';');
         $out .= '</pre>';
     } else if ('result' === $view) {
         $out .= '<div style="border:2px solid;flex:1;padding:1em;">';

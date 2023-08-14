@@ -131,6 +131,9 @@ function convert(?string $content, array $lot = [], $block = true): ?string {
     if (!$rows[0]) {
         return null;
     }
+    if (!$block) {
+        // TODO
+    }
     foreach ($rows[0] as &$row) {
         $row = s($row);
     }
@@ -358,7 +361,8 @@ function lot(array $row, array $lot = [], $lazy = true): array {
         if (false === $v[0] && \is_string($v[1])) {
             // Optimize if current chunk is a complete word boundary
             if (isset($lot[1][$v[1]])) {
-                $v[1] = [['abbr', $v[1], ['title' => $lot[1][$v[1]]], -1]];
+                $title = $lot[1][$v[1]] ?? "";
+                $v[1] = [['abbr', $v[1], ['title' => "" !== $title ? $title : null], -1]];
                 continue;
             }
             // Else, chunk by word boundary
@@ -366,7 +370,8 @@ function lot(array $row, array $lot = [], $lazy = true): array {
                 $chops = [];
                 foreach (\preg_split($pattern, $v[1], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $vv) {
                     if (isset($lot[1][$vv])) {
-                        $chops[] = ['abbr', $vv, ['title' => $lot[1][$vv]], -1];
+                        $title = $lot[1][$vv] ?? "";
+                        $chops[] = ['abbr', $vv, ['title' => "" !== $title ? $title : null], -1];
                         continue;
                     }
                     $chops[] = [false, $vv, [], -1];
@@ -409,6 +414,10 @@ function q(string $char = '"', $capture = false, string $before = "", string $x 
     $b = \preg_quote($char[1] ?? $char[0], $x);
     $c = $a . ($b === $a ? "" : $b);
     return '(?:' . $a . '(' . ($capture ? "" : '?:') . ($before ? $before . '|' : "") . '[^' . $c . '\\\\]*(?:\\\\.[^' . $c . '\\\\]*)*)' . $b . ')';
+}
+
+function raw(?string $content): array {
+    return rows($content);
 }
 
 function row(?string $content, array $lot = []): array {
@@ -483,10 +492,10 @@ function row(?string $content, array $lot = []): array {
                 // `*…*` or `***…***`
                 if (1 === $n || 3 === $n) {
                     // Prefer `<em><strong>…</strong></em>`
-                    $chops[] = ['em', row(\substr($m[0][0], 1, -1))[0], [], -1];
+                    $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1];
                 // `**…**`
                 } else {
-                    $chops[] = ['strong', row(\substr($m[0][0], 2, -2))[0], [], -1];
+                    $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1];
                 }
                 $content = \substr($content, \strlen($prev = $m[0][0]));
                 continue;
@@ -993,7 +1002,7 @@ function rows(?string $content, array $lot = []): array {
                 $m[1] = \trim(\preg_replace('/\s+/', ' ', $m[1]));
                 // Queue the abbreviation data to be used later
                 $title = \trim($m[2] ?? "");
-                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = "" !== $title ? $title : null;
+                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = $title;
                 continue;
             }
             // Match a reference
