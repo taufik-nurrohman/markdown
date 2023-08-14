@@ -347,11 +347,13 @@ function lot(array $row, array $lot = [], $lazy = true): array {
     if (!$row) {
         return [];
     }
-    $abbr = [];
-    foreach ($lot[1] ?? [] as $k => $v) {
-        $abbr[] = \preg_quote($k, '/');
+    $pattern = [];
+    if (!empty($lot[1])) {
+        foreach ($lot[1] as $k => $v) {
+            $pattern[] = \preg_quote($k, '/');
+        }
     }
-    $abbr = '/\b(' . \implode('|', $abbr) . ')\b/';
+    $pattern = $pattern ? '/\b(' . \implode('|', $pattern) . ')\b/' : "";
     foreach ($row as &$v) {
         if (false === $v[0] && \is_string($v[1])) {
             // Optimize if current chunk is a complete word boundary
@@ -360,15 +362,17 @@ function lot(array $row, array $lot = [], $lazy = true): array {
                 continue;
             }
             // Else, chunk by word boundary
-            $chops = [];
-            foreach (\preg_split($abbr, $v[1], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $vv) {
-                if (isset($lot[1][$vv])) {
-                    $chops[] = ['abbr', $vv, ['title' => $lot[1][$vv]], -1];
-                    continue;
+            if ($pattern) {
+                $chops = [];
+                foreach (\preg_split($pattern, $v[1], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $vv) {
+                    if (isset($lot[1][$vv])) {
+                        $chops[] = ['abbr', $vv, ['title' => $lot[1][$vv]], -1];
+                        continue;
+                    }
+                    $chops[] = [false, $vv, [], -1];
                 }
-                $chops[] = [false, $vv, [], -1];
+                $v[1] = $chops;
             }
-            $v[1] = $chops;
             continue;
         }
         if ('a' !== $v[0] && 'img' !== $v[0]) {

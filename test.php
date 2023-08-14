@@ -15,7 +15,9 @@ require __DIR__ . D . 'index.php';
 $test = $_GET['test'] ?? 'p';
 $view = $_GET['view'] ?? 'source';
 
-if ('README' === $test) {
+if ('LICENSE' === $test) {
+    $files = [__DIR__ . D . 'LICENSE'];
+} else if ('README' === $test) {
     $files = [__DIR__ . D . 'README.md'];
 } else {
     $files = glob(__DIR__ . D . 'test' . D . $test . D . '*.md', GLOB_NOSORT);
@@ -76,6 +78,10 @@ foreach (glob(__DIR__ . D . 'test' . D . '*', GLOB_ONLYDIR) as $v) {
     $out .= '</button>';
 }
 
+$out .= ' ';
+$out .= '<button' . ('LICENSE' === $test ? ' disabled' : "") . ' name="test" type="submit" value="LICENSE">';
+$out .= 'LICENSE';
+$out .= '</button>';
 $out .= ' ';
 $out .= '<button' . ('README' === $test ? ' disabled' : "") . ' name="test" type="submit" value="README">';
 $out .= 'README';
