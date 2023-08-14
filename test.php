@@ -33,6 +33,31 @@ $out .= '<meta charset="utf-8">';
 $out .= '<title>';
 $out .= 'Test';
 $out .= '</title>';
+$out .= '<style>';
+$out .= <<<CSS
+body > div > div blockquote {
+  border-left: 4px solid #eee;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 1.25em;
+  padding-right: 1.25em;
+}
+
+body > div > div pre {
+  background: #000;
+  color: #fff;
+  padding: 1em 1.25em;
+}
+
+body > div > div :first-child {
+  margin-top: 0;
+}
+
+body > div > div :last-child {
+  margin-bottom: 0;
+}
+CSS;
+$out .= '</style>';
 $out .= '</head>';
 $out .= '<body>';
 
@@ -90,7 +115,7 @@ foreach ($files as $v) {
         $out .= htmlspecialchars('$lot = ' . var_export($rows[1], true) . ';');
         $out .= '</pre>';
     } else if ('result' === $view) {
-        $out .= '<div style="border:1px solid;box-shadow:inset 0 0 0 1em #eee;flex:1;padding:1em;">';
+        $out .= '<div style="border:2px solid;flex:1;padding:1em;">';
         $out .= x\markdown\convert($raw);
         $out .= '</div>';
     } else if ('source' === $view) {

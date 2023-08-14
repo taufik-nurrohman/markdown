@@ -11,7 +11,7 @@ function a(?string $info, $raw = false) {
         if ("" === ($info = \trim(\substr($info, 1, -1)))) {
             return $raw ? [] : null;
         }
-        $pattern = '/([#.](?:\\\\[#.]|[\w:-])+|(?:[\w:.-]+(?:=(?:' . \x\markdown\q('"') . '|' . \x\markdown\q("'") . '|\S+)?)?))/';
+        $pattern = '/([#.](?:\\\\[#.]|[\w:-])+|(?:[\w:.-]+(?:=(?:' . q('"') . '|' . q("'") . '|\S+)?)?))/';
         foreach (\preg_split($pattern, $info, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
             if ("" === \trim($v)) {
                 continue; // Skip the space(s)
@@ -36,7 +36,7 @@ function a(?string $info, $raw = false) {
                 }
                 // `{a="b"}` or `{a='b'}`
                 if ('"' === $v[1][0] || "'" === $v[1][0]) {
-                    $v[1] = \x\markdown\v(\substr($v[1], 1, -1));
+                    $v[1] = v(\substr($v[1], 1, -1));
                 }
                 if ('class' === $v[0]) {
                     $class[] = $v[1]; // Merge class value(s)
@@ -61,7 +61,7 @@ function a(?string $info, $raw = false) {
         }
         $out = [];
         foreach ($a as $k => $v) {
-            $out[] = true === $v ? $k : $k . '="' . \htmlspecialchars($v, \ENT_HTML5 | \ENT_QUOTES) . '"';
+            $out[] = true === $v ? $k : $k . '="' . e($v) . '"';
         }
         if ($out) {
             \sort($out);
@@ -93,7 +93,7 @@ function a(?string $info, $raw = false) {
     }
     $out = [];
     foreach ($a as $k => $v) {
-        $out[] = $k . '="' . \htmlspecialchars($v, \ENT_HTML5 | \ENT_QUOTES) . '"';
+        $out[] = $k . '="' . e($v) . '"';
     }
     if ($out) {
         \sort($out);
@@ -121,18 +121,18 @@ function at(string $row) {
             return $at;
         }
         $at[0] = $m[1];
-        $at[1] = \x\markdown\a($m[2], true);
+        $at[1] = a($m[2], true);
     }
     return $at;
 }
 
 function convert(?string $content, array $lot = [], $block = true): ?string {
-    $rows = \x\markdown\rows($content, $lot);
+    $rows = rows($content, $lot);
     if (!$rows[0]) {
         return null;
     }
     foreach ($rows[0] as &$row) {
-        $row = \x\markdown\s($row);
+        $row = s($row);
     }
     $content = \implode("", $rows[0]);
     // Merge sequence of definition list into single definition list
@@ -302,7 +302,7 @@ function data(?string $row): array {
             if (false !== \strpos($info, '`')) {
                 return ['p', $row, [], $dent];
             }
-            return ['pre', $row, \x\markdown\a($info, true), $dent, $fence];
+            return ['pre', $row, a($info, true), $dent, $fence];
         }
         return ['p', $row, [], $dent];
     }
@@ -312,7 +312,7 @@ function data(?string $row): array {
         if (0 === \strpos($row, '~~~')) {
             $fence = \substr($row, 0, $v = \strspn($row, '~'));
             $info = \trim(\substr($row, $v));
-            return ['pre', $row, \x\markdown\a($info, true), $dent, $fence];
+            return ['pre', $row, a($info, true), $dent, $fence];
         }
         return ['p', $row, [], $dent];
     }
@@ -336,6 +336,10 @@ function data(?string $row): array {
         return ['table', $row, [], $dent, $n];
     }
     return ['p', $row, [], $dent];
+}
+
+function e(string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
+    return \htmlspecialchars($v, $as, 'UTF-8');
 }
 
 // Apply stored reference(s), abbreviation(s), and foot-note(s) data to the row(s)
@@ -411,7 +415,7 @@ function row(?string $content, array $lot = []): array {
     $prev = ""; // Capture the previous chunk
     while ("" !== $content) {
         if ($n = \strcspn($content, '\\<`![*_&' . "\n")) {
-            $chops[] = [false, \htmlspecialchars($prev = \substr($content, 0, $n), \ENT_HTML5 | \ENT_QUOTES), [], -1];
+            $chops[] = [false, e($prev = \substr($content, 0, $n)), [], -1];
             $content = \substr($content, $n);
         }
         if (0 === \strpos($content, "\n")) {
@@ -428,7 +432,7 @@ function row(?string $content, array $lot = []): array {
         if (0 === \strpos($content, '![')) {}
         if (0 === \strpos($content, '&')) {
             if (false === ($n = \strpos($content, ';')) || $n < 2 || !\preg_match('/^&(?:#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $content, $m)) {
-                $chops[] = [false, \htmlspecialchars($prev = '&'), [], -1];
+                $chops[] = [false, e($prev = '&'), [], -1];
                 $content = \substr($content, 1);
                 continue;
             }
@@ -469,16 +473,16 @@ function row(?string $content, array $lot = []): array {
                 '(?<=[\p{P}])[' . $v . ']' . $r . '(?=[\p{P}\s]|$)' .
             ')/u', $content, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
-                    $chops[] = [false, \htmlspecialchars(\substr($content, 0, $m[0][1]), \ENT_HTML5 | \ENT_QUOTES), [], -1];
+                    $chops[] = [false, e(\substr($content, 0, $m[0][1])), [], -1];
                     $content = \substr($content, $m[0][1]);
                 }
                 // `*…*` or `***…***`
                 if (1 === $n || 3 === $n) {
                     // Prefer `<em><strong>…</strong></em>`
-                    $chops[] = ['em', \x\markdown\row(\substr($m[0][0], 1, -1), $lot)[0], [], -1];
+                    $chops[] = ['em', row(\substr($m[0][0], 1, -1))[0], [], -1];
                 // `**…**`
                 } else {
-                    $chops[] = ['strong', \x\markdown\row(\substr($m[0][0], 2, -2), $lot)[0], [], -1];
+                    $chops[] = ['strong', row(\substr($m[0][0], 2, -2))[0], [], -1];
                 }
                 $content = \substr($content, \strlen($prev = $m[0][0]));
                 continue;
@@ -493,17 +497,17 @@ function row(?string $content, array $lot = []): array {
             if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d.!#$%&\'*+\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i', $content, $m)) {
                 // <https://spec.commonmark.org/0.30#example-605>
                 if (false !== \strpos($email = $m[1], '\\')) {
-                    $chops[] = [false, \htmlspecialchars($m[0], \ENT_HTML5 | \ENT_QUOTES), [], -1];
+                    $chops[] = [false, e($m[0]), [], -1];
                     $content = \substr($content, \strlen($prev = $m[0]));
                     continue;
                 }
-                $chops[] = ['a', \htmlspecialchars($m[1], \ENT_HTML5 | \ENT_QUOTES), ['href' => 'mailto:' . $email], -1];
+                $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1];
                 $content = \substr($content, \strlen($m[0]));
                 continue;
             }
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
             if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $content, $m)) {
-                $chops[] = ['a', \htmlspecialchars($m[1], \ENT_HTML5 | \ENT_QUOTES), ['href' => $m[1]], -1];
+                $chops[] = ['a', e($m[1]), ['href' => u($m[1])], -1];
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
@@ -513,19 +517,28 @@ function row(?string $content, array $lot = []): array {
             //     $content = \substr($content, \strlen($m[0]));
             //     continue;
             // }
-            $chops[] = [false, \htmlspecialchars($prev = '<'), [], -1];
+            $chops[] = [false, e($prev = '<'), [], -1];
             $content = \substr($content, 1);
             continue;
         }
         if (0 === \strpos($content, '[')) {
-            $at = '(?:\s*(' . \x\markdown\q('{}', false, \x\markdown\q('"') . '|' . \x\markdown\q("'")) . '))?';
+            $at = '(\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?';
             // `[asdf](asdf)`
-            if (\preg_match('/^' . \x\markdown\q('[]', true) . '\((\S+)?(?:\s+(' . \x\markdown\q('"') . '|' . \x\markdown\q("'") . '|' . \x\markdown\q('()') . '))?\)' . $at . '/', $content, $m)) {
-                $row = \x\markdown\row($m[1], $lot)[0];
-                if ($link = $m[2] ?? null) {
+            if (\preg_match('/^' . q('[]', true) . '\((' . q('<>') . '|(?:\\\\.|\S)+?)?(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?\)' . $at . '/', $content, $m)) {
+                $row = row($m[1], $lot)[0];
+                if ($link = $m[2] ?? "") {
                     if ('<' === $link[0] && '>' === \substr($link, -1)) {
                         $link = \substr($link, 1, -1);
                     }
+                    // <https://spec.commonmark.org/0.30#example-490>
+                    // <https://spec.commonmark.org/0.30#example-492>
+                    // <https://spec.commonmark.org/0.30#example-493>
+                    if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
+                        $chops[] = [false, e(v($m[0])), [], -1];
+                        $content = \substr($content, \strlen($prev = $m[0]));
+                        continue;
+                    }
+                    $link = u(v($link));
                 }
                 if ($title = $m[3] ?? null) {
                     if (
@@ -533,25 +546,33 @@ function row(?string $content, array $lot = []): array {
                         '"' === $title[0] && '"' === \substr($title, -1) ||
                         '(' === $title[0] && ')' === \substr($title, -1)
                     ) {
-                        $title = \x\markdown\v(\substr($title, 1, -1));
+                        $title = v(\substr($title, 1, -1));
                     }
                 }
-                if ($attr = $m[4] ?? []) {
-                    $attr = \x\markdown\a($attr, true);
+                if ($attr = $m[5] ?? []) {
+                    $attr = a($attr, true);
+                }
+                // `[asdf](asdf) {}`
+                if (isset($m[4]) && "" === \trim(\substr($m[5], 1, -1))) {
+                    $m[0] = \substr($m[0], 0, -\strlen($m[4]));
                 }
                 $chops[] = ['a', $row, \array_replace([
-                    'href' => "" !== $link ? $link : null,
+                    'href' => $link,
                     'title' => "" !== $title ? $title : null
                 ], $attr), -1];
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
             // `[asdf][asdf]`
-            if (\preg_match('/^' . \x\markdown\q('[]', true) . \x\markdown\q('[]', true) . $at . '/', $content, $m) && "" !== $m[2]) {
+            if (\preg_match('/^' . q('[]', true) . q('[]', true) . $at . '/', $content, $m) && "" !== $m[2]) {
                 $of = $lot[0][$k = \trim(\strtolower($m[2]))] ?? [];
-                $row = \x\markdown\row($m[1], $lot)[0];
+                $row = row($m[1], $lot)[0];
                 if ($attr = $m[3] ?? []) {
-                    $attr = \x\markdown\a($attr, true);
+                    $attr = a($attr, true);
+                }
+                // `[asdf][asdf] {}`
+                if (isset($m[3]) && "" === \trim(\substr($m[4], 1, -1))) {
+                    $m[0] = \substr($m[0], 0, -\strlen($m[3]));
                 }
                 $chops[] = ['a', $row, \array_replace([
                     'href' => $of[0] ?? null,
@@ -561,11 +582,15 @@ function row(?string $content, array $lot = []): array {
                 continue;
             }
             // `[asdf][]` or `[asdf]`
-            if (\preg_match('/^' . \x\markdown\q('[]', true) . '(?:\[\])?' . $at . '/', $content, $m)) {
+            if (\preg_match('/^' . q('[]', true) . '(?:\[\])?' . $at . '/', $content, $m)) {
                 $of = $lot[0][$k = \trim(\strtolower($m[1]))] ?? [];
-                $row = \x\markdown\row($m[1], $lot)[0];
+                $row = row($m[1], $lot)[0];
                 if ($attr = $m[2] ?? []) {
-                    $attr = \x\markdown\a($attr, true);
+                    $attr = a($attr, true);
+                }
+                // `[asdf][] {}` or `[asdf] {}`
+                if (isset($m[2]) && "" === \trim(\substr($m[3], 1, -1))) {
+                    $m[0] = \substr($m[0], 0, -\strlen($m[2]));
                 }
                 $chops[] = ['a', $row, \array_replace([
                     'href' => $of[0] ?? null,
@@ -586,7 +611,7 @@ function row(?string $content, array $lot = []): array {
                 $prev = '\\';
                 continue;
             }
-            $chops[] = [false, $prev = \substr($content, 1, 1), [], -1];
+            $chops[] = [false, e($prev = \substr($content, 1, 1)), [], -1];
             $content = \substr($content, 2);
             continue;
         }
@@ -598,7 +623,7 @@ function row(?string $content, array $lot = []): array {
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
                     $raw = \substr($raw, 1, -1);
                 }
-                $chops[] = ['code', \htmlspecialchars($raw, \ENT_NOQUOTES), [], -1];
+                $chops[] = ['code', e($raw, \ENT_NOQUOTES), [], -1];
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
@@ -607,11 +632,11 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if ("" !== $content) {
-            $chops[] = [false, \htmlspecialchars($prev = $content, \ENT_HTML5 | \ENT_QUOTES), [], -1];
+            $chops[] = [false, e($prev = $content), [], -1];
             $content = "";
         }
     }
-    return [\x\markdown\lot($chops, $lot, false), $lot];
+    return [lot($chops, $lot, false), $lot];
 }
 
 function rows(?string $content, array $lot = []): array {
@@ -630,7 +655,7 @@ function rows(?string $content, array $lot = []): array {
     $blocks = [];
     $rows = \explode("\n", $content);
     foreach ($rows as $row) {
-        $current = \x\markdown\data($row); // `[$type, $row, $data, $dent, …]`
+        $current = data($row); // `[$type, $row, $data, $dent, …]`
         // If a block is available in the index `$block`, it indicates that we have a previous block.
          if ($prev = $blocks[$block] ?? 0) {
             // Raw HTML
@@ -956,7 +981,7 @@ function rows(?string $content, array $lot = []): array {
         }
         if (\is_int($v[0]) && \strpos($v[1], ']:') > 1) {
             // Match an abbreviation
-            if (\preg_match('/^[*]' . \x\markdown\q('[]', true) . ':([\s\S]*?)$/', $v[1], $m)) {
+            if (\preg_match('/^[*]' . q('[]', true) . ':([\s\S]*?)$/', $v[1], $m)) {
                 // Remove abbreviation block from the structure
                 unset($blocks[$k]);
                 // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave similar
@@ -968,8 +993,8 @@ function rows(?string $content, array $lot = []): array {
                 continue;
             }
             // Match a reference
-            $at = '(?:\s*(' . \x\markdown\q('{}', false, \x\markdown\q('"') . '|' . \x\markdown\q("'")) . '))?';
-            if (\preg_match('/^' . \x\markdown\q('[]', true) . ':(?:\s*(\S+)(?:\s+(' . \x\markdown\q('"') . '|' . \x\markdown\q("'") . '|' . \x\markdown\q('()') . ')\s*)?)' . $at . '$/', $v[1], $m)) {
+            $at = '(?:\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?';
+            if (\preg_match('/^' . q('[]', true) . ':(?:\s*(' . q('<>') . '|\S+?)(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . ')\s*)?)' . $at . '$/', $v[1], $m)) {
                 // Remove reference block from the structure
                 unset($blocks[$k]);
                 // <https://spec.commonmark.org/0.30#matches>
@@ -981,9 +1006,15 @@ function rows(?string $content, array $lot = []): array {
                 if (isset($lot_of_content[$v[0]][$m[1]])) {
                     continue;
                 }
-                if ($link = $m[2] ?? null) {
+                if ($link = $m[2] ?? "") {
                     if ('<' === $link[0] && '>' === \substr($link, -1)) {
                         $link = \substr($link, 1, -1);
+                        // <https://spec.commonmark.org/0.30#example-490>
+                        if (false !== \strpos($link, "\n")) {
+                            $chops[] = [false, $m[0], [], -1];
+                            $content = \substr($content, \strlen($prev = $m[0]));
+                            continue;
+                        }
                     }
                 }
                 if ($title = $m[3] ?? null) {
@@ -992,18 +1023,14 @@ function rows(?string $content, array $lot = []): array {
                         '"' === $title[0] && '"' === \substr($title, -1) ||
                         '(' === $title[0] && ')' === \substr($title, -1)
                     ) {
-                        $title = \x\markdown\v(\substr($title, 1, -1));
+                        $title = v(\substr($title, 1, -1));
                     }
                 }
                 if ($attr = $m[4] ?? []) {
-                    $attr = \x\markdown\a($attr, true);
+                    $attr = a($attr, true);
                 }
                 // Queue the reference data to be used later
-                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [
-                    "" !== $link ? $link : null,
-                    "" !== $title ? $title : null,
-                    $attr
-                ];
+                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [\strtr($link, [' ' => '%20']), "" !== $title ? $title : null, $attr];
                 continue;
             }
         }
@@ -1012,7 +1039,7 @@ function rows(?string $content, array $lot = []): array {
             if (0 === \strpos($v[1], ' ')) {
                 $v[1] = \substr(\strtr($v[1], ["\n " => "\n"]), 1);
             }
-            $v[1] = \x\markdown\rows($v[1], $lot)[0];
+            $v[1] = rows($v[1], $lot)[0];
             continue;
         }
         if ('dl' === $v[0]) {
@@ -1026,7 +1053,7 @@ function rows(?string $content, array $lot = []): array {
             unset($vv);
             foreach ($b as &$vv) {
                 $vv = \substr($vv, 2); // Length of `: ` character(s)
-                $vv = \x\markdown\rows($vv, $lot)[0];
+                $vv = rows($vv, $lot)[0];
                 if ($list_is_tight && $vv) {
                     foreach ($vv as &$vvv) {
                         if ('p' === $vvv[0]) {
@@ -1058,12 +1085,12 @@ function rows(?string $content, array $lot = []): array {
                 $v[1] = \substr($v[1], 0, \strpos($v[1], "\n" . $v[5]));
             }
             // Late attribute parsing
-            $at = \x\markdown\at($v[1]);
+            $at = at($v[1]);
             if ($at[1]) {
                 $v[1] = $at[0];
                 $v[2] = \array_replace($v[2], $at[1]);
             }
-            $v[1] = \x\markdown\row($v[1], $lot)[0];
+            $v[1] = row($v[1], $lot)[0];
             continue;
         }
         if ('ol' === $v[0]) {
@@ -1071,7 +1098,7 @@ function rows(?string $content, array $lot = []): array {
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($list as &$vv) {
                 $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]); // Remove indent(s)
-                $vv = \x\markdown\rows($vv, $lot)[0];
+                $vv = rows($vv, $lot)[0];
                 if ($list_is_tight && $vv) {
                     foreach ($vv as &$vvv) {
                         if ('p' === $vvv[0]) {
@@ -1087,7 +1114,7 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if ('pre' === $v[0]) {
-            $v[1] = \htmlspecialchars($v[1], \ENT_NOQUOTES);
+            $v[1] = e($v[1], \ENT_NOQUOTES);
             if (isset($v[4])) {
                 $v[1] = [['code', \substr(\strstr($v[1], "\n"), 1, -\strlen($v[4])), $v[2]]];
                 $v[2] = [];
@@ -1102,7 +1129,7 @@ function rows(?string $content, array $lot = []): array {
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($list as &$vv) {
                 $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]); // Remove indent(s)
-                $vv = \x\markdown\rows($vv, $lot)[0];
+                $vv = rows($vv, $lot)[0];
                 if ($list_is_tight && $vv) {
                     foreach ($vv as &$vvv) {
                         if ('p' === $vvv[0]) {
@@ -1118,7 +1145,7 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if (\is_string($v[1])) {
-            $v[1] = \x\markdown\row(\rtrim($v[1]), $lot)[0];
+            $v[1] = row(\rtrim($v[1]), $lot)[0];
         }
     }
     unset($v);
@@ -1126,7 +1153,7 @@ function rows(?string $content, array $lot = []): array {
         if (!\is_array($v[1])) {
             continue;
         }
-        $v[1] = \x\markdown\lot($v[1], $lot);
+        $v[1] = lot($v[1], $lot);
     }
     unset($v);
     return [$blocks, $lot];
@@ -1137,7 +1164,7 @@ function s(array $data): string {
         if (\is_array($data[1])) {
             $out = "";
             foreach ($data[1] as $v) {
-                $out .= \is_array($v) ? \x\markdown\s($v) : $v;
+                $out .= \is_array($v) ? s($v) : $v;
             }
             return $out;
         }
@@ -1147,7 +1174,7 @@ function s(array $data): string {
         return "";
     }
     if ('&' === $data[0]) {
-        return \htmlspecialchars(\html_entity_decode($data[1], \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'), \ENT_HTML5 | \ENT_QUOTES);
+        return e(\html_entity_decode($data[1], \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
     }
     $out = '<' . $data[0];
     if (!empty($data[2])) {
@@ -1155,14 +1182,14 @@ function s(array $data): string {
             if (false === $v || null === $v) {
                 continue;
             }
-            $out .= ' ' . $k . (true === $v ? "" : '="' . \htmlspecialchars($v, \ENT_HTML5 | \ENT_QUOTES) . '"');
+            $out .= ' ' . $k . (true === $v ? "" : '="' . e($v) . '"');
         }
     }
     if (false !== $data[1]) {
         $out .= '>';
         if (\is_array($data[1])) {
             foreach ($data[1] as $v) {
-                $out .= \is_array($v) ? \x\markdown\s($v) : $v;
+                $out .= \is_array($v) ? s($v) : $v;
             }
         } else {
             $out .= $data[1];
@@ -1172,6 +1199,18 @@ function s(array $data): string {
         $out .= ' />';
     }
     return $out;
+}
+
+function u(string $v): string {
+    // TODO
+    $v = \rawurlencode($v);
+    return \strtr($v, [
+        '%26' => '&',
+        '%2F' => '/',
+        '%3A' => ':',
+        '%3D' => '=',
+        '%3F' => '?',
+    ]);
 }
 
 // <https://spec.commonmark.org/0.30#example-12>
