@@ -285,7 +285,52 @@ _TODO_
 
 ### Raw Block
 
-_TODO_
+CommonMark doesn’t care about the DOM and therefore also doesn’t care if a HTML element is perfectly, balanced or not.
+Unlike the original Markdown syntax specification which doesn’t allow you to convert Markdown syntax inside a HTML
+block, the CommonMark specification doesn’t limit such a case.
+
+CommonMark does care about blank lines around the lines that look like an HTML block tag, as specified in
+[Section 4.6, type 6](https://spec.commonmark.org/0.30#html-blocks).
+
+Any text that comes after the opening and/or closing of a HTML block is treated as raw text and is not processed as
+Markdown syntax. A blank line is required to end the raw block state:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code class="language-markdown">&lt;div&gt; asdf asdf *asdf* asdf
+&lt;/div&gt; asdf asdf *asdf* asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;div&gt; asdf asdf *asdf* asdf
+&lt;/div&gt; asdf asdf *asdf* asdf</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">&lt;div&gt;
+asdf asdf *asdf* asdf
+
+&lt;/div&gt;
+asdf asdf *asdf* asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;div&gt;asdf asdf *asdf* asdf
+
+&lt;/div&gt;asdf asdf *asdf* asdf</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">&lt;div&gt;
+
+asdf asdf *asdf* asdf
+
+&lt;/div&gt;
+
+asdf asdf *asdf* asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;div&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&lt;/div&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
 XSS
 ---
