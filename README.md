@@ -246,7 +246,7 @@ block, the CommonMark specification doesn’t limit such a case. It cares about 
 like an HTML block tag, as specified in [Section 4.6, type 6](https://spec.commonmark.org/0.30#html-blocks).
 
 Any text that comes after the opening and/or closing of a HTML block is treated as raw text and is not processed as
-Markdown syntax. A blank line is required to end the raw block state:
+Markdown syntax. A blank line is required to end the raw HTML block state:
 
 <table>
   <thead>
@@ -258,11 +258,11 @@ Markdown syntax. A blank line is required to end the raw block state:
   <tbody>
     <tr>
       <td><pre><code class="language-markdown">&lt;div&gt; asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre></td>
-      <td><pre><code class="language-html">&lt;div&gt; asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;div&gt; asdf asdf &#42;asdf&#42; asdf&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre></td>
     </tr>
     <tr>
       <td><pre><code class="language-markdown">&lt;div&gt;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
-      <td><pre><code class="language-html">&lt;div&gt;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;div&gt;asdf asdf &#42;asdf&#42; asdf&lt;/div&gt;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
     </tr>
     <tr>
       <td><pre><code class="language-markdown">&lt;div&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
@@ -271,7 +271,7 @@ Markdown syntax. A blank line is required to end the raw block state:
   </tbody>
 </table>
 
-Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw block state:
+Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw HTML block state:
 
 <table>
   <thead>
@@ -287,11 +287,11 @@ Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw blo
     </tr>
     <tr>
       <td><pre><code class="language-markdown">&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
-      <td><pre><code class="language-html">&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
+      <td><pre><code class="language-html">&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
     </tr>
     <tr>
       <td><pre><code class="language-markdown">&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
-      <td><pre><code class="language-html">&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
+      <td><pre><code class="language-html">&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
     </tr>
   </tbody>
 </table>
