@@ -285,7 +285,7 @@ _TODO_
 
 ### Raw Block
 
-CommonMark doesn’t care about the DOM and therefore also doesn’t care if a HTML element is perfectly, balanced or not.
+CommonMark doesn’t care about the DOM and therefore also doesn’t care if a HTML element is perfectly balanced or not.
 Unlike the original Markdown syntax specification which doesn’t allow you to convert Markdown syntax inside a HTML
 block, the CommonMark specification doesn’t limit such a case.
 
@@ -304,29 +304,17 @@ Markdown syntax. A blank line is required to end the raw block state:
   </thead>
   <tbody>
     <tr>
-      <td><pre><code class="language-markdown">&lt;div&gt; asdf asdf *asdf* asdf
-&lt;/div&gt; asdf asdf *asdf* asdf</code></pre></td>
-      <td><pre><code class="language-html">&lt;div&gt; asdf asdf *asdf* asdf
-&lt;/div&gt; asdf asdf *asdf* asdf</code></pre></td>
+      <td><pre><code class="language-markdown">&lt;div&gt; asdf asdf &#42;asdf&#42; asdf
+&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;div&gt; asdf asdf &#42;asdf&#42; asdf
+&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre></td>
     </tr>
     <tr>
-      <td><pre><code class="language-markdown">&lt;div&gt;
-asdf asdf *asdf* asdf
-
-&lt;/div&gt;
-asdf asdf *asdf* asdf</code></pre></td>
-      <td><pre><code class="language-html">&lt;div&gt;asdf asdf *asdf* asdf
-
-&lt;/div&gt;asdf asdf *asdf* asdf</code></pre></td>
+      <td><pre><code class="language-markdown">&lt;div&gt;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;div&gt;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
     </tr>
     <tr>
-      <td><pre><code class="language-markdown">&lt;div&gt;
-
-asdf asdf *asdf* asdf
-
-&lt;/div&gt;
-
-asdf asdf *asdf* asdf</code></pre></td>
+      <td><pre><code class="language-markdown">&lt;div&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
       <td><pre><code class="language-html">&lt;div&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&lt;/div&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
     </tr>
   </tbody>
