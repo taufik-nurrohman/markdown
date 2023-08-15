@@ -296,6 +296,23 @@ Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw HTM
   </tbody>
 </table>
 
+The example below will generate a predictable HTML code, but not because this converter cares about the existing HTML
+tag balance:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code class="language-markdown">&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a href=""&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a href=""&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a href=""&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;nav&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=""&gt;asdf&lt;/a&gt;&lt;/li&gt;&lt;li&gt;&lt;a href=""&gt;asdf&lt;/a&gt;&lt;/li&gt;&lt;li&gt;&lt;a href=""&gt;asdf&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/nav&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
 XSS
 ---
