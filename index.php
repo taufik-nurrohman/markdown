@@ -1216,13 +1216,13 @@ function s(array $data): string {
 
 function u(string $v): string {
     // TODO
-    $v = \rawurlencode($v);
-    return \strtr($v, [
+    return \strtr(\rawurlencode($v), [
         '%26' => '&',
         '%2F' => '/',
         '%3A' => ':',
         '%3D' => '=',
         '%3F' => '?',
+        '%40' => '@',
     ]);
 }
 
