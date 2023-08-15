@@ -72,8 +72,8 @@ echo convert('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 Dialect
 -------
 
-From time to time, the history of Mecha slowly forms the dialect of this Markdown converter. The Markdown extension used
-by Mecha [was first](https://github.com/mecha-cms/mecha/tree/v1.2.2) built with
+From time to time, the history of Mecha slowly forms the dialect of my Markdown writing style. The Markdown extension
+used by Mecha [was first](https://github.com/mecha-cms/mecha/tree/v1.2.2) built with
 [Michel Fortin’s Markdown converter](https://michelf.ca/projects/php-markdown) (which I believe is the very first port
 of a PHP-based Markdown converter originally written in Perl by
 [John Gruber](https://daringfireball.net/projects/markdown)). Until the release of
@@ -82,6 +82,168 @@ of a PHP-based Markdown converter originally written in Perl by
 process much faster. Emanuil Rusev’s way of detecting the block type
 [by reading the first character](https://github.com/erusev/parsedown/tree/1.7.4#questions) is, in my opinion, very
 clever and efficient.
+
+I aim to avoid conflict between different Markdown dialects and try to support whatever dialect you are using. For
+example, since I originally used Markdown Extra, I am used to adding info string with a dot prefix to the fenced code
+block syntax. This is not supported by Parsedown (or rather, Parsedown does not care about the pattern of the given info
+string and simply appends `language-` prefix to it, since CommonMark also does not give implementors special rules for
+processing info string in fenced code block syntax).
+
+Here’s how the code block results compare across each Markdown converter:
+
+### Markdown Extra
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ .asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ asdf asdf
+asdf
+~~~</code></pre></td>
+      <td><em>Invalid.</em></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ .asdf.asdf
+asdf
+~~~</code></pre></td>
+      <td><em>Invalid.</em></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ {#asdf.asdf}
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="asdf" id="asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ {#asdf.asdf asdf=asdf}
+asdf
+~~~</code></pre></td>
+      <td><em>Invalid.</em></td>
+    </tr>
+  </tbody>
+</table>
+
+### Parsedown Extra
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ .asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="language-.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ asdf asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ .asdf.asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="language-.asdf.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ {#asdf.asdf}
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="language-{#asdf.asdf}"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ {#asdf.asdf asdf=asdf}
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="language-{#asdf.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</tr>
+  </tbody>
+</table>
+
+### Mine
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ .asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ asdf asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="language-asdf language-asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ .asdf.asdf
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="asdf asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ {#asdf.asdf}
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code class="asdf" id="asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown">~~~ {#asdf.asdf asdf=asdf}
+asdf
+~~~</code></pre></td>
+      <td><pre><code class="language-html">&lt;pre&gt;&lt;code asdf="asdf" class="asdf" id="asdf"&gt;asdf
+&lt;/code&gt;&lt;/pre&gt;</tr>
+  </tbody>
+</table>
 
 Tests
 -----

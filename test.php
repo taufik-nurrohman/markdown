@@ -51,6 +51,19 @@ body > div > div pre {
   padding: 1em 1.25em;
 }
 
+body > div > div table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+body > div > div td,
+body > div > div th {
+  border: 1px solid;
+  padding: 0.5em;
+  text-align: left;
+  vertical-align: top;
+}
+
 body > div > div :first-child {
   margin-top: 0;
 }
