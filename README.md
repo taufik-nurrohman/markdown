@@ -314,6 +314,23 @@ tag balance:
   </tbody>
 </table>
 
+You will understand why, when you add at least one blank line at any point in the HTML block:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code class="language-markdown">&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a href=""&gt;&#10;&#10;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&#10;&lt;li&gt;&#10;&lt;a href=""&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a href=""&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
+      <td><pre><code class="language-html">&lt;nav&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=""&gt;&lt;p&gt;asdf&lt;/a&gt;&lt;/li&gt;&lt;/p&gt;&lt;li&gt;&lt;a href=""&gt;asdf&lt;/a&gt;&lt;/li&gt;&lt;li&gt;&lt;a href=""&gt;asdf&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/nav&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
 XSS
 ---
 
