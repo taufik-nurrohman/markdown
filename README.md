@@ -83,6 +83,36 @@ process much faster. Emanuil Rusev’s way of detecting the block type
 [by reading the first character](https://github.com/erusev/parsedown/tree/1.7.4#questions) is, in my opinion, very
 clever and efficient.
 
+### Attributes
+
+My Markdown converter supports a more extensive attribute syntax, including a mix of `.class` and `#id` attribute
+syntax, and a mix of `key=value` attribute syntax:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code class="language-markdown"># asdf {#asdf}</code></pre></td>
+      <td><pre><code class="language-html">&lt;h1 id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown"># asdf {#asdf.asdf}</code></pre></td>
+      <td><pre><code class="language-html">&lt;h1 class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code class="language-markdown"># asdf {#asdf.asdf asdf=asdf}</code></pre></td>
+      <td><pre><code class="language-html">&lt;h1 asdf="asdf" class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
+### Code Block
+
 I aim to avoid conflict between different Markdown dialects and try to support whatever dialect you are using. For
 example, since I originally used Markdown Extra, I am used to adding info string with a dot prefix to the fenced code
 block syntax. This is not supported by Parsedown (or rather, Parsedown does not care about the pattern of the given info
@@ -91,7 +121,7 @@ processing info string in fenced code block syntax).
 
 Here’s how the code block results compare across each Markdown converter:
 
-### Markdown Extra
+#### Markdown Extra
 
 <table>
   <thead>
@@ -143,7 +173,7 @@ asdf
   </tbody>
 </table>
 
-### Parsedown Extra
+#### Parsedown Extra
 
 <table>
   <thead>
@@ -191,7 +221,7 @@ asdf
   </tbody>
 </table>
 
-### Mine
+#### Mine
 
 <table>
   <thead>
@@ -244,6 +274,43 @@ asdf
 &lt;/code&gt;&lt;/pre&gt;</tr>
   </tbody>
 </table>
+
+### Foot Notes
+
+_TODO_
+
+### Image Block
+
+_TODO_
+
+XSS
+---
+
+This converter is intended only to convert Markdown syntax to HTML based on the
+[CommonMark](https://spec.commonmark.org/0.30) specification. It does not care about your user input. I have no
+intention of adding any special security features in the future, sorry. The attribute syntax feature may be a security
+risk for you if you want to use this converter on your comment entries, for example:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code class="language-markdown">![asdf](asdf.asdf) {onerror="alert('Yo!')"}</code></pre></td>
+      <td><pre><code class="language-html">&lt;img alt="asdf" onerror="alert(&amp;apos;Yo!&amp;apos;)" src="asdf.asdf" /&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
+There should be many specialized PHP applications that have specific tasks to deal with XSS, so consider post-processing
+the generated HTML markup before putting it out to the web:
+
+ - [ezyang/htmlpurifier](https://github.com/ezyang/htmlpurifier)
+ - [voku/anti-xss](https://github.com/voku/anti-xss)
 
 Tests
 -----
