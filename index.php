@@ -177,7 +177,7 @@ function data(?string $row): array {
     }
     if (0 === \strpos($row, '*')) {
         // `*[…`
-        if (1 === \strpos($row, '[')) {
+        if (1 === \strpos($row, '[') && \strpos($row, ']:') > 2) {
             return [1, $row, [], $dent];
         }
         // `***`
@@ -368,9 +368,9 @@ function lot(array $row, array $lot = [], $lazy = true): array {
             $pattern[] = \preg_quote($k, '/');
         }
     }
-    $pattern = $pattern ? '/\b(' . \implode('|', $pattern) . ')\b/' : "";
+    $pattern = $pattern ? '/\b(' . \implode('|', $pattern) . ')\b/' : false;
     foreach ($row as &$v) {
-        if (false === $v[0] && \is_string($v[1])) {
+        if ($pattern && false === $v[0] && \is_string($v[1])) {
             // Optimize if current chunk is a complete word boundary
             if (isset($lot[1][$v[1]])) {
                 $title = $lot[1][$v[1]] ?? "";
@@ -378,18 +378,16 @@ function lot(array $row, array $lot = [], $lazy = true): array {
                 continue;
             }
             // Else, chunk by word boundary
-            if ($pattern) {
-                $chops = [];
-                foreach (\preg_split($pattern, $v[1], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $vv) {
-                    if (isset($lot[1][$vv])) {
-                        $title = $lot[1][$vv] ?? "";
-                        $chops[] = ['abbr', $vv, ['title' => "" !== $title ? $title : null], -1];
-                        continue;
-                    }
-                    $chops[] = [false, $vv, [], -1];
+            $chops = [];
+            foreach (\preg_split($pattern, $v[1], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $vv) {
+                if (isset($lot[1][$vv])) {
+                    $title = $lot[1][$vv] ?? "";
+                    $chops[] = ['abbr', $vv, ['title' => "" !== $title ? $title : null], -1];
+                    continue;
                 }
-                $v[1] = $chops;
+                $chops[] = [false, $vv, [], -1];
             }
+            $v[1] = $chops;
             continue;
         }
         if ('a' !== $v[0] && 'img' !== $v[0]) {
@@ -421,9 +419,9 @@ function lot(array $row, array $lot = [], $lazy = true): array {
     return $row;
 }
 
-function q(string $char = '"', $capture = false, string $before = "", string $x = '/'): string {
-    $a = \preg_quote($char[0], $x);
-    $b = \preg_quote($char[1] ?? $char[0], $x);
+function q(string $char = '"', $capture = false, string $before = ""): string {
+    $a = \preg_quote($char[0], '/');
+    $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
     return '(?:' . $a . '(' . ($capture ? "" : '?:') . ($before ? $before . '|' : "") . '[^' . $c . '\\\\]*(?:\\\\.[^' . $c . '\\\\]*)*)' . $b . ')';
 }
@@ -526,13 +524,13 @@ function row(?string $content, array $lot = []): array {
                     $content = \substr($content, \strlen($prev = $m[0]));
                     continue;
                 }
-                $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1];
+                $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, null, $m[0]];
                 $content = \substr($content, \strlen($m[0]));
                 continue;
             }
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
             if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $content, $m)) {
-                $chops[] = ['a', e($m[1]), ['href' => u($m[1])], -1];
+                $chops[] = ['a', e($m[1]), ['href' => u($m[1])], -1, null, $m[0]];
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
@@ -542,6 +540,7 @@ function row(?string $content, array $lot = []): array {
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
+            // <https://spec.commonmark.org/0.30#raw-html>
             if (\preg_match('/^<[a-z][a-z\d-]*(\s[a-z_:][\w.:-]*(\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s"\'=<>`]+)?)?)*\s*\/?>/i', $content, $m)) {
                 $chops[] = [false, $m[0], [], -1];
                 $content = \substr($content, \strlen($prev = $m[0]));
@@ -554,7 +553,7 @@ function row(?string $content, array $lot = []): array {
         if (0 === \strpos($content, '[')) {
             $at = '(\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?';
             // `[asdf](asdf)`
-            if (\preg_match('/^' . q('[]', true) . '\((' . q('<>') . '|(?:\\\\.|\S)+?)?(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?\)' . $at . '/', $content, $m)) {
+            if (\preg_match('/^' . q('[]', true) . '\(\s*(' . q('<>') . '|' . q('()') . '|(?:\\\\.|\S+)+?)?(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?\s*\)' . $at . '/', $content, $m)) {
                 $row = row($m[1], $lot)[0];
                 if ($link = $m[2] ?? "") {
                     if ('<' === $link[0] && '>' === \substr($link, -1)) {
@@ -576,7 +575,7 @@ function row(?string $content, array $lot = []): array {
                         '"' === $title[0] && '"' === \substr($title, -1) ||
                         '(' === $title[0] && ')' === \substr($title, -1)
                     ) {
-                        $title = v(\substr($title, 1, -1));
+                        $title = v(\html_entity_decode(\substr($title, 1, -1), \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
                     }
                 }
                 if ($attr = $m[5] ?? []) {
@@ -589,7 +588,7 @@ function row(?string $content, array $lot = []): array {
                 $chops[] = ['a', $row, \array_replace([
                     'href' => $link,
                     'title' => "" !== $title ? $title : null
-                ], $attr), -1];
+                ], $attr), -1, null, $m[0]];
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
@@ -685,6 +684,11 @@ function rows(?string $content, array $lot = []): array {
     $blocks = [];
     $rows = \explode("\n", $content);
     foreach ($rows as $row) {
+        // <https://spec.commonmark.org/0.30#tabs>
+        $before = \strstr($row, "\t", true);
+        if (false !== $before) {
+            $row = $before . \str_repeat(' ', 4 - \strlen($before) % 4) . \substr($row, \strlen($before) + 1);
+        }
         $current = data($row); // `[$type, $row, $data, $dent, …]`
         // If a block is available in the index `$block`, it indicates that we have a previous block.
          if ($prev = $blocks[$block] ?? 0) {
@@ -1068,7 +1072,7 @@ function rows(?string $content, array $lot = []): array {
                         '"' === $title[0] && '"' === \substr($title, -1) ||
                         '(' === $title[0] && ')' === \substr($title, -1)
                     ) {
-                        $title = v(\substr($title, 1, -1));
+                        $title = v(\html_entity_decode(\substr($title, 1, -1), \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
                     }
                 }
                 if ($attr = $m[4] ?? []) {
@@ -1088,9 +1092,9 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if ('dl' === $v[0]) {
-            [$a, $b] = \preg_split('/\n++(?=:[ ])/', $v[1], 2);
+            [$a, $b] = \preg_split('/\n++(?=:[ \t])/', $v[1], 2);
             $a = \explode("\n", $a);
-            $b = \preg_split('/\n++(?=:[ ])/', $b);
+            $b = \preg_split('/\n++(?=:[ \t])/', $b);
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($a as &$vv) {
                 $vv = ['dt', $vv];
@@ -1161,11 +1165,11 @@ function rows(?string $content, array $lot = []): array {
         if ('pre' === $v[0]) {
             $v[1] = e($v[1], \ENT_NOQUOTES);
             if (isset($v[4])) {
-                $v[1] = [['code', \substr(\strstr($v[1], "\n"), 1, -\strlen($v[4])), $v[2]]];
+                $v[1] = [['code', \substr(\strstr($v[1], "\n"), 1, -(\strlen($v[4]) + 1)), $v[2]]];
                 $v[2] = [];
                 continue;
             }
-            $v[1] = [['code', $v[1] . "\n", $v[2]]];
+            $v[1] = [['code', $v[1], $v[2]]];
             $v[2] = [];
             continue;
         }
@@ -1312,15 +1316,3 @@ function v(string $content): string {
         '\~' => '~'
     ]) : $content;
 }
-
-function w(array $join = ['[' => ']'], $group = true): string {
-    $out = [];
-    foreach ($join as $k => $v) {
-        $k = \preg_quote($k, '/');
-        $v = \preg_quote($v, '/');
-        $out[] = $k . ($group ? '(' : "") . '[^' . $k . $v . '\\\\]*(?:\\\\.[^' . $k . $v . '\\\\]*)*' . ($group ? ')' : "") . $v;
-    }
-    return \implode('|', $out);
-}
-
-function x(string $content): string {}
