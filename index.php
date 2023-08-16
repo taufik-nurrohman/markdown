@@ -150,7 +150,7 @@ function data(?string $row): array {
     $dent = \strspn($row, ' ');
     $d = \str_repeat(' ', $dent);
     if ($dent >= 4) {
-        $row = \substr(\strtr($row, ["\n" . $d => "\n"]), $dent);
+        $row = \substr(\strtr($row, ["\n" . $d => "\n"]), 4);
         return ['pre', $row, [], $dent];
     }
     // Remove indent(s)
@@ -235,7 +235,7 @@ function data(?string $row): array {
     // `<…`
     if (0 === \strpos($row, '<')) {
         // `<asdf…`
-        if ($t = \strtok(\substr($row, 1), " \n\t>")) {
+        if ($t = \rtrim(\strtok(\substr($row, 1), " \n\t>"), '/')) {
             // Rough check for automatic link syntax based on the URL scheme specification
             // <https://spec.commonmark.org/0.30#scheme>
             $n = \strlen($test = \strtolower((string) \strstr($t, ':', true)));
@@ -250,11 +250,23 @@ function data(?string $row): array {
             if (0 === \strpos($t, '![')) {
                 $t = \substr($t, 0, \strrpos($t, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
             }
-            // <https://spec.commonmark.org/0.30#html-blocks>
-            if (false === \strpos('!?', $t[0]) && false === \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($t, '/') . ',') && !\preg_match('#^<' . $t . ('/' === $t[0] ? "" : '(\s[^>]*)?') . '>$#', $row)) {
-                return ['p', $row, [], $dent, $t];
+            if (false !== \strpos('!?', $t[0])) {
+                return [false, $row, [], $dent, $t];
             }
-            return [false, $row, [], $dent, $t]; // Look like a raw HTML
+            // <https://spec.commonmark.org/0.30#html-blocks>
+            if (false !== \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($t, '/') . ',')) {
+                return [false, $row, [], $dent, $t];
+            }
+            // <https://spec.commonmark.org/0.30#example-163>
+            if ('>' === \substr($test = \rtrim($row), -1)) {
+                if ('/' === $t[0] && '<' . $t . '>' === $test) {
+                    return [false, $row, [], $dent, $t];
+                }
+                if (\preg_match('/^<' . \preg_quote(\trim($t, '/'), '/') . '(\s[^>]*)?>$/', $test)) {
+                    return [false, $row, [], $dent, $t];
+                }
+            }
+            return ['p', $row, [], $dent, $t];
         }
         return ['p', $row, [], $dent];
     }
@@ -524,12 +536,17 @@ function row(?string $content, array $lot = []): array {
                 $content = \substr($content, \strlen($prev = $m[0]));
                 continue;
             }
-            // TODO
-            // if (\preg_match('/<[^>]+>/', $content, $m)) {
-            //     $chops[] = [false, $m[0], [], -1];
-            //     $content = \substr($content, \strlen($m[0]));
-            //     continue;
-            // }
+            // <https://spec.commonmark.org/0.30#raw-html>
+            if (\preg_match('/^<\/[a-z][a-z\d-]*\s*>/i', $content, $m)) {
+                $chops[] = [false, $m[0], [], -1];
+                $content = \substr($content, \strlen($prev = $m[0]));
+                continue;
+            }
+            if (\preg_match('/^<[a-z][a-z\d-]*(\s[a-z_:][\w.:-]*(\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s"\'=<>`]+)?)?)*\s*\/?>/i', $content, $m)) {
+                $chops[] = [false, $m[0], [], -1];
+                $content = \substr($content, \strlen($prev = $m[0]));
+                continue;
+            }
             $chops[] = [false, e($prev = '<'), [], -1];
             $content = \substr($content, 1);
             continue;
@@ -674,7 +691,10 @@ function rows(?string $content, array $lot = []): array {
             // Raw HTML
             if (false === $prev[0]) {
                 if ('!--' === $prev[4]) {
-                    if (false !== \strpos($prev[1], '-->') && null !== $current[0]) {
+                    if (false !== \strpos($prev[1], '-->')) {
+                        if (null === $current[0]) {
+                            continue;
+                        }
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -686,7 +706,10 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if ('![CDATA[' === $prev[4]) {
-                    if (false !== \strpos($prev[1], ']]>') && null !== $current[0]) {
+                    if (false !== \strpos($prev[1], ']]>')) {
+                        if (null === $current[0]) {
+                            continue;
+                        }
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -698,7 +721,10 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if ('!' === $prev[4][0]) {
-                    if (false !== \strpos($prev[1], '>') && null !== $current[0]) {
+                    if (false !== \strpos($prev[1], '>')) {
+                        if (null === $current[0]) {
+                            continue;
+                        }
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -710,7 +736,10 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if (false !== \strpos(',pre,script,style,textarea,', ',' . $prev[4] . ',')) {
-                    if (false !== \strpos($prev[1], '</' . $prev[4] . '>') && null !== $current[0]) {
+                    if (false !== \strpos($prev[1], '</' . $prev[4] . '>')) {
+                        if (null === $current[0]) {
+                            continue;
+                        }
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -722,7 +751,10 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if ('?' === $prev[4][0]) {
-                    if (false !== \strpos($prev[1], '?' . '>') && null !== $current[0]) {
+                    if (false !== \strpos($prev[1], '?' . '>')) {
+                        if (null === $current[0]) {
+                            continue;
+                        }
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -1215,15 +1247,32 @@ function s(array $data): string {
 }
 
 function u(string $v): string {
-    // TODO
-    return \strtr(\rawurlencode($v), [
-        '%26' => '&',
-        '%2F' => '/',
-        '%3A' => ':',
-        '%3D' => '=',
-        '%3F' => '?',
-        '%40' => '@',
-    ]);
+    $chops = \preg_split('/[?#]/', \html_entity_decode($v, \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'), -1, \PREG_SPLIT_NO_EMPTY);
+    $v = "";
+    if (isset($chops[0])) {
+        $v .= \strtr(\rawurlencode($chops[0]), [
+            '%25' => '%',
+            '%2B' => '+',
+            '%2C' => ',',
+            '%2F' => '/',
+            '%3A' => ':',
+            '%3B' => ';',
+            '%40' => '@'
+        ]);
+    }
+    if (isset($chops[1])) {
+        $v .= '?' . \strtr(\rawurlencode($chops[1]), [
+            '%25' => '%',
+            '%26' => '&',
+            '%3D' => '='
+        ]);
+    }
+    if (isset($chops[2])) {
+        $v .= '#' . \strtr(\rawurlencode($chops[2]), [
+            '%25' => '%'
+        ]);
+    }
+    return $v;
 }
 
 // <https://spec.commonmark.org/0.30#example-12>
