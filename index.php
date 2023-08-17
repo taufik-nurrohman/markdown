@@ -236,14 +236,9 @@ function data(?string $row): array {
     if (0 === \strpos($row, '<')) {
         // `<asdf…`
         if ($t = \rtrim(\strtok(\substr($row, 1), " \n\t>"), '/')) {
-            // Rough check for automatic link syntax based on the URL scheme specification
-            // <https://spec.commonmark.org/0.30#scheme>
-            $n = \strlen($test = \strtolower((string) \strstr($t, ':', true)));
-            if ($n > 1 && $n < 33 && $n === \strspn($test, '+-.0123456789abcdefghijklmnopqrstuvwxyz')) {
-                return ['p', $row, [], $dent];
-            }
-            // The `@` character is not a valid part of a HTML element name, so it must be an email link syntax
-            if (\strpos($t, '@') > 0) {
+            // The `:` and `@` character is not a valid part of a HTML element name, so it must be a link syntax
+            // <https://spec.commonmark.org/0.30#tag-name>
+            if (\strpos($t, ':') > 0 || \strpos($t, '@') > 0) {
                 return ['p', $row, [], $dent];
             }
             // `<![…`
@@ -423,7 +418,14 @@ function q(string $char = '"', $capture = false, string $before = ""): string {
     $a = \preg_quote($char[0], '/');
     $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
-    return '(?:' . $a . '(' . ($capture ? "" : '?:') . ($before ? $before . '|' : "") . '[^' . $c . '\\\\]*(?:\\\\.[^' . $c . '\\\\]*)*)' . $b . ')';
+    return '(?:' . $a . ($capture ? '(' : "") . ($before ? $before . '|' : "") . '(?:\\\\[' . $c . ']|[^' . $c . '])*' . ($capture ? ')' : "") . $b . ')';
+}
+
+function r(string $char = '[]', $capture = false, string $before = ""): string {
+    $a = \preg_quote($char[0], '/');
+    $b = \preg_quote($char[1] ?? $char[0], '/');
+    $c = $a . ($b === $a ? "" : $b);
+    return '(?:' . $a . ($capture ? '(' : "") . ($before ? $before . '|' : "") . '(?:(?:\\\\[' . $c . ']|[^' . $c . '])*|(?R))*' . ($capture ? ')' : "") . $b . ')';
 }
 
 function raw(?string $content): array {
@@ -551,81 +553,108 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($content, '[')) {
-            $at = '(\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?';
-            // `[asdf](asdf)`
-            if (\preg_match('/^' . q('[]', true) . '\(\s*(' . q('<>') . '|' . q('()') . '|(?:\\\\.|\S+)+?)?(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?\s*\)' . $at . '/', $content, $m)) {
-                $row = row($m[1], $lot)[0];
-                if ($link = $m[2] ?? "") {
-                    if ('<' === $link[0] && '>' === \substr($link, -1)) {
-                        $link = \substr($link, 1, -1);
+            // `[asdf]…`
+            if (\preg_match('/' . r('[]', true) . '/', $content, $m, \PREG_OFFSET_CAPTURE)) {
+                if ($m[0][1] > 0) {
+                    $chops[] = [false, e($prev = \substr($content, 0, $m[0][1])), [], -1];
+                    $content = \substr($content, $m[0][1]);
+                }
+                if ($row = row($m[1][0], $lot)[0]) {
+                    $deep = false;
+                    foreach ($row as $v) {
+                        if (\is_array($v) && 'a' === $v[0]) {
+                            // Found recursive link syntax!
+                            $deep = true;
+                            break;
+                        }
+                    }
+                    // <https://spec.commonmark.org/0.30#example-517>
+                    if ($deep) {
+                        $chops[] = [false, '[', [], -1];
+                        foreach ($row as $v) {
+                            $chops[] = $v;
+                        }
+                        $chops[] = [false, ']', [], -1];
+                        $content = \substr($content, \strlen($prev = $m[0][0]));
+                        continue;
+                    }
+                }
+                $content = \substr($content, \strlen($prev = $m[0][0]));
+                if (0 === \strpos($content, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $content, $n, \PREG_OFFSET_CAPTURE)) {
+                    // `[asdf]()`
+                    if ("" === ($n[1][0] = \trim(\strtr($n[1][0] ?? "", "\n", ' ')))) {
+                        $chops[] = ['a', $row, ['href' => ""], -1, null, $prev = $m[0][0] . $n[0][0]];
+                        $content = \substr($content, \strlen($n[0][0]));
+                        continue;
+                    }
+                    $link = $title = null;
+                    // `[asdf](<>)`
+                    if ('<>' === $n[1][0]) {
+                        $link = "";
+                    // `[asdf](<asdf>)`
+                    } else if ('<' === $n[1][0][0]) {
+                        if (false !== ($v = \strstr(\substr($n[1][0], 1), '>', true))) {
+                            $link = $v;
+                            $title = \trim(\substr($n[1][0], \strlen($v) + 2));
+                            $title = "" !== $title ? $title : null;
+                        } else {
+                            $link = $n[1][0];
+                        }
+                    // `[asdf](asdf …)`
+                    } else if (\strpos($n[1][0], ' ') > 0) {
+                        $link = \trim(\strstr($n[1][0], ' ', true));
+                        $title = \trim(\strpbrk($n[1][0], ' '));
+                    // `[asdf](asdf)`
+                    } else {
+                        $link = $n[1][0];
                     }
                     // <https://spec.commonmark.org/0.30#example-490>
                     // <https://spec.commonmark.org/0.30#example-492>
                     // <https://spec.commonmark.org/0.30#example-493>
                     if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
-                        $chops[] = [false, e(v($m[0])), [], -1];
-                        $content = \substr($content, \strlen($prev = $m[0]));
+                        $chops[] = [false, e(v($prev = $m[0][0] . $n[0][0])), [], -1];
+                        $content = \substr($content, \strlen($n[0][0]));
                         continue;
                     }
-                    $link = u(v($link));
-                }
-                if ($title = $m[3] ?? null) {
-                    if (
-                        "'" === $title[0] && "'" === \substr($title, -1) ||
+                    if ($title && (
                         '"' === $title[0] && '"' === \substr($title, -1) ||
+                        "'" === $title[0] && "'" === \substr($title, -1) ||
                         '(' === $title[0] && ')' === \substr($title, -1)
-                    ) {
+                    ) && \preg_match('/^' . q($title[0] . \substr($title, -1)) . '$/', $title)) {
                         $title = v(\html_entity_decode(\substr($title, 1, -1), \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
+                    // `[asdf](asdf asdf)`
+                    // <https://spec.commonmark.org/0.30#example-487>
+                    } else if (\is_string($title) && "" !== $title) {
+                        $chops[] = [false, e(v($prev = $m[0][0] . $n[0][0])), [], -1];
+                        $content = \substr($content, \strlen($n[0][0]));
+                        continue;
                     }
+                    $chops[] = ['a', $row, \array_replace([
+                        'href' => u(v($link ?? "")),
+                        'title' => $title
+                    ], []), -1, null, $prev = $m[0][0] . $n[0][0]];
+                    $content = \substr($content, \strlen($n[0][0]));
+                    continue;
                 }
-                if ($attr = $m[5] ?? []) {
-                    $attr = a($attr, true);
+                // `[asdf][]` or `[asdf][asdf]`
+                if (0 === \strpos($content, '[') && \preg_match('/' . r('[]', true) . '/', $content, $n, \PREG_OFFSET_CAPTURE)) {
+                    if ("" === $n[1][0]) {
+                        $of = $lot[0][$k = \trim(\strtolower($m[1][0]))] ?? [];
+                    } else {
+                        $of = $lot[0][$k = \trim(\strtolower($n[1][0]))] ?? [];
+                    }
+                    $chops[] = ['a', $row, [
+                        'href' => $of[0] ?? null,
+                        'title' => $of[1] ?? null
+                    ], -1, $k, $prev = $m[0][0] . $n[0][0]];
+                    $content = \substr($content, \strlen($n[0][0]));
+                    continue;
                 }
-                // `[asdf](asdf) {}`
-                if (isset($m[4]) && "" === \trim(\substr($m[5], 1, -1))) {
-                    $m[0] = \substr($m[0], 0, -\strlen($m[4]));
-                }
+                // `[asdf]`
                 $chops[] = ['a', $row, \array_replace([
-                    'href' => $link,
-                    'title' => "" !== $title ? $title : null
-                ], $attr), -1, null, $m[0]];
-                $content = \substr($content, \strlen($prev = $m[0]));
-                continue;
-            }
-            // `[asdf][asdf]`
-            if (\preg_match('/^' . q('[]', true) . q('[]', true) . $at . '/', $content, $m) && "" !== $m[2]) {
-                $of = $lot[0][$k = \trim(\strtolower($m[2]))] ?? [];
-                $row = row($m[1], $lot)[0];
-                if ($attr = $m[3] ?? []) {
-                    $attr = a($attr, true);
-                }
-                // `[asdf][asdf] {}`
-                if (isset($m[3]) && "" === \trim(\substr($m[4], 1, -1))) {
-                    $m[0] = \substr($m[0], 0, -\strlen($m[3]));
-                }
-                $chops[] = ['a', $row, \array_replace([
-                    'href' => $of[0] ?? null,
-                    'title' => $of[1] ?? null
-                ], $of[2] ?? [], $attr), -1, $k, $m[0]];
-                $content = \substr($content, \strlen($prev = $m[0]));
-                continue;
-            }
-            // `[asdf][]` or `[asdf]`
-            if (\preg_match('/^' . q('[]', true) . '(?:\[\])?' . $at . '/', $content, $m)) {
-                $of = $lot[0][$k = \trim(\strtolower($m[1]))] ?? [];
-                $row = row($m[1], $lot)[0];
-                if ($attr = $m[2] ?? []) {
-                    $attr = a($attr, true);
-                }
-                // `[asdf][] {}` or `[asdf] {}`
-                if (isset($m[2]) && "" === \trim(\substr($m[3], 1, -1))) {
-                    $m[0] = \substr($m[0], 0, -\strlen($m[2]));
-                }
-                $chops[] = ['a', $row, \array_replace([
-                    'href' => $of[0] ?? null,
-                    'title' => $of[1] ?? null
-                ], $of[2] ?? [], $attr), -1, $k, $m[0]];
-                $content = \substr($content, \strlen($prev = $m[0]));
+                    'href' => null,
+                    'title' => null
+                ], []), -1, $m[1][0], $m[0][0]];
                 continue;
             }
             $chops[] = [false, $prev = '[', [], -1];
@@ -851,6 +880,11 @@ function rows(?string $content, array $lot = []): array {
             // very end of the stream by default when the first list marker is found. To exit the list, we will do so
             // manually while we are in the list block.
             if ('ol' === $prev[0]) {
+                // <https://spec.commonmark.org/0.30#example-99>
+                if ('h1' === $current[0] && '=' === $current[5]) {
+                    $blocks[++$block] = ['p', $current[1], [], $current[3]];
+                    continue;
+                }
                 // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
                 if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3][1]) {
                     $current[1] = $prev[5] . $prev[4] . "\n" . $current[1];
@@ -891,6 +925,11 @@ function rows(?string $content, array $lot = []): array {
             }
             // Here goes the bullet list block
             if ('ul' === $prev[0]) {
+                // <https://spec.commonmark.org/0.30#example-99>
+                if ('h1' === $current[0] && '=' === $current[5]) {
+                    $blocks[++$block] = ['p', $current[1], [], $current[3]];
+                    continue;
+                }
                 // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
                 if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3][1]) {
                     $current[1] = $prev[4] . "\n" . $current[1];
@@ -947,11 +986,16 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
             }
-            // Found Setext-header marker level 1 right below a paragraph block
-            if ('h1' === $current[0] && '=' === $current[5] && 'p' === $prev[0]) {
-                $blocks[$block][0] = $current[0]; // Treat the previous block as Setext-header level 1
-                $blocks[$block][1] .= "\n" . $current[1];
-                $blocks[$block][5] = $current[5];
+            // Found Setext-header marker level 1 right below a paragraph or quote block
+            if ('h1' === $current[0] && '=' === $current[5]) {
+                // <https://spec.commonmark.org/0.30#example-93>
+                if ('blockquote' === $prev[0]) {
+                    $blocks[$block][1] .= ' ' . $current[1];
+                } else if ('p' === $prev[0]) {
+                    $blocks[$block][0] = $current[0]; // Treat the previous block as Setext-header level 1
+                    $blocks[$block][1] .= "\n" . $current[1];
+                    $blocks[$block][5] = $current[5];
+                }
                 $block += 1; // Start a new block after this
                 continue;
             }
@@ -1042,8 +1086,7 @@ function rows(?string $content, array $lot = []): array {
                 continue;
             }
             // Match a reference
-            $at = '(?:\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?';
-            if (\preg_match('/^' . q('[]', true) . ':(?:\s*(' . q('<>') . '|\S+?)(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . ')\s*)?)' . $at . '$/', $v[1], $m)) {
+            if (\preg_match('/^' . q('[]', true) . ':(?:\s*(' . q('<>') . '|\S+?)(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . ')\s*)?)(?:\s*(\{.*?\}))?$/', $v[1], $m)) {
                 // Remove reference block from the structure
                 unset($blocks[$k]);
                 // <https://spec.commonmark.org/0.30#matches>
@@ -1079,7 +1122,7 @@ function rows(?string $content, array $lot = []): array {
                     $attr = a($attr, true);
                 }
                 // Queue the reference data to be used later
-                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [\strtr($link, [' ' => '%20']), "" !== $title ? $title : null, $attr];
+                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [u(v($link)), $title, $attr];
                 continue;
             }
         }
@@ -1251,32 +1294,22 @@ function s(array $data): string {
 }
 
 function u(string $v): string {
-    $chops = \preg_split('/[?#]/', \html_entity_decode($v, \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'), -1, \PREG_SPLIT_NO_EMPTY);
-    $v = "";
-    if (isset($chops[0])) {
-        $v .= \strtr(\rawurlencode($chops[0]), [
-            '%25' => '%',
-            '%2B' => '+',
-            '%2C' => ',',
-            '%2F' => '/',
-            '%3A' => ':',
-            '%3B' => ';',
-            '%40' => '@'
-        ]);
-    }
-    if (isset($chops[1])) {
-        $v .= '?' . \strtr(\rawurlencode($chops[1]), [
-            '%25' => '%',
-            '%26' => '&',
-            '%3D' => '='
-        ]);
-    }
-    if (isset($chops[2])) {
-        $v .= '#' . \strtr(\rawurlencode($chops[2]), [
-            '%25' => '%'
-        ]);
-    }
-    return $v;
+    \preg_match('/^([^?#]*)?([?][^#]*)?([#].*)?$/', \html_entity_decode($v, \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'), $m);
+    return \strtr(\rawurlencode($m[1]), [
+        '%25' => '%',
+        '%2B' => '+',
+        '%2C' => ',',
+        '%2F' => '/',
+        '%3A' => ':',
+        '%3B' => ';',
+        '%40' => '@'
+    ]) . (isset($m[2]) && "" !== $m[2] && '?' !== $m[2] ? '?' . \strtr(\rawurlencode(\substr($m[2], 1)), [
+        '%25' => '%',
+        '%26' => '&',
+        '%3D' => '='
+    ]) : "") . (isset($m[3]) && "" !== $m[3] && '#' !== $m[3] ? '#' . \strtr(\rawurlencode(\substr($m[3], 1)), [
+        '%25' => '%'
+    ]) : "");
 }
 
 // <https://spec.commonmark.org/0.30#example-12>
