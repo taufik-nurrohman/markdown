@@ -580,6 +580,7 @@ function row(?string $content, array $lot = []): array {
                     }
                 }
                 $content = \substr($content, \strlen($prev = $m[0][0]));
+                // `…(asdf)`
                 if (0 === \strpos($content, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $content, $n, \PREG_OFFSET_CAPTURE)) {
                     // `[asdf]()`
                     if ("" === ($n[1][0] = \trim(\strtr($n[1][0] ?? "", "\n", ' ')))) {
@@ -636,10 +637,12 @@ function row(?string $content, array $lot = []): array {
                     $content = \substr($content, \strlen($n[0][0]));
                     continue;
                 }
-                // `[asdf][]` or `[asdf][asdf]`
+                // `…[]` or `…[asdf]`
                 if (0 === \strpos($content, '[') && \preg_match('/' . r('[]', true) . '/', $content, $n, \PREG_OFFSET_CAPTURE)) {
+                    // `[asdf][]`
                     if ("" === $n[1][0]) {
                         $of = $lot[0][$k = \trim(\strtolower($m[1][0]))] ?? [];
+                    // `[asdf][asdf]`
                     } else {
                         $of = $lot[0][$k = \trim(\strtolower($n[1][0]))] ?? [];
                     }
