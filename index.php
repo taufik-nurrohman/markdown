@@ -432,7 +432,7 @@ function raw(?string $content): array {
     return rows($content);
 }
 
-function row(?string $content, array $lot = []): array {
+function row(?string $content, array $lot = [], $no_deep_link = true): array {
     if ("" === \trim($content ?? "")) {
         return [[], $lot];
     }
@@ -455,11 +455,25 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($v, '![')) {
-            $row = row(\substr($v, 1), $lot)[0][0];
+            $row = row(\substr($v, 1), $lot, false)[0][0];
             if ('a' === $row[0]) {
                 $row[0] = 'img';
+                if (\is_array($row[1])) {
+                    $alt = "";
+                    foreach ($row[1] as $vv) {
+                        // <https://spec.commonmark.org/0.30#example-573>
+                        if (\is_array($vv) && 'img' === $vv[0]) {
+                            $alt .= $vv[2]['alt'] ?? "";
+                            continue;
+                        }
+                        $alt .= s($vv);
+                    }
+                } else {
+                    $alt = $row[1];
+                }
                 $row[1] = false;
-                $row[2]['alt'] = ""; // TODO
+                // <https://spec.commonmark.org/0.30#example-572>
+                $row[2]['alt'] = \trim(\strip_tags($alt));
                 $row[2]['src'] = $row[2]['href'];
                 $row[5] = '!' . $row[5];
                 unset($row[2]['href']);
@@ -534,7 +548,7 @@ function row(?string $content, array $lot = []): array {
                     $content = $v = \substr($v, $m[0][1]);
                 }
                 $row = row($m[1][0], $lot)[0];
-                if ($row && false !== \strpos($m[1][0], '[')) {
+                if ($no_deep_link && $row && false !== \strpos($m[1][0], '[')) {
                     $deep = false;
                     foreach ($row as $vv) {
                         if (\is_array($vv) && 'a' === $vv[0]) {

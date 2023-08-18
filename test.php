@@ -45,6 +45,11 @@ body > div > div blockquote {
   padding-right: 1.25em;
 }
 
+body > div > div img[src$='.gif'] {
+  display: inline-block;
+  vertical-align: middle;
+}
+
 body > div > div pre {
   background: #000;
   color: #fff;
