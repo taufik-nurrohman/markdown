@@ -166,7 +166,7 @@ function data(?string $row): array {
             return ['p', $row, [], $dent];
         }
         // `# …`
-        if ($n === \strpos($row, ' ')) {
+        if (false !== \strpos(" \t", \substr($row, $n, 1))) {
             return ['h' . $n, $row, [], $dent, $n, '#'];
         }
         return ['p', $row, [], $dent];
@@ -186,7 +186,7 @@ function data(?string $row): array {
             return ['hr', $row, [], $dent, '*'];
         }
         // `* …`
-        if (1 === \strpos($row, ' ')) {
+        if (false !== \strpos(" \t", \substr($row, 1, 1))) {
             return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
         }
         return ['p', $row, [], $dent];
@@ -198,7 +198,7 @@ function data(?string $row): array {
     // `+…`
     if (0 === \strpos($row, '+')) {
         // `+ …`
-        if (1 === \strpos($row, ' ')) {
+        if (false !== \strpos(" \t", \substr($row, 1, 1))) {
             return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
         }
         return ['p', $row, [], $dent];
@@ -219,7 +219,7 @@ function data(?string $row): array {
             return ['hr', $row, [], $dent, '-'];
         }
         // `- …`
-        if (1 === \strpos($row, ' ')) {
+        if (false !== \strpos(" \t", \substr($row, 1, 1))) {
             return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
         }
         return ['p', $row, [], $dent];
@@ -227,7 +227,7 @@ function data(?string $row): array {
     // `:…`
     if (0 === \strpos($row, ':')) {
         // `: …`
-        if (1 === \strpos($row, ' ')) {
+        if (false !== \strpos(" \t", \substr($row, 1, 1))) {
             return ['dl', $row, [], $dent]; // Look like a part of a definition list
         }
         return ['p', $row, [], $dent];
@@ -338,7 +338,7 @@ function data(?string $row): array {
         return ['ol', "", ['start' => 1 !== $start ? $start : null], [$dent, $n + 1], \substr($row, -1), $start];
     }
     // `1) …` or `1. …`
-    if ($n === \strpos($row, ') ') || $n === \strpos($row, '. ')) {
+    if (false !== \strpos(').', \substr($row, $n, 1)) && false !== \strpos(" \t", \substr($row, $n + 1, 1))) {
         $start = (int) \substr($row, 0, $n);
         return ['ol', $row, ['start' => 1 !== $start ? $start : null], [$dent, $n + 1 + \strspn($row, ' ', $n + 1)], \substr($row, $n, 1), $start];
     }
@@ -703,10 +703,14 @@ function rows(?string $content, array $lot = []): array {
     $blocks = [];
     $rows = \explode("\n", $content);
     foreach ($rows as $row) {
+        // This will convert a tab to 4 character step(s) as described in the specification. However, this will convert
+        // all tab(s) in the line. For now, I’m having a hard time keeping tab(s) that don’t define the block structure
+        // like in #example-1. It’s difficult to implement #example-6 without converting everything to space(s).
+        // <https://spec.commonmark.org/0.30#example-1>
+        // <https://spec.commonmark.org/0.30#example-6>
         // TODO: <https://spec.commonmark.org/0.30#tabs>
-        $n = \strpos($row, "\t");
-        if (false !== $n && $n < 4) {
-            $row = \substr($row, 0, $n) . \str_repeat(' ', 4 - $n) . \substr($row, $n + 1);
+        while (false !== ($prev = \strstr($row, "\t", true))) {
+            $row = $prev . \str_repeat(' ', 4 - \strlen($prev) % 4) . \substr($row, \strlen($prev) + 1);
         }
         $current = data($row); // `[$type, $row, $data, $dent, …]`
         // If a block is available in the index `$block`, it indicates that we have a previous block.
@@ -1159,7 +1163,7 @@ function rows(?string $content, array $lot = []): array {
                 $v[1] = \trim(\substr($v[1], \strspn($v[1], '#')));
                 if ('#' === \substr($v[1], -1)) {
                     $vv = \substr($v[1], 0, \strpos($v[1], '#'));
-                    if (' ' === \substr($vv, -1)) {
+                    if (false !== \strpos(" \t", \substr($vv, -1))) {
                         $v[1] = \substr($vv, 0, -1);
                     }
                 }
@@ -1201,6 +1205,9 @@ function rows(?string $content, array $lot = []): array {
                 $v[1] = [['code', \substr(\strstr($v[1], "\n"), 1, -(\strlen($v[4]) + 1)), $v[2]]];
                 $v[2] = [];
                 continue;
+            }
+            if ("\n" === \substr($v[1], -1)) {
+                $v[1] = \substr($v[1], 0, -1);
             }
             $v[1] = [['code', $v[1], $v[2]]];
             $v[2] = [];
