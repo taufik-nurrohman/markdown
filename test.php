@@ -64,11 +64,11 @@ body > div > div th {
   vertical-align: top;
 }
 
-body > div > div :first-child {
+body > div > div > :first-child {
   margin-top: 0;
 }
 
-body > div > div :last-child {
+body > div > div > :last-child {
   margin-bottom: 0;
 }
 CSS;
