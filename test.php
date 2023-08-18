@@ -139,7 +139,7 @@ foreach ($files as $v) {
         $out .= '</div>';
     } else if ('source' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
-        $out .= htmlspecialchars(x\markdown\convert($raw));
+        $out .= htmlspecialchars(x\markdown\convert($raw) ?? "");
         $out .= '</pre>';
     }
     $end = microtime(true);

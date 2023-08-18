@@ -418,14 +418,14 @@ function q(string $char = '"', $capture = false, string $before = ""): string {
     $a = \preg_quote($char[0], '/');
     $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
-    return '(?:' . $a . ($capture ? '(' : "") . '(?:' . ($before ? $before . '|' : "") . '\\\\[' . $c . ']|[^' . $c . '])*' . ($capture ? ')' : "") . $b . ')';
+    return '(?:' . $a . ($capture ? '(' : "") . '(?:' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\])*' . ($capture ? ')' : "") . $b . ')';
 }
 
 function r(string $char = '[]', $capture = false, string $before = ""): string {
     $a = \preg_quote($char[0], '/');
     $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
-    return '(?:' . $a . ($capture ? '(' : "") . '(?:(?:' . ($before ? $before . '|' : "") . '\\\\[' . $c . ']|[^' . $c . '])*|(?R))*' . ($capture ? ')' : "") . $b . ')';
+    return '(?:' . $a . ($capture ? '(' : "") . '(?:(?:' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\])*|(?R))*' . ($capture ? ')' : "") . $b . ')';
 }
 
 function raw(?string $content): array {
@@ -454,7 +454,23 @@ function row(?string $content, array $lot = []): array {
             $content = \substr($v, 1);
             continue;
         }
-        if (0 === \strpos($v, '![')) {}
+        if (0 === \strpos($v, '![')) {
+            $row = row(\substr($v, 1), $lot)[0][0];
+            if ('a' === $row[0]) {
+                $row[0] = 'img';
+                $row[1] = false;
+                $row[2]['alt'] = ""; // TODO
+                $row[2]['src'] = $row[2]['href'];
+                $row[5] = '!' . $row[5];
+                unset($row[2]['href']);
+                $chops[] = $row;
+                $content = $v = \substr($v, \strlen($prev = $row[5]));
+                continue;
+            }
+            $chops[] = [false, $prev = '!', [], -1];
+            $content = $v = \substr($v, 1);
+            continue;
+        }
         if (0 === \strpos($v, '&')) {
             if (false === ($n = \strpos($v, ';')) || $n < 2 || !\preg_match('/^&(?:#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $v, $m)) {
                 $chops[] = [false, e($prev = '&'), [], -1];
@@ -613,7 +629,7 @@ function row(?string $content, array $lot = []): array {
                 }
                 // …{asdf}
                 if (0 === \strpos(\trim($v), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'")) . ')/', $v, $n)) {
-                    if ('\\}' !== \substr($n[1], -2) && "" !== \trim(\substr($n[1], 1, -1))) {
+                    if ("" !== \trim(\substr($n[1], 1, -1))) {
                         $attr = \array_replace($attr ?? [], a($n[1], true));
                         $content = $v = \substr($v, \strlen($n[0]));
                     }
@@ -646,8 +662,8 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($v, '`')) {
-            $c = \str_repeat('`', $n = \strspn($content, '`'));
-            if (\preg_match('/^' . $c . '((?:\\\\`|[^`]|' . (1 === $n ? '``+' : '`' . (2 === $n ? "" : '{1,' . ($n - 1) . '}')) . ')+)' . $c . '/', $content, $m)) {
+            $c = \str_repeat('`', $n = \strspn($v, '`'));
+            if (\preg_match('/^' . $c . '((?:\\\\`|[^`]|' . (1 === $n ? '``+' : '`' . (2 === $n ? "" : '{1,' . ($n - 1) . '}')) . ')+)' . $c . '/', $v, $m)) {
                 // <https://spec.commonmark.org/0.30#code-span>
                 $raw = \strtr($m[1], "\n", ' ');
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
