@@ -290,7 +290,7 @@ _TODO_
 CommonMark doesn’t care about the DOM and therefore also doesn’t care if a HTML element is perfectly balanced or not.
 Unlike the original Markdown syntax specification which doesn’t allow you to convert Markdown syntax inside a HTML
 block, the CommonMark specification doesn’t limit such a case. It cares about blank lines around the lines that look
-like an HTML block tag, as specified in [Section 4.6](https://spec.commonmark.org/0.30#html-blocks), type 6.
+like a HTML block tag, as specified in [Section 4.6](https://spec.commonmark.org/0.30#html-blocks), type 6.
 
 Any text that comes after the opening and/or closing of a HTML block is treated as raw text and is not processed as
 Markdown syntax. A blank line is required to end the raw HTML block state:
@@ -381,7 +381,7 @@ You will understand why when you add a number of blank lines at any point in the
     </tr>
     <tr>
       <td><pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;&#10;&#10;      asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre></td>
-      <td><pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;&lt;pre&gt;&lt;code&gt;  asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&#10;&amp;lt;li&amp;gt;&#10;  &amp;lt;a&amp;gt;asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&amp;lt;li&amp;gt;&#10;  &amp;lt;a&amp;gt;asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&lt;/code&gt;&lt;/pre&gt;&lt;/ul&gt;&#10;&lt;/nav&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
+      <td><pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;&lt;pre&gt;&lt;code&gt;  asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&#10;&amp;lt;li&amp;gt;&#10;  &amp;lt;a&amp;gt;asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&amp;lt;li&amp;gt;&#10;  &amp;lt;a&amp;gt;asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&lt;/code&gt;&lt;/pre&gt;&lt;/ul&gt;&#10;&lt;/nav&gt;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre></td>
     </tr>
   </tbody>
 </table>
@@ -392,7 +392,7 @@ tasks as much as possible. This also ensured me to avoid on using [PHP `dom`](ht
 
 However, if you add a blank line, it’s as if the feature works (although the `markdown` attribute is still there, it
 doesn’t affect the HTML when rendered in the browser window). If you’re used to adding a blank line after the opening
-HTML block tag and before the closing HTML block tag, don’t bother!
+HTML block tag and before the closing HTML block tag, you should be okay.
 
 <table>
   <thead>
@@ -460,8 +460,7 @@ unlikely to occur:
 
 ### Soft Break
 
-Soft breaks that are present in non-crucial parts such as in paragraphs and list items will be collapsed into space
-characters:
+Soft breaks are collapsed to spaces in non-critical parts such as in paragraphs and list items:
 
 <table>
   <thead>
