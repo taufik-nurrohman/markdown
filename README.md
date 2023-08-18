@@ -23,10 +23,10 @@ It was fulfilled by [Parsedown version 1.8](https://github.com/erusev/parsedown/
 is no longer being actively maintained. Maybe because the era has changed, where things like this are no longer a
 priority.
 
-My goal in creating this project was to use this converter in my
-[Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown) in the future. Previously, I wanted to develop
-this converter directly into the extension, but my friend advised me to create this project separately as it might have
-potential to be used by other developers beyond the [Mecha CMS](https://github.com/mecha-cms) developers.
+The goal of this project was to use it in my [Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown) in
+the future. Previously, I wanted to develop this converter directly into the extension, but my friend advised me to
+create this project separately as it might have potential to be used by other developers beyond the
+[Mecha CMS](https://github.com/mecha-cms) developers.
 
 This converter can be installed using [Composer](https://packagist.org/packages/taufik-nurrohman/markdown), but it
 doesn’t need any other dependencies and just uses Composer’s ability to automatically include files. Those of you who
@@ -120,7 +120,7 @@ syntax, and a mix of `key=value` attribute syntax:
 
 ### Code Block
 
-I aim to avoid conflict between different Markdown dialects and try to support whatever dialect you are using. For
+I try to avoid conflict between different Markdown dialects and try to support whatever dialect you are using. For
 example, since I originally used Markdown Extra, I am used to adding info string with a dot prefix to the fenced code
 block syntax. This is not supported by Parsedown (or rather, Parsedown doesn’t care about the pattern of the given info
 string and simply appends `language-` prefix to it, since CommonMark also doesn’t give implementors special rules for
@@ -270,6 +270,10 @@ less than 4.
     <tr>
       <td><pre><code>![asdf](asdf.jpg)&#10; asdf&#10;&#10; asdf&#10;&#10;asdf</code></pre></td>
       <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;figcaption&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;/figcaption&gt;&lt;/figure&gt;&lt;p&gt;asdf&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>![asdf](asdf.jpg) asdf</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt; asdf&lt;/p&gt;</code></pre></td>
     </tr>
   </tbody>
 </table>

@@ -63,11 +63,7 @@ function a(?string $info, $raw = false) {
         foreach ($a as $k => $v) {
             $out[] = true === $v ? $k : $k . '="' . e($v) . '"';
         }
-        if ($out) {
-            \sort($out);
-            return ' ' . \implode(' ', $out);
-        }
-        return null;
+        return $out ? ' ' . \implode(' ', $out) : null;
     }
     foreach (\preg_split('/\s++|(?=[#.])/', $info, -1, \PREG_SPLIT_NO_EMPTY) as $v) {
         if ('#' === $v[0]) {
@@ -659,16 +655,16 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                     $content = $v = \substr($v, \strlen($n[0][0]));
                 }
                 // …{asdf}
-                if (0 === \strpos(\trim($v), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'")) . ')/', $v, $n)) {
-                    if ("" !== \trim(\substr($n[1], 1, -1))) {
-                        $attr = \array_replace($attr ?? [], a($n[1], true));
-                        $content = $v = \substr($v, \strlen($n[0]));
+                if (0 === \strpos(\trim($v), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'")) . ')/', $v, $o)) {
+                    if ("" !== \trim(\substr($o[1], 1, -1))) {
+                        $attr = \array_replace($attr ?? [], a($o[1], true));
+                        $content = $v = \substr($v, \strlen($o[0]));
                     }
                 }
                 $chops[] = ['a', $row, \array_replace([
                     'href' => null !== $link ? u(v($link)) : null,
                     'title' => $title
-                ], $attr ?? []), -1, 0 === $key ? null : ($key ?? $m[1][0]), $m[0][0] . ($n[0][0] ?? "")];
+                ], $attr ?? []), -1, 0 === $key ? null : ($key ?? $m[1][0]), $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")];
                 continue;
             }
             $chops[] = [false, $prev = '[', [], -1];
@@ -1330,6 +1326,7 @@ function s(array $data): string {
     }
     $out = '<' . $data[0];
     if (!empty($data[2])) {
+        \ksort($data[2]);
         foreach ($data[2] as $k => $v) {
             if (false === $v || null === $v) {
                 continue;
