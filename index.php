@@ -363,7 +363,7 @@ function lot(array $row, array $lot = [], $lazy = true): array {
             $pattern[] = \preg_quote($k, '/');
         }
     }
-    $pattern = $pattern ? '/\b(' . \implode('|', $pattern) . ')\b/' : false;
+    $pattern = $pattern ? '/\b(' . \implode('|', $pattern) . ')\b/' : 0;
     foreach ($row as &$v) {
         if ($pattern && false === $v[0] && \is_string($v[1])) {
             // Optimize if current chunk is a complete word boundary
@@ -439,7 +439,7 @@ function row(?string $content, array $lot = []): array {
     $chops = [];
     $prev = ""; // Capture the previous chunk
     while ("" !== $content) {
-        if ($n = \strcspn($content, '\\<`![*_&' . "\n")) {
+        if ($n = \strcspn($content, '\\<`*_![&' . "\n")) {
             $chops[] = [false, e($prev = \substr($content, 0, $n)), [], -1];
             $content = \substr($content, $n);
         }
@@ -489,17 +489,15 @@ function row(?string $content, array $lot = []): array {
                 // Left 2b
                 '(?<=^|[\p{P}\s])[' . $v . ']' . $r . '(?=[\p{P}])' .
             ')(' .
-                '(?:\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
+                '(?:' . (1 === $n ? '[' . $v . ']{2,}|' : "") . '\\\\[' . $v . ']|[^' . $v . ']|(?R))+?' .
             ')(?:' .
                 // Right 1, 2a
-                '(?<![\p{P}\s])[' . $v . ']' . $r .
+                '(?<![\p{P}\s])[' . $v . ']' . $r . '(?![' . $v . '])' .
             '|' .
                 // Right 2b
                 '(?<=[\p{P}])[' . $v . ']' . $r . '(?=[\p{P}\s]|$)' .
             ')/u', $content, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
-                    $chops[] = [false, e(\substr($content, 0, $m[0][1])), [], -1];
-                    $content = \substr($content, $m[0][1]);
                 }
                 // `*…*` or `***…***`
                 if (1 === $n || 3 === $n) {
@@ -553,10 +551,12 @@ function row(?string $content, array $lot = []): array {
             continue;
         }
         if (0 === \strpos($content, '[')) {
+            $key = $link = $title = null;
             // `[asdf]…`
             if (\preg_match('/' . r('[]', true) . '/', $content, $m, \PREG_OFFSET_CAPTURE)) {
+                $prev = $m[0][0];
                 if ($m[0][1] > 0) {
-                    $chops[] = [false, e($prev = \substr($content, 0, $m[0][1])), [], -1];
+                    $chops[] = [false, e(\substr($content, 0, $m[0][1])), [], -1];
                     $content = \substr($content, $m[0][1]);
                 }
                 if ($row = row($m[1][0], $lot)[0]) {
@@ -575,20 +575,20 @@ function row(?string $content, array $lot = []): array {
                             $chops[] = $v;
                         }
                         $chops[] = [false, ']', [], -1];
-                        $content = \substr($content, \strlen($prev = $m[0][0]));
+                        $content = \substr($content, \strlen($m[0][0]));
                         continue;
                     }
                 }
-                $content = \substr($content, \strlen($prev = $m[0][0]));
+                $content = \substr($content, \strlen($m[0][0]));
                 // `…(asdf)`
                 if (0 === \strpos($content, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $content, $n, \PREG_OFFSET_CAPTURE)) {
+                    $prev = $n[0][0];
                     // `[asdf]()`
-                    if ("" === ($n[1][0] = \trim(\strtr($n[1][0] ?? "", "\n", ' ')))) {
-                        $chops[] = ['a', $row, ['href' => ""], -1, null, $prev = $m[0][0] . $n[0][0]];
+                    if ("" === ($n[1][0] = \trim($n[1][0] ?? ""))) {
+                        $chops[] = ['a', $row, ['href' => ""], -1, null, $m[0][0] . $n[0][0]];
                         $content = \substr($content, \strlen($n[0][0]));
                         continue;
                     }
-                    $link = $title = null;
                     // `[asdf](<>)`
                     if ('<>' === $n[1][0]) {
                         $link = "";
@@ -602,9 +602,9 @@ function row(?string $content, array $lot = []): array {
                             $link = $n[1][0];
                         }
                     // `[asdf](asdf …)`
-                    } else if (\strpos($n[1][0], ' ') > 0) {
-                        $link = \trim(\strstr($n[1][0], ' ', true));
-                        $title = \trim(\strpbrk($n[1][0], ' '));
+                    } else if (\strpos($n[1][0], ' ') > 0 || \strpos($n[1][0], "\n") > 0) {
+                        $link = \trim(\strtok($n[1][0], " \n"));
+                        $title = \trim(\strpbrk($n[1][0], " \n"));
                     // `[asdf](asdf)`
                     } else {
                         $link = $n[1][0];
@@ -613,51 +613,49 @@ function row(?string $content, array $lot = []): array {
                     // <https://spec.commonmark.org/0.30#example-492>
                     // <https://spec.commonmark.org/0.30#example-493>
                     if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
-                        $chops[] = [false, e(v($prev = $m[0][0] . $n[0][0])), [], -1];
+                        $chops[] = [false, e(v(\strtr($m[0][0] . $n[0][0], "\n", ' '))), [], -1];
                         $content = \substr($content, \strlen($n[0][0]));
                         continue;
                     }
-                    if ($title && (
-                        '"' === $title[0] && '"' === \substr($title, -1) ||
-                        "'" === $title[0] && "'" === \substr($title, -1) ||
-                        '(' === $title[0] && ')' === \substr($title, -1)
-                    ) && \preg_match('/^' . q($title[0] . \substr($title, -1)) . '$/', $title)) {
-                        $title = v(\html_entity_decode(\substr($title, 1, -1), \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
-                    // `[asdf](asdf asdf)`
-                    // <https://spec.commonmark.org/0.30#example-487>
-                    } else if (\is_string($title) && "" !== $title) {
-                        $chops[] = [false, e(v($prev = $m[0][0] . $n[0][0])), [], -1];
-                        $content = \substr($content, \strlen($n[0][0]));
-                        continue;
+                    if (\is_string($title) && "" !== $title) {
+                        // `[asdf](asdf "asdf")` or `[asdf](asdf 'asdf')` or `[asdf](asdf (asdf))`
+                        $a = $title[0];
+                        $b = \substr($title, -1);
+                        if ((
+                            '"' === $a && '"' === $b ||
+                            "'" === $a && "'" === $b ||
+                            '(' === $a && ')' === $b
+                        ) && \preg_match('/^' . q($a . $b) . '$/', $title)) {
+                            $title = v(\html_entity_decode(\substr($title, 1, -1), \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
+                        // `[asdf](asdf asdf)`
+                        // <https://spec.commonmark.org/0.30#example-487>
+                        } else {
+                            $chops[] = [false, e(v(\strtr($m[0][0] . $n[0][0], "\n", ' '))), [], -1];
+                            $content = \substr($content, \strlen($n[0][0]));
+                            continue;
+                        }
                     }
-                    $chops[] = ['a', $row, \array_replace([
-                        'href' => u(v($link ?? "")),
-                        'title' => $title
-                    ], []), -1, null, $prev = $m[0][0] . $n[0][0]];
+                    $key = 0;
                     $content = \substr($content, \strlen($n[0][0]));
-                    continue;
-                }
                 // `…[]` or `…[asdf]`
-                if (0 === \strpos($content, '[') && \preg_match('/' . r('[]', true) . '/', $content, $n, \PREG_OFFSET_CAPTURE)) {
+                } else if (0 === \strpos($content, '[') && \preg_match('/' . r('[]', true) . '/', $content, $n, \PREG_OFFSET_CAPTURE)) {
+                    $prev = $n[0][0];
                     // `[asdf][]`
                     if ("" === $n[1][0]) {
-                        $of = $lot[0][$k = \trim(\strtolower($m[1][0]))] ?? [];
+                        $of = $lot[0][$key = \trim(\strtolower($m[1][0]))] ?? [];
                     // `[asdf][asdf]`
                     } else {
-                        $of = $lot[0][$k = \trim(\strtolower($n[1][0]))] ?? [];
+                        $of = $lot[0][$key = \trim(\strtolower($n[1][0]))] ?? [];
                     }
-                    $chops[] = ['a', $row, [
-                        'href' => $of[0] ?? null,
-                        'title' => $of[1] ?? null
-                    ], -1, $k, $prev = $m[0][0] . $n[0][0]];
+                    $link = $of[0] ?? null;
+                    $title = $of[1] ?? null;
                     $content = \substr($content, \strlen($n[0][0]));
-                    continue;
                 }
                 // `[asdf]`
-                $chops[] = ['a', $row, \array_replace([
-                    'href' => null,
-                    'title' => null
-                ], []), -1, $m[1][0], $m[0][0]];
+                $chops[] = ['a', $row, [
+                    'href' => null !== $link ? u(v($link)) : null,
+                    'title' => $title
+                ], -1, 0 === $key ? null : ($key ?? $m[1][0]), $m[0][0] . ($n[0][0] ?? "")];
                 continue;
             }
             $chops[] = [false, $prev = '[', [], -1];
