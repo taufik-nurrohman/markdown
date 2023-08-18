@@ -158,6 +158,23 @@ function data(?string $row): array {
     if ("" === $row) {
         return [null, $row, [], $dent];
     }
+    // `!…`
+    if (0 === \strpos($row, '!')) {
+        if (
+            // `![asdf](…`
+            \strpos($row, '](') > 0 ||
+            // `![asdf][…`
+            \strpos($row, '][') > 0 ||
+            // `![asdf]` not followed by a `:`
+            false !== ($n = \strpos($row, ']')) && ':' !== \substr($row, $n + 1, 1)
+        ) {
+            // `…)` or `…]` or `…}`
+            if (false !== \strpos(')]}', \substr(\rtrim($row), -1))) {
+                return ['figure', $row, [], $dent];
+            }
+        }
+        return ['p', $row, [], $dent];
+    }
     // `#…`
     if (0 === \strpos($row, '#')) {
         $n = \strspn($row, '#');
@@ -994,6 +1011,17 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
             }
+            if ('figure' === $prev[0]) {
+                // Exit image block
+                if ('p' !== $current[0] && null !== $current[0]) {
+                    $blocks[++$block] = $current;
+                    continue;
+                }
+                if ($current[3] > 0 && $current[3] < 4) {
+                    $blocks[$block][1] .= "\n" . $current[1];
+                    continue;
+                }
+            }
             // Found Setext-header marker level 1 right below a paragraph or quote block
             if ('h1' === $current[0] && '=' === $current[5]) {
                 // <https://spec.commonmark.org/0.30#example-93>
@@ -1044,6 +1072,12 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[++$block] = $current;
                 continue;
             }
+            // Enter image block
+            if ('figure' === $current[0]) {
+                // Start a new image block
+                $blocks[++$block] = $current;
+                continue;
+            }
             // Look like a Setext-header level 1, but preceded by a blank line, treat it as a paragraph block
             // <https://spec.commonmark.org/0.30#example-97>
             if ('h1' === $current[0] && '=' === $current[5] && (!$prev || null === $prev[0])) {
@@ -1059,13 +1093,7 @@ function rows(?string $content, array $lot = []): array {
         }
         // A blank line
         if (null === $current[0]) {
-            // Continue definition list
-            if ($prev && 'dl' === $prev[0]) {
-                $blocks[$block][1] .= "\n";
-                continue;
-            }
-            // Continue code block
-            if ($prev && 'pre' === $prev[0]) {
+            if ($prev && false !== \strpos(',dl,figure,pre,', ',' . $prev[0] . ',')) {
                 $blocks[$block][1] .= "\n";
                 continue;
             }
@@ -1166,6 +1194,27 @@ function rows(?string $content, array $lot = []): array {
             }
             unset($vv);
             $v[1] = \array_merge($a, $b);
+            continue;
+        }
+        if ('figure' === $v[0]) {
+            if (false === \strpos($v[1], "\n")) {
+                $v[1] = $row = row($v[1], $lot)[0];
+                // The image syntax doesn’t seem to appear alone on a single line
+                if (\count($row) > 1) {
+                    $v[0] = 'p';
+                }
+                continue;
+            }
+            [$a, $b] = \explode("\n", $v[1], 2);
+            $row = row($a, $lot)[0];
+            // The image syntax doesn’t seem to appear alone on a single line
+            if (\count($row) > 1) {
+                $v[0] = false;
+                $v[1] = \array_merge([['p', $row, [], 0]], rows($b, $lot)[0]);
+                continue;
+            }
+            $row[] = ['figcaption', false === \strpos($b = \trim($b, "\n"), "\n\n") ? row($b, $lot)[0] : rows($b, $lot)[0], [], 0];
+            $v[1] = $row;
             continue;
         }
         if ('hr' === $v[0]) {

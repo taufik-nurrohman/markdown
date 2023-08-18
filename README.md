@@ -69,6 +69,13 @@ require 'index.php';
 echo convert('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
+Options
+-------
+
+~~~ php
+convert(?string $content, array $lot = [], bool $block = true): ?string;
+~~~
+
 Dialect
 -------
 
@@ -236,7 +243,39 @@ _TODO_
 
 ### Image Block
 
-_TODO_
+Markdown was initiated before the HTML5 era. When the `<figure>` element was introduced, people started using it as a
+feature to display an image with a caption. Most Markdown converters will convert image syntax that stands alone on a
+single line as an image element wrapped in a paragraph element in the output. My converter would instead wrap it in a
+figure element. Because for now, it seems like a figure element would be more desirable in this situation.
+
+Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces greater than 1 but
+less than 4.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>![asdf](asdf.jpg)</code></pre></td>
+      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;/figure&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>![asdf](asdf.jpg)&#10; asdf</code></pre></td>
+      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;figcaption&gt;asdf&lt;/figcaption&gt;&lt;/figure&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>![asdf](asdf.jpg)&#10; asdf&#10;&#10; asdf&#10;&#10;asdf</code></pre></td>
+      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;figcaption&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;/figcaption&gt;&lt;/figure&gt;&lt;p&gt;asdf&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
+FYI, this format should also be valid for average Markdown files. And so it will be gracefully degraded when parsed by
+other Markdown converters.
 
 ### List Block
 
@@ -469,3 +508,14 @@ Tests
 
 Clone this repository into the root of your web server that supports PHP and then you can open the `test.php` file with
 your browser to see the result and the performance of this converter in various cases.
+
+Questions
+---------
+
+_TODO_
+
+Links
+-----
+
+ - Autumn image sample by [@blmiers2](https://www.flickr.com/photos/41304517@N00/6250498399) 
+ - Emoticon image sample by [@emoticons4u](https://web.archive.org/web/20090117060451/http://emoticons4u.com) (web archive)
