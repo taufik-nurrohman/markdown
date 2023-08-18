@@ -703,10 +703,10 @@ function rows(?string $content, array $lot = []): array {
     $blocks = [];
     $rows = \explode("\n", $content);
     foreach ($rows as $row) {
-        // <https://spec.commonmark.org/0.30#tabs>
-        $before = \strstr($row, "\t", true);
-        if (false !== $before) {
-            $row = $before . \str_repeat(' ', 4 - \strlen($before) % 4) . \substr($row, \strlen($before) + 1);
+        // TODO: <https://spec.commonmark.org/0.30#tabs>
+        $n = \strpos($row, "\t");
+        if (false !== $n && $n < 4) {
+            $row = \substr($row, 0, $n) . \str_repeat(' ', 4 - $n) . \substr($row, $n + 1);
         }
         $current = data($row); // `[$type, $row, $data, $dent, …]`
         // If a block is available in the index `$block`, it indicates that we have a previous block.
