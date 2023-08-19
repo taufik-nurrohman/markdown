@@ -401,12 +401,12 @@ function lot(array $row, array $lot = [], $lazy = true): array {
         if ('a' !== $v[0] && 'img' !== $v[0]) {
             continue;
         }
-        if (!isset($v[4])) {
+        if (!isset($v[4][0]) || false === $v[4][0]) {
             continue; // Skip!
         }
-        if (!isset($lot[0][$v[4]]) && $lazy) {
+        if (!isset($lot[0][$v[4][0]]) && $lazy) {
             // Restore the original syntax
-            $v = [false, $v[5], [], -1];
+            $v = [false, $v[4][1], [], -1];
             continue;
         }
         $attr = $v[2];
@@ -416,11 +416,11 @@ function lot(array $row, array $lot = [], $lazy = true): array {
         if (!isset($attr['title'])) {
             unset($attr['title']);
         }
-        $v[2][$k] = $lot[0][$v[4]][0] ?? null;
-        $v[2]['title'] = $lot[0][$v[4]][1] ?? null;
-        $v[2] = \array_replace($v[2], $lot[0][$v[4]][2] ?? [], $attr);
+        $v[2][$k] = $lot[0][$v[4][0]][0] ?? null;
+        $v[2]['title'] = $lot[0][$v[4][0]][1] ?? null;
+        $v[2] = \array_replace($v[2], $lot[0][$v[4][0]][2] ?? [], $attr);
         if ($lazy) {
-            unset($v[4], $v[5]);
+            $v[4][0] = null; // Done!
         }
     }
     unset($v);
@@ -488,10 +488,10 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                 // <https://spec.commonmark.org/0.30#example-572>
                 $row[2]['alt'] = \trim(\strip_tags($alt));
                 $row[2]['src'] = $row[2]['href'];
-                $row[5] = '!' . $row[5];
+                $row[4][1] = '!' . $row[4][1];
                 unset($row[2]['href']);
                 $chops[] = $row;
-                $content = $v = \substr($v, \strlen($prev = $row[5]));
+                $content = $v = \substr($v, \strlen($prev = $row[4][1]));
                 continue;
             }
             $chops[] = [false, $prev = '!', [], -1];
@@ -525,13 +525,13 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                     $content = $v = \substr($v, \strlen($prev = $m[0]));
                     continue;
                 }
-                $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, null, $m[0]];
+                $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $m[0]]];
                 $content = $v = \substr($v, \strlen($m[0]));
                 continue;
             }
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
             if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $v, $m)) {
-                $chops[] = ['a', e($m[1]), ['href' => u($m[1])], -1, null, $m[0]];
+                $chops[] = ['a', e($m[1]), ['href' => u($m[1])], -1, [false, $m[0]]];
                 $content = $v = \substr($v, \strlen($prev = $m[0]));
                 continue;
             }
@@ -587,7 +587,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                     $prev = $n[0][0];
                     // `[asdf]()`
                     if ("" === ($n[1][0] = \trim($n[1][0] ?? ""))) {
-                        $chops[] = ['a', $row, ['href' => ""], -1, null, $m[0][0] . $n[0][0]];
+                        $chops[] = ['a', $row, ['href' => ""], -1, [false, $m[0][0] . $n[0][0]]];
                         $content = $v = \substr($v, \strlen($n[0][0]));
                         continue;
                     }
@@ -637,7 +637,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                             continue;
                         }
                     }
-                    $key = 0;
+                    $key = false;
                     $content = $v = \substr($v, \strlen($n[0][0]));
                 // `…[]` or `…[asdf]`
                 } else if (0 === \strpos($v, '[') && \preg_match('/' . r('[]', true) . '/', $v, $n, \PREG_OFFSET_CAPTURE)) {
@@ -664,7 +664,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                 $chops[] = ['a', $row, \array_replace([
                     'href' => null !== $link ? u(v($link)) : null,
                     'title' => $title
-                ], $attr ?? []), -1, 0 === $key ? null : ($key ?? $m[1][0]), $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")];
+                ], $attr ?? []), -1, [$key ?? $m[1][0], $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                 continue;
             }
             $chops[] = [false, $prev = '[', [], -1];
