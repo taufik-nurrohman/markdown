@@ -53,11 +53,13 @@ body > div > div img[src$='.gif'] {
 body > div > div pre {
   background: #000;
   color: #fff;
+  overflow: auto;
   padding: 1em 1.25em;
 }
 
 body > div > div table {
   border-collapse: collapse;
+  table-layout: fixed;
   width: 100%;
 }
 
@@ -140,11 +142,11 @@ foreach ($files as $v) {
         $out .= '</pre>';
     } else if ('result' === $view) {
         $out .= '<div style="border:2px solid;flex:1;padding:1em;">';
-        $out .= x\markdown\convert($raw);
+        $out .= x\markdown\from($raw);
         $out .= '</div>';
     } else if ('source' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;white-space:pre-wrap;word-wrap:break-word;">';
-        $out .= htmlspecialchars(x\markdown\convert($raw) ?? "");
+        $out .= htmlspecialchars(x\markdown\from($raw) ?? "");
         $out .= '</pre>';
     }
     $end = microtime(true);

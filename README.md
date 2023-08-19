@@ -48,7 +48,7 @@ Require the generated auto-loader file in your application:
 ~~~ php
 <?php
 
-use function x\markdown\convert;
+use function x\markdown\from as convert;
 
 require 'vendor/autoload.php';
 
@@ -62,7 +62,7 @@ Require the `index.php` file in your application:
 ~~~ php
 <?php
 
-use function x\markdown\convert;
+use function x\markdown\from as convert;
 
 require 'index.php';
 
@@ -73,7 +73,9 @@ Options
 -------
 
 ~~~ php
-convert(?string $content, array $lot = [], bool $block = true): ?string;
+<?php
+
+from(?string $content, array $lot = [], bool $block = true): ?string;
 ~~~
 
 Dialect
@@ -511,6 +513,11 @@ Tests
 
 Clone this repository into the root of your web server that supports PHP and then you can open the `test.php` file with
 your browser to see the result and the performance of this converter in various cases.
+
+Tweaks
+------
+
+_TODO_
 
 Questions
 ---------
