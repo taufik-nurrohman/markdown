@@ -453,7 +453,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
     $prev = ""; // Capture the previous chunk
     while (false !== ($v = \strpbrk($content, '\\<`![*_&' . "\n"))) {
         if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($v)))) {
-            $chops[] = [false, $prev, [], -1];
+            $chops[] = [false, e($prev), [], -1];
         }
         if (0 === \strpos($v, "\n")) {
             $prev = $chops[$last = \count($chops) - 1][1] ?? [];
@@ -1093,6 +1093,11 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[$block][1] .= "\n";
                 continue;
             }
+            // <https://spec.commonmark.org/0.30#example-197>
+            if ($prev && \is_int($prev[0]) && false === \strpos($prev[1], ']:')) {
+                $blocks[$block++][0] = 'p';
+                continue;
+            }
             // Default action is to start a new block after a blank line
             $block += 1;
             continue;
@@ -1118,43 +1123,50 @@ function rows(?string $content, array $lot = []): array {
                 continue;
             }
             // Match a reference
-            if (\preg_match('/^' . q('[]', true) . ':(?:\s*(' . q('<>') . '|\S+?)(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . ')\s*)?)(?:\s*(\{.*?\}))?$/', $v[1], $m)) {
-                // Remove reference block from the structure
-                unset($blocks[$k]);
-                // <https://spec.commonmark.org/0.30#matches>
-                $m[1] = \trim(\strtolower(\preg_replace('/\s+/', ' ', $m[1])));
-                // Pre-defined reference data from the `$lot` variable can be overridden, but not if it is from the data
-                // that is embedded in the `$content` variable to conform to the CommonMark specification about
-                // reference priority.
-                // <https://spec.commonmark.org/0.30#example-204>
-                if (isset($lot_of_content[$v[0]][$m[1]])) {
-                    continue;
-                }
-                if ($link = $m[2] ?? "") {
-                    if ('<' === $link[0] && '>' === \substr($link, -1)) {
-                        $link = \substr($link, 1, -1);
-                        // <https://spec.commonmark.org/0.30#example-490>
-                        if (false !== \strpos($link, "\n")) {
-                            $chops[] = [false, $m[0], [], -1];
-                            $content = \substr($content, \strlen($prev = $m[0]));
+            if (0 === \strpos($v[1], '[') && \preg_match('/' . r('[]', true) . '/', $v[1], $m) && ':' === \substr($v[1], \strlen($m[0]), 1)) {
+                $attr = $key = $link = $title = null;
+                if (\preg_match('/^\s*(' . q('<>') . '|\S+?)(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?(?:\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?\s*$/', \substr($v[1], \strlen($m[0]) + 1), $n)) {
+                    // Remove reference block from the structure
+                    unset($blocks[$k]);
+                    // <https://spec.commonmark.org/0.30#matches>
+                    $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', $m[1])));
+                    // Pre-defined reference data from the `$lot` variable can be overridden, but not if it is from the
+                    // data that is embedded in the `$content` variable to conform to the CommonMark specification about
+                    // reference priority.
+                    // <https://spec.commonmark.org/0.30#example-204>
+                    if (isset($lot_of_content[$v[0]][$key])) {
+                        continue;
+                    }
+                    if ($link = $n[1] ?? "") {
+                        if ('<' === $link[0] && '>' === \substr($link, -1)) {
+                            $link = \substr($link, 1, -1);
+                            if ('\\' === \substr($link, -1)) {
+                                $v[0] = 'p';
+                                $v[1] = row($v[1], $lot)[0];
+                                continue;
+                            }
+                        }
+                    }
+                    if ($title = $n[2] ?? null) {
+                        $a = $title[0];
+                        $b = \substr($title, -1);
+                        if (('"' === $a && '"' === $b || "'" === $a && "'" === $b || '(' === $a && ')' === $b) && \preg_match('/^' . q($a . $b) . '$/', $title)) {
+                            $title = v(\html_entity_decode(\substr($title, 1, -1), \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
+                        } else {
+                            $v[0] = 'p';
+                            $v[1] = row($v[1], $lot)[0];
                             continue;
                         }
                     }
-                }
-                if ($title = $m[3] ?? null) {
-                    if (
-                        "'" === $title[0] && "'" === \substr($title, -1) ||
-                        '"' === $title[0] && '"' === \substr($title, -1) ||
-                        '(' === $title[0] && ')' === \substr($title, -1)
-                    ) {
-                        $title = v(\html_entity_decode(\substr($title, 1, -1), \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
+                    if ($attr = $n[3] ?? []) {
+                        $attr = a($n[3], true);
                     }
+                    // Queue the reference data to be used later
+                    $lot_of_content[$v[0]][$key] = $lot[$v[0]][$key] = [u(v($link)), $title, $attr];
+                    continue;
                 }
-                if ($attr = $m[4] ?? []) {
-                    $attr = a($attr, true);
-                }
-                // Queue the reference data to be used later
-                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = [u(v($link)), $title, $attr];
+                $v[0] = 'p';
+                $v[1] = row($v[1], $lot)[0];
                 continue;
             }
         }
