@@ -690,7 +690,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
         }
         if (0 === \strpos($v, '`')) {
             $c = \str_repeat('`', $n = \strspn($v, '`'));
-            if (\preg_match('/^' . $c . '((?:\\\\`|[^`]|' . (1 === $n ? '``+' : '`' . (2 === $n ? "" : '{1,' . ($n - 1) . '}')) . ')+)' . $c . '/', $v, $m)) {
+            if (\preg_match('/^' . $c . '((?:\\\\`|[^`]|' . (1 === $n ? '``+' : '`(?!`)') . ')+)' . $c . '/', $v, $m)) {
                 // <https://spec.commonmark.org/0.30#code-span>
                 $raw = \strtr($m[1], "\n", ' ');
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
