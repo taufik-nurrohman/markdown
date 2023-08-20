@@ -451,7 +451,7 @@ function r(string $char = '[]', $capture = false, string $before = ""): string {
     $a = \preg_quote($char[0], '/');
     $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
-    return '(?:' . $a . ($capture ? '(' : "") . '(?:(?:' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\])*|(?R))*' . ($capture ? ')' : "") . $b . ')';
+    return '(?:' . $a . ($capture ? '(' : "") . '(?:(?:(?R)|' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\])*)*' . ($capture ? ')' : "") . $b . ')';
 }
 
 function raw(?string $content): array {
@@ -540,39 +540,34 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
             // punctuation character and followed by Unicode white-space or a Unicode punctuation character. For
             // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
-            $n = \strspn($chop, $c);
-            $n = $n > 3 ? 3 : $n;
-            $r = 1 === $n ? "" : '{' . $n . '}';
-            if (\preg_match('/(?:' .
-                // Left 1, 2a
-                '[' . $c . ']' . $r . '(?![\p{P}\s])' .
-            '|' .
-                // Left 2b
-                '(?<=^|[\p{P}\s])[' . $c . ']' . $r . '(?=[\p{P}])' .
-            ')(' .
-                '(?:' . (1 === $n ? '[' . $c . ']{2,}|' : "") . '\\\\[' . $c . ']|[^' . $c . ']|(?R))+?' .
-            ')(?:' .
-                // Right 1, 2a
-                '(?<![\p{P}\s])[' . $c . ']' . $r . '(?![' . $c . '])' .
-            '|' .
-                // Right 2b
-                '(?<=[\p{P}])[' . $c . ']' . $r . '(?=[\p{P}\s]|$)' .
-            ')/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            // `***…***`
+            if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?:(?R)|[' . $c . ']{1,2}|\\\\[' . $c . ']|[^' . $c . '])+?(?:(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
+                    $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
+                    $content = $chop = \substr($chop, $m[0][1]);
                 }
-                // `*…*` or `***…***`
-                if (1 === $n || 3 === $n) {
-                    // Prefer `<em><strong>…</strong></em>`
-                    $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1];
-                // `**…**`
+                $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c];
+                $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
+                continue;
+            }
+            $n = \strspn($chop, $c);
+            $em = 1 === $n || $n > 2 ? "" : '{2}';
+            // `*…*` or `**…**`
+            if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?:(?R)|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|\\\\[' . $c . ']|[^' . $c . '])+?(?:(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if ($m[0][1] > 0) {
+                    $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
+                    $content = $chop = \substr($chop, $m[0][1]);
+                }
+                if ($em) {
+                    $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
                 } else {
-                    $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1];
+                    $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c];
                 }
                 $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                 continue;
             }
-            $chops[] = [false, $prev = \str_repeat($c, $n), [], -1];
-            $content = $chop = \substr($chop, $n);
+            $chops[] = [false, $c, [], -1];
+            $content = $chop = \substr($chop, 1);
             continue;
         }
         if (0 === \strpos($chop, '<')) {
@@ -1001,7 +996,7 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
-                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3]) {
+                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0]) {
                     $current[1] = $prev[4][1] . "\n" . $current[1];
                     $blocks[$block] = $current;
                     continue;
