@@ -541,7 +541,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
             // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             // `***…***`
-            if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?:(?R)|[' . $c . ']{1,2}|\\\\[' . $c . ']|[^' . $c . '])+?(?:(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?:(?R)|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']{1,2})+?(?:(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -553,7 +553,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
             $n = \strspn($chop, $c);
             $em = 1 === $n || $n > 2 ? "" : '{2}';
             // `*…*` or `**…**`
-            if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?:(?R)|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|\\\\[' . $c . ']|[^' . $c . '])+?(?:(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?:(?R)|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . ')+?(?:(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -741,7 +741,14 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
         }
         if (0 === \strpos($chop, $c = '`')) {
             $v = \str_repeat($c, $n = \strspn($chop, $c));
-            if (\preg_match('/^' . $v . '((?:\\\\' . $c . '|[^' . $c . ']|' . (1 === $n ? $c . $c . '+' : (2 === $n ? $c . '(?!' . $c . ')' : $c . '{1,' . ($n - 1) . '}(?!' . $c . ')')) . ')+)' . $v . '/', $chop, $m)) {
+            if (1 === $n) {
+                $r = $c . '{2,}';
+            } else if (2 === $n) {
+                $r = $c . '|' . $c . '{3,}';
+            } else {
+                $r = $c . '{1,' . ($n - 1) . '}|' . $c . '{' . ($n + 1) . ',}';
+            }
+            if (\preg_match('/^' . $v . '((?:\\\\' . $c . '|[^' . $c . ']|(?<!' . $c . ')(?:' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
                 // <https://spec.commonmark.org/0.30#code-span>
                 $raw = \strtr($m[1], "\n", ' ');
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
