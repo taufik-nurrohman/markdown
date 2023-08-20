@@ -73,8 +73,6 @@ Options
 -------
 
 ~~~ php
-<?php
-
 from(?string $content, array $lot = [], bool $block = true): ?string;
 ~~~
 

@@ -167,13 +167,13 @@ function data(?string $row): array {
         }
         // `# …`
         if (false !== \strpos(" \t", \substr($row, $n, 1))) {
-            return ['h' . $n, $row, [], $dent, $n, '#'];
+            return ['h' . $n, $row, [], $dent, [$n, '#']];
         }
         return ['p', $row, [], $dent];
     }
     // `*…`
     if ('*' === \rtrim($row)) {
-        return ['ul', "", [], [$dent, 1], $row[0]];
+        return ['ul', "", [], $dent, [1, $row[0]]];
     }
     if (0 === \strpos($row, '*')) {
         // `*[…`
@@ -190,29 +190,29 @@ function data(?string $row): array {
         }
         // `* …`
         if (false !== \strpos(" \t", \substr($row, 1, 1))) {
-            return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
+            return ['ul', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0]]];
         }
         return ['p', $row, [], $dent];
     }
     // `+`
     if ('+' === \rtrim($row)) {
-        return ['ul', "", [], [$dent, 1], $row[0]];
+        return ['ul', "", [], $dent, [1, $row[0]]];
     }
     // `+…`
     if (0 === \strpos($row, '+')) {
         // `+ …`
         if (false !== \strpos(" \t", \substr($row, 1, 1))) {
-            return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
+            return ['ul', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0]]];
         }
         return ['p', $row, [], $dent];
     }
     // `-`
     if ('-' === \rtrim($row)) {
-        return ['ul', "", [], [$dent, 1], $row[0]];
+        return ['ul', "", [], $dent, [1, $row[0]]];
     }
     // `--`
     if ('--' === \rtrim($row)) {
-        return ['h2', $row, [], $dent, 2, '-']; // Look like a Setext-header level 2
+        return ['h2', $row, [], $dent, [2, '-']]; // Look like a Setext-header level 2
     }
     // `-…`
     if (0 === \strpos($row, '-')) {
@@ -226,7 +226,7 @@ function data(?string $row): array {
         }
         // `- …`
         if (false !== \strpos(" \t", \substr($row, 1, 1))) {
-            return ['ul', $row, [], [$dent, 1 + \strspn($row, ' ', 1)], $row[0]];
+            return ['ul', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0]]];
         }
         return ['p', $row, [], $dent];
     }
@@ -274,7 +274,7 @@ function data(?string $row): array {
     // `=…`
     if (0 === \strpos($row, '=')) {
         if (\strspn($row, '=') === \strlen($row)) {
-            return ['h1', $row, [], $dent, 1, '=']; // Look like a Setext-header level 1
+            return ['h1', $row, [], $dent, [1, '=']]; // Look like a Setext-header level 1
         }
         return ['p', $row, [], $dent];
     }
@@ -344,15 +344,15 @@ function data(?string $row): array {
     // `1)` or `1.`
     if ($n && ($n + 1) === \strlen(\rtrim($row)) && false !== \strpos(').', \substr(\rtrim($row), -1))) {
         $start = (int) \substr($row, 0, $n);
-        return ['ol', "", ['start' => 1 !== $start ? $start : null], [$dent, $n + 1], \substr($row, -1), $start];
+        return ['ol', "", ['start' => 1 !== $start ? $start : null], $dent, [$n + 1, $start, \substr($row, -1)]];
     }
     // `1) …` or `1. …`
     if (false !== \strpos(').', \substr($row, $n, 1)) && false !== \strpos(" \t", \substr($row, $n + 1, 1))) {
         $start = (int) \substr($row, 0, $n);
-        return ['ol', $row, ['start' => 1 !== $start ? $start : null], [$dent, $n + 1 + \strspn($row, ' ', $n + 1)], \substr($row, $n, 1), $start];
+        return ['ol', $row, ['start' => 1 !== $start ? $start : null], $dent, [$n + 1 + \strspn($row, ' ', $n + 1), $start, \substr($row, $n, 1)]];
     }
     if ($n = \substr_count($row, '|')) {
-        return ['table', $row, [], $dent, $n];
+        return ['table', $row, [], $dent, [0, $n]];
     }
     return ['p', $row, [], $dent];
 }
@@ -892,7 +892,7 @@ function rows(?string $content, array $lot = []): array {
             if ('p' === $prev[0]) {
                 // <https://spec.commonmark.org/0.30#example-285>
                 // <https://spec.commonmark.org/0.30#example-304>
-                if ('ol' === $current[0] && ("" === $current[1] || 1 !== $current[5])) {
+                if ('ol' === $current[0] && ("" === $current[1] || 1 !== $current[4][1])) {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
@@ -901,8 +901,7 @@ function rows(?string $content, array $lot = []): array {
                     if ('-' === $current[4]) {
                         $blocks[$block][0] = 'h2';
                         $blocks[$block][1] .= "\n" . $row;
-                        $blocks[$block][4] = 2;
-                        $blocks[$block][5] = '-';
+                        $blocks[$block][4] = [2, '-'];
                         $block += 1;
                         continue;
                     }
@@ -953,28 +952,27 @@ function rows(?string $content, array $lot = []): array {
             // manually while we are in the list block.
             if ('ol' === $prev[0]) {
                 // <https://spec.commonmark.org/0.30#example-99>
-                if ('h1' === $current[0] && '=' === $current[5]) {
+                if ('h1' === $current[0] && '=' === $current[4][1]) {
                     $blocks[++$block] = ['p', $current[1], [], $current[3]];
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
-                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3][1]) {
-                    $current[1] = $prev[5] . $prev[4] . "\n" . $current[1];
+                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0]) {
+                    $current[1] = $prev[4][1] . $prev[4][2] . "\n" . $current[1];
                     $blocks[$block] = $current;
                     continue;
                 }
                 // To exit the list, either start a new list marker with a lower number than the previous list number or
                 // use a different number suffix. For example, use `1)` to separate the previous list that was using
                 // `1.` as the list marker.
-                if ('ol' === $current[0] && $current[3][0] === $prev[3][0] && ($current[4] !== $prev[4] || $current[5] < $prev[5])) {
+                if ('ol' === $current[0] && $current[3] === $prev[3] && ($current[4][2] !== $prev[4][2] || $current[4][1] < $prev[4][1])) {
                     // Remove final line break
                     $blocks[$block][1] = \rtrim($prev[1], "\n");
                     $blocks[++$block] = $current;
                     continue;
                 }
                 if (null !== $current[0]) {
-                    $n = \is_int($current[3]) ? $current[3] : $current[3][0];
-                    if ('ol' !== $current[0] && $n < $prev[3][1]) {
+                    if ('ol' !== $current[0] && $current[3] < $prev[4][0]) {
                         if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
                             $blocks[$block][1] .= "\n" . $row; // Lazy list
                             continue;
@@ -987,37 +985,36 @@ function rows(?string $content, array $lot = []): array {
                     }
                 }
                 // Update final number list to track the current highest number
-                if (isset($current[5]) && $current[3][0] === $prev[3][0]) {
-                    $blocks[$block][5] = $current[5];
+                if (isset($current[4][1]) && $current[3] === $prev[3]) {
+                    $blocks[$block][4][1] = $current[4][1];
                 }
                 // Continue as part of the list item content
-                $row = \substr($row, $prev[3][0]);
+                $row = \substr($row, $prev[3]);
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
             }
             // Here goes the bullet list block
             if ('ul' === $prev[0]) {
                 // <https://spec.commonmark.org/0.30#example-99>
-                if ('h1' === $current[0] && '=' === $current[5]) {
+                if ('h1' === $current[0] && '=' === $current[4][1]) {
                     $blocks[++$block] = ['p', $current[1], [], $current[3]];
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
-                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3][1]) {
-                    $current[1] = $prev[4] . "\n" . $current[1];
+                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3]) {
+                    $current[1] = $prev[4][1] . "\n" . $current[1];
                     $blocks[$block] = $current;
                     continue;
                 }
                 // To exit the list, use a different list marker.
-                if ('ul' === $current[0] && $current[3][0] === $prev[3][0] && $current[4] !== $prev[4]) {
+                if ('ul' === $current[0] && $current[3] === $prev[3] && $current[4][1] !== $prev[4][1]) {
                     // Remove final line break
                     $blocks[$block][1] = \rtrim($prev[1], "\n");
                     $blocks[++$block] = $current;
                     continue;
                 }
                 if (null !== $current[0]) {
-                    $n = \is_int($current[3]) ? $current[3] : $current[3][0];
-                    if ('ul' !== $current[0] && $n < $prev[3][1]) {
+                    if ('ul' !== $current[0] && $current[3] < $prev[4][0]) {
                         if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
                             $blocks[$block][1] .= "\n" . $row; // Lazy list
                             continue;
@@ -1030,7 +1027,7 @@ function rows(?string $content, array $lot = []): array {
                     }
                 }
                 // Continue as part of the list item content
-                $row = \substr($row, $prev[3][0]);
+                $row = \substr($row, $prev[3]);
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
             }
@@ -1070,23 +1067,23 @@ function rows(?string $content, array $lot = []): array {
                 continue;
             }
             // Found Setext-header marker level 1 right below a paragraph or quote block
-            if ('h1' === $current[0] && '=' === $current[5]) {
+            if ('h1' === $current[0] && '=' === $current[4][1]) {
                 // <https://spec.commonmark.org/0.30#example-93>
                 if ('blockquote' === $prev[0]) {
                     $blocks[$block][1] .= ' ' . $current[1];
                 } else if ('p' === $prev[0]) {
                     $blocks[$block][0] = $current[0]; // Treat the previous block as Setext-header level 1
                     $blocks[$block][1] .= "\n" . $current[1];
-                    $blocks[$block][5] = $current[5];
+                    $blocks[$block][4] = $current[4];
                 }
                 $block += 1; // Start a new block after this
                 continue;
             }
             // Found Setext-header marker level 2 right below a paragraph block
-            if ('h2' === $current[0] && '-' === $current[5] && 'p' === $prev[0]) {
+            if ('h2' === $current[0] && '-' === $current[4][1] && 'p' === $prev[0]) {
                 $blocks[$block][0] = $current[0]; // Treat the previous block as Setext-header level 2
                 $blocks[$block][1] .= "\n" . $current[1];
-                $blocks[$block][5] = $current[5];
+                $blocks[$block][4] = $current[4];
                 $block += 1; // Start a new block after this
                 continue;
             }
@@ -1094,8 +1091,7 @@ function rows(?string $content, array $lot = []): array {
             if ('hr' === $current[0] && '-' === $current[4] && 'p' === $prev[0] && \strspn($current[1], $current[4]) === \strlen($current[1])) {
                 $blocks[$block][0] = 'h2'; // Treat the previous block as Setext-header level 2
                 $blocks[$block][1] .= "\n" . $current[1];
-                $blocks[$block][4] = 2;
-                $blocks[$block][5] = '-';
+                $blocks[$block][4] = [2, '-'];
                 $block += 1; // Start a new block after this
                 continue;
             }
@@ -1127,7 +1123,7 @@ function rows(?string $content, array $lot = []): array {
             }
             // Look like a Setext-header level 1, but preceded by a blank line, treat it as a paragraph block
             // <https://spec.commonmark.org/0.30#example-97>
-            if ('h1' === $current[0] && '=' === $current[5] && (!$prev || null === $prev[0])) {
+            if ('h1' === $current[0] && '=' === $current[4][1] && (!$prev || null === $prev[0])) {
                 $blocks[++$block] = ['p', $current[1], [], $current[3]];
                 continue;
             }
@@ -1284,7 +1280,7 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if ('h' === $v[0][0]) {
-            if ('#' === $v[5]) {
+            if ('#' === $v[4][1]) {
                 $v[1] = \trim(\substr($v[1], \strspn($v[1], '#')));
                 if ('#' === \substr($v[1], -1)) {
                     $vv = \substr($v[1], 0, \strpos($v[1], '#'));
@@ -1292,8 +1288,8 @@ function rows(?string $content, array $lot = []): array {
                         $v[1] = \substr($vv, 0, -1);
                     }
                 }
-            } else if ('-' === $v[5] || '=' === $v[5]) {
-                $v[1] = \substr($v[1], 0, \strpos($v[1], "\n" . $v[5]));
+            } else if (false !== \strpos('-=', $v[4][1])) {
+                $v[1] = \substr($v[1], 0, \strpos($v[1], "\n" . $v[4][1]));
             }
             // Late attribute parsing
             $at = at($v[1]);
@@ -1308,7 +1304,7 @@ function rows(?string $content, array $lot = []): array {
             $list = \preg_split('/\n(?=\d++[).]\s)/', $v[1]);
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($list as &$vv) {
-                $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]); // Remove indent(s)
+                $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
                 $vv = rows($vv, $lot)[0];
                 if ($list_is_tight && $vv) {
                     foreach ($vv as &$vvv) {
@@ -1342,7 +1338,7 @@ function rows(?string $content, array $lot = []): array {
             $list = \preg_split('/\n(?=[*+-]\s)/', $v[1]);
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($list as &$vv) {
-                $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[3][1]) => "\n"]), $v[3][1]); // Remove indent(s)
+                $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
                 $vv = rows($vv, $lot)[0];
                 if ($list_is_tight && $vv) {
                     foreach ($vv as &$vvv) {
