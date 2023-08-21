@@ -23,7 +23,7 @@ It was fulfilled by [Parsedown version 1.8](https://github.com/erusev/parsedown/
 is no longer being actively maintained. Maybe because the era has changed, where things like this are no longer a
 priority.
 
-The goal of this project was to use it in my [Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown) in
+The goal of this project is to use it in my [Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown) in
 the future. Previously, I wanted to develop this converter directly into the extension, but my friend advised me to
 create this project separately as it might have potential to be used by other developers beyond the
 [Mecha CMS](https://github.com/mecha-cms) developers.
