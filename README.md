@@ -118,6 +118,31 @@ syntax, and a mix of `key=value` attribute syntax:
   </tbody>
 </table>
 
+Inline attributes always win over native syntax attributes and pre-defined attributes:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>[asdf](asdf) {href=x}</code></pre></td>
+      <td><pre><code>&lt;a href="x"&gt;asdf&lt;/a&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>[asdf]&#10;&#10;[asdf]: asdf {href=x}</code></pre></td>
+      <td><pre><code>&lt;a href="x"&gt;asdf&lt;/a&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>[asdf] {.x href=x}&#10;&#10;[asdf]: asdf {.asdf}</code></pre></td>
+      <td><pre><code>&lt;a class="x" href="x"&gt;asdf&lt;/a&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
 ### Code Block
 
 I try to avoid conflict between different Markdown dialects and try to support whatever dialect you are using. For
