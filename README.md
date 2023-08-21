@@ -515,6 +515,15 @@ your browser to see the result and the performance of this converter in various 
 Tweaks
 ------
 
+### Add Strike Syntax
+
+### Make the `markdown="1"` Attribute Work
+
+Make `markdown="1"` attribute work as featured in
+[Markdown Extra](https://michelf.ca/projects/php-markdown/extra#markdown-attr).
+
+### Idea: Embed Syntax
+
 _TODO_
 
 Questions
