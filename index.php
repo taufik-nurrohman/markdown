@@ -177,7 +177,7 @@ function data(?string $row): array {
     }
     if (0 === \strpos($row, '*')) {
         // `*[…`
-        if (1 === \strpos($row, '[') && \strpos($row, ']:') > 2) {
+        if (1 === \strpos($row, '[')) {
             return [1, $row, [], $dent];
         }
         // `***`
@@ -394,7 +394,7 @@ function lot(array $row, array $lot = [], $lazy = true): array {
         if ($pattern && false === $v[0] && \is_string($v[1])) {
             // Optimize if current chunk is a complete word boundary
             if (isset($lot[1][$v[1]])) {
-                $title = $lot[1][$v[1]] ?? "";
+                $title = $lot[1][$v[1]];
                 $v[1] = [['abbr', $v[1], ['title' => "" !== $title ? $title : null], -1]];
                 continue;
             }
@@ -402,13 +402,17 @@ function lot(array $row, array $lot = [], $lazy = true): array {
             $chops = [];
             foreach (\preg_split($pattern, $v[1], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $vv) {
                 if (isset($lot[1][$vv])) {
-                    $title = $lot[1][$vv] ?? "";
+                    $title = $lot[1][$vv];
                     $chops[] = ['abbr', $vv, ['title' => "" !== $title ? $title : null], -1];
                     continue;
                 }
                 $chops[] = [false, $vv, [], -1];
             }
             $v[1] = $chops;
+            continue;
+        }
+        if ($pattern && \is_string($v[0]) && \is_array($v[1])) {
+            $v[1] = lot($v[1], $lot, $lazy);
             continue;
         }
         if ('a' !== $v[0] && 'img' !== $v[0]) {
@@ -788,9 +792,9 @@ function rows(?string $content, array $lot = []): array {
     $blocks = [];
     $rows = \explode("\n", $content);
     foreach ($rows as $row) {
-        // TODO: <https://spec.commonmark.org/0.30#tabs>
-        while (false !== ($prev = \strstr($row, "\t", true)) && ($n = \strlen($prev)) < 4) {
-            $row = $prev . \str_repeat(' ', 4 - $n) . \substr($row, $n + 1);
+        // <https://spec.commonmark.org/0.30#tabs>
+        if (false !== ($n = \strpos($row, "\t")) && $n < 4) {
+            $row = \substr($row, 0, $n) . \str_repeat(' ', 4 - $n) . \substr($row, $n + 1);
         }
         $current = data($row); // `[$type, $row, $data, $dent, …]`
         // If a block is available in the index `$block`, it indicates that we have a previous block.
@@ -900,7 +904,7 @@ function rows(?string $content, array $lot = []): array {
                 }
                 // <https://spec.commonmark.org/0.30#example-285>
                 if ('ul' === $current[0] && "" === $current[1]) {
-                    if ('-' === $current[4]) {
+                    if ('-' === $current[4][1]) {
                         $blocks[$block][0] = 'h2';
                         $blocks[$block][1] .= "\n" . $row;
                         $blocks[$block][4] = [2, '-'];
@@ -1160,14 +1164,14 @@ function rows(?string $content, array $lot = []): array {
         }
         if (\is_int($v[0]) && \strpos($v[1], ']:') > 1) {
             // Match an abbreviation
-            if (\preg_match('/^[*]' . q('[]', true) . ':([\s\S]*?)$/', $v[1], $m)) {
+            if (0 === \strpos($v[1], '*[') && \preg_match('/' . r('[]', true) . '/', \substr($v[1], 1), $m) && ':' === \substr($v[1], \strlen($m[0]) + 1, 1)) {
                 // Remove abbreviation block from the structure
                 unset($blocks[$k]);
                 // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave similar
                 // to the reference specification.
                 $m[1] = \trim(\preg_replace('/\s+/', ' ', $m[1]));
                 // Queue the abbreviation data to be used later
-                $title = \trim($m[2] ?? "");
+                $title = \trim(\substr($v[1], \strlen($m[0]) + 2));
                 $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = $title;
                 continue;
             }
@@ -1224,9 +1228,7 @@ function rows(?string $content, array $lot = []): array {
         }
         if ('blockquote' === $v[0]) {
             $v[1] = \substr(\strtr($v[1], ["\n>" => "\n"]), 1);
-            if (0 === \strpos($v[1], ' ')) {
-                $v[1] = \substr(\strtr($v[1], ["\n " => "\n"]), 1);
-            }
+            $v[1] = \substr(\strtr("\n" . $v[1], ["\n " => "\n"]), 1); // Remove optional space
             $v[1] = rows($v[1], $lot)[0];
             continue;
         }
