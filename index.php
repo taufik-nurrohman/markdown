@@ -382,68 +382,90 @@ function from(?string $content, array $lot = [], $block = true): ?string {
 }
 
 // Apply reference(s), abbreviation(s), and foot-note(s) data to the row(s)
-function lot(array $row, array $lot = [], $lazy = true): array {
+function lot($row, array $lot = [], $lazy = true) {
     if (!$row) {
-        return [];
+        return \is_array($row) ? [] : null;
     }
-    $pattern = [];
-    if (!empty($lot[1])) {
-        foreach ($lot[1] as $k => $v) {
-            $pattern[] = \preg_quote($k, '/');
+    if (\is_string($row)) {
+        // Optimize if current chunk is a complete word boundary
+        if (isset($lot[1][$row])) {
+            $title = $lot[1][$row];
+            return [false, [['abbr', $row, ['title' => "" !== $title ? $title : null], -1]], [], -1];
         }
-    }
-    $pattern = $pattern ? '/\b(' . \implode('|', $pattern) . ')\b/' : 0;
-    foreach ($row as &$v) {
-        if ($pattern && false === $v[0] && \is_string($v[1])) {
-            // Optimize if current chunk is a complete word boundary
-            if (isset($lot[1][$v[1]])) {
-                $title = $lot[1][$v[1]];
-                $v[1] = [['abbr', $v[1], ['title' => "" !== $title ? $title : null], -1]];
-                continue;
+        // Else, chunk by word boundary
+        $pattern = [];
+        if (!empty($lot[1])) {
+            foreach ($lot[1] as $k => $v) {
+                $pattern[] = \preg_quote($k, '/');
             }
-            // Else, chunk by word boundary
+        }
+        $pattern = $pattern ? '/\b(' . \implode('|', $pattern) . ')\b/' : 0;
+        if ($pattern) {
             $chops = [];
-            foreach (\preg_split($pattern, $v[1], -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $vv) {
-                if (isset($lot[1][$vv])) {
-                    $title = $lot[1][$vv];
-                    $chops[] = ['abbr', $vv, ['title' => "" !== $title ? $title : null], -1];
+            foreach (\preg_split($pattern, $row, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
+                if (isset($lot[1][$v])) {
+                    $title = $lot[1][$v];
+                    $chops[] = ['abbr', $v, ['title' => "" !== $title ? $title : null], -1];
                     continue;
                 }
-                $chops[] = [false, $vv, [], -1];
+                $chops[] = $v;
             }
-            $v[1] = $chops;
-            continue;
+            if (1 === \count($chops) && \is_string($chop = \reset($chops))) {
+                return $chop;
+            }
+            return $chops;
         }
-        if ('a' === $v[0] || 'img' === $v[0]) {
-            if (!isset($v[4][0]) || false === $v[4][0]) {
-                continue; // Skip!
-            }
-            if (!isset($lot[0][$v[4][0]]) && $lazy) {
-                // Restore the original syntax
-                $v = [false, $v[4][1], [], -1];
+        return $row;
+    }
+    foreach ($row as &$v) {
+        if (\is_array($v)) {
+            if (false === $v[0] && \is_string($v[1])) {
+                $v = $v[1];
                 continue;
             }
-            $attr = $v[2];
-            if (!isset($attr[$k = 'a' === $v[0] ? 'href' : 'src'])) {
-                unset($attr[$k]);
+            if ('a' === $v[0] || 'img' === $v[0]) {
+                if (!isset($v[4][0]) || false === $v[4][0]) {
+                    continue; // Skip!
+                }
+                if (!isset($lot[0][$v[4][0]]) && $lazy) {
+                    // Restore the original syntax
+                    $v = $v[4][1];
+                    continue;
+                }
+                $data = $v[2];
+                if (!isset($data[$k = 'a' === $v[0] ? 'href' : 'src'])) {
+                    unset($data[$k]);
+                }
+                if (!isset($data['title'])) {
+                    unset($data['title']);
+                }
+                $v[2][$k] = $lot[0][$v[4][0]][0] ?? null;
+                $v[2]['title'] = $lot[0][$v[4][0]][1] ?? null;
+                $v[2] = \array_replace($v[2], $lot[0][$v[4][0]][2] ?? [], $data);
+                if ($lazy) {
+                    $v[4][0] = null; // Done!
+                }
+                continue;
             }
-            if (!isset($attr['title'])) {
-                unset($attr['title']);
+            // Recurse!
+            if (\is_array($v[1])) {
+                $v[1] = lot($v[1], $lot);
             }
-            $v[2][$k] = $lot[0][$v[4][0]][0] ?? null;
-            $v[2]['title'] = $lot[0][$v[4][0]][1] ?? null;
-            $v[2] = \array_replace($v[2], $lot[0][$v[4][0]][2] ?? [], $attr);
-            if ($lazy) {
-                $v[4][0] = null; // Done!
-            }
-            continue;
         }
-        // Recurse!
-        if (\is_array($v[1])) {
-            $v[1] = lot($v[1], $lot);
+        if (\is_string($v)) {
+            $v = lot($v, $lot, $lazy);
+            continue;
         }
     }
     unset($v);
+    if (1 === \count($row)) {
+        if (\is_string($v = \reset($row))) {
+            return $v;
+        }
+        if (\is_array($v) && false === $v[0] && \is_string($v[1])) {
+            return $v[1];
+        }
+    }
     return $row;
 }
 
@@ -465,7 +487,7 @@ function raw(?string $content): array {
     return rows($content);
 }
 
-function row(?string $content, array $lot = [], $no_deep_link = true): array {
+function row(?string $content, array $lot = [], $no_deep_link = true) {
     if ("" === \trim($content ?? "")) {
         return [[], $lot];
     }
@@ -580,7 +602,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
         if (0 === \strpos($chop, '<')) {
             $test = (string) \strstr($chop, '>', true);
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
-            if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d.!#$%&\'*+\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
+            if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
                 // <https://spec.commonmark.org/0.30#example-605>
                 if (false !== \strpos($email = $m[1], '\\')) {
                     $chops[] = [false, e($m[0]), [], -1];
@@ -614,7 +636,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
             continue;
         }
         if (0 === \strpos($chop, '[')) {
-            $attr = $key = $link = $title = null;
+            $data = $key = $link = $title = null;
             // `[asdf]…`
             if (\preg_match('/' . r('[]', true) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 $prev = $m[0][0];
@@ -707,12 +729,13 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                     } else {
                         $of = $lot[0][$key = \trim(\strtolower($n[1][0]))] ?? [];
                     }
-                    $attr = $of[2] ?? [];
+                    $data = $of[2] ?? [];
                     $link = $of[0] ?? null;
                     $title = $of[1] ?? null;
                     $content = $chop = \substr($chop, \strlen($n[0][0]));
                 }
                 // TODO
+                // `[^asdf]`
                 if ('^' === $m[1][0][0]) {
                     $key = \trim(\substr($m[1][0], 1));
                     $chops[] = ['sup', [['a', $key, [
@@ -727,14 +750,14 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                 // …{asdf}
                 if (0 === \strpos(\trim($chop), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'")) . ')/', $chop, $o)) {
                     if ("" !== \trim(\substr($o[1], 1, -1))) {
-                        $attr = \array_replace($attr ?? [], a($o[1], true));
+                        $data = \array_replace($data ?? [], a($o[1], true));
                         $content = $chop = \substr($chop, \strlen($o[0]));
                     }
                 }
                 $chops[] = ['a', $row, \array_replace([
                     'href' => null !== $link ? u(v($link)) : null,
                     'title' => $title
-                ], $attr ?? []), -1, [$key ?? \trim(\strtolower($m[1][0])), $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
+                ], $data ?? []), -1, [$key ?? \trim(\strtolower($m[1][0])), $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                 continue;
             }
             $chops[] = [false, $prev = '[', [], -1];
@@ -788,7 +811,18 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
         $chops[] = [false, e($prev = $content), [], -1];
         $content = $chop = "";
     }
-    return [lot($chops, $lot, false), $lot];
+    if (\is_string($chops = lot($chops, $lot, false))) {
+        return [$chops, $lot];
+    }
+    if (1 === \count($chops)) {
+        if (\is_string($chop = \reset($chops))) {
+            return [$chop, $lot];
+        }
+        if (\is_array($chop) && false === $chop[0] && \is_string($chop[1])) {
+            return [$chop[1], $lot];
+        }
+    }
+    return [$chops, $lot];
 }
 
 function rows(?string $content, array $lot = []): array {
@@ -1192,7 +1226,7 @@ function rows(?string $content, array $lot = []): array {
             }
             // Match a reference
             if (0 === \strpos($v[1], '[') && \preg_match('/' . r('[]', true) . '/', $v[1], $m) && ':' === \substr($v[1], \strlen($m[0]), 1)) {
-                $attr = $key = $link = $title = null;
+                $data = $key = $link = $title = null;
                 if (\preg_match('/^\s*(' . q('<>') . '|\S+?)(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?(?:\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?\s*$/', \substr($v[1], \strlen($m[0]) + 1), $n)) {
                     // Remove reference block from the structure
                     unset($blocks[$k]);
@@ -1229,11 +1263,11 @@ function rows(?string $content, array $lot = []): array {
                             continue;
                         }
                     }
-                    if ($attr = $n[3] ?? []) {
-                        $attr = a($n[3], true);
+                    if ($data = $n[3] ?? []) {
+                        $data = a($n[3], true);
                     }
                     // Queue the reference data to be used later
-                    $lot_of_content[$v[0]][$key] = $lot[$v[0]][$key] = [u(v($link)), $title, $attr];
+                    $lot_of_content[$v[0]][$key] = $lot[$v[0]][$key] = [u(v($link)), $title, $data];
                     continue;
                 }
                 $v[0] = 'p';
@@ -1403,9 +1437,6 @@ function rows(?string $content, array $lot = []): array {
     }
     unset($v);
     foreach ($blocks as &$v) {
-        if (!\is_array($v[1])) {
-            continue;
-        }
         $v[1] = lot($v[1], $lot);
     }
     unset($v);
