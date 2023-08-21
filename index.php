@@ -224,6 +224,9 @@ function data(?string $row): array {
         if (\strspn($test, '-') === ($v = \strlen($test)) && $v > 2) {
             return ['hr', $row, [], $dent, '-'];
         }
+        if (\strspn($test, '-|') === ($v = \strlen($test)) && $v > 1) {
+            return ['table', $row, [], $dent, [0, 0]];
+        }
         // `- …`
         if (false !== \strpos(" \t", \substr($row, 1, 1))) {
             return ['ul', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0]]];
@@ -351,8 +354,8 @@ function data(?string $row): array {
         $start = (int) \substr($row, 0, $n);
         return ['ol', $row, ['start' => 1 !== $start ? $start : null], $dent, [$n + 1 + \strspn($row, ' ', $n + 1), $start, \substr($row, $n, 1)]];
     }
-    if ($n = \substr_count($row, '|')) {
-        return ['table', $row, [], $dent, [0, $n]];
+    if (false !== \strpos($row, '|')) {
+        return ['table', $row, [], $dent, [0, 0]];
     }
     return ['p', $row, [], $dent];
 }
@@ -1336,6 +1339,30 @@ function rows(?string $content, array $lot = []): array {
             }
             $v[1] = [['code', $v[1], $v[2]]];
             $v[2] = [];
+            continue;
+        }
+        // TODO
+        if ('table' === $v[0]) {
+            $table = [
+                ['thead', [['tr', [], [], 0]], 0],
+                ['tbody', [], [], 0]
+            ];
+            $rows = \explode("\n", $v[1]);
+            foreach (\explode('|', \trim(\array_shift($rows), " \t|")) as $vv) {
+                $table[0][1][0][1][] = ['th', \trim($vv), [], 0];
+            }
+            \array_shift($rows);
+            foreach ($rows as $vv) {
+                $row = ['tr', [], [], 0];
+                foreach (\explode('|', \trim($vv, " \t|")) as $vvv) {
+                    $row[1][] = ['td', \trim($vvv), [], 0];
+                }
+                $table[1][1][] = $row;
+            }
+            if (empty($table[1][1])) {
+                unset($table[1]);
+            }
+            $v[1] = $table;
             continue;
         }
         if ('ul' === $v[0]) {
