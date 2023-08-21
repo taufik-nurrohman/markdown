@@ -517,10 +517,29 @@ Tweaks
 
 ### Add Strike Syntax
 
+_TODO_
+
 ### Make the `markdown="1"` Attribute Work
 
 Make `markdown="1"` attribute work as featured in
-[Markdown Extra](https://michelf.ca/projects/php-markdown/extra#markdown-attr).
+[Markdown Extra](https://michelf.ca/projects/php-markdown/extra#markdown-attr). Line that sits directly below the
+opening HTML block tag is not considered to be a parsable CommonMark block. Adding a blank line before it is enough to
+end the raw HTML block state:
+
+~~~ php
+$content = file_get_contents('.\path\to\file.md');
+
+if (false !== strpos($content, ' markdown="1"')) {
+    $content = preg_replace_callback('/^<[^>]+>/m', static function ($m) {
+        if (false !== strpos($m[0], ' markdown="1"')) {
+            return strtr($m[0], [' markdown="1"' => ""]) . "\n\n";
+        }
+        return $m[0];
+    }, $content);
+}
+
+echo convert($content);
+~~~
 
 ### Idea: Embed Syntax
 
