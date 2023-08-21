@@ -515,9 +515,47 @@ your browser to see the result and the performance of this converter in various 
 Tweaks
 ------
 
-### Add Strike Syntax
+Not all Markdown dialects are supported for various reasons. Some of the modification methods below can be implemented
+to add features that you might find in other Markdown converters.
 
-_TODO_
+Your Markdown content is represented as variable `$content`. If you modify the content before the function `convert()`
+is called, it means that you modify the Markdown content before it is converted. If you modify the content after the
+function `convert()` is called, it means that you modify the results of the Markdown conversion.
+
+### Add Strike Feature
+
+This method allows you to add strike-through syntax, as you may have already noticed in the
+[GFM specification](https://github.github.com/gfm):
+
+~~~ php
+$content = convert($content);
+
+$content = preg_replace('/((?<![~])[~]{1,2}(?![~]))([^~]+)\1/', '<del>$2</del>', $content);
+
+echo $content;
+~~~
+
+### Add Task List Feature
+
+I am against the task list feature because it promotes bad practices to abuse the form input element. Although from the
+presentation side it displays a check box interface correctly, I still believe that input elements should ideally be
+used inside a form element. There are several symbols that are more suitable, and even they are easier to read from the
+Markdown source, which means that this feature can actually be made using the existing list feature.
+
+In case you need it, or don’t want to update your existing task list syntax in your Markdown files, here’s the hack:
+
+~~~ php
+$content = convert($content);
+
+$content = strtr($content, [
+    '<li><p>[ ] ' => '<li><p>&#x2610; ',
+    '<li><p>[x] ' => '<li><p>&#x2612; ',
+    '<li>[ ] ' => '<li>&#x2610; ',
+    '<li>[x] ' => '<li>&#x2612; '
+]);
+
+echo $content;
+~~~
 
 ### Make the `markdown="1"` Attribute Work
 
@@ -529,21 +567,23 @@ end the raw HTML block state:
 ~~~ php
 <?php
 
-$content = file_get_contents('.\path\to\file.md');
+$content = preg_replace_callback('/^[ ]{0,3}<[^>]+>/m', static function ($m) {
+    if (false !== strpos($m[0], ' markdown="1"')) {
+        return strtr($m[0], [' markdown="1"' => ""]) . "\n\n";
+    }
+    return $m[0];
+}, $content);
 
-if (false !== strpos($content, ' markdown="1"')) {
-    $content = preg_replace_callback('/^<[^>]+>/m', static function ($m) {
-        if (false !== strpos($m[0], ' markdown="1"')) {
-            return strtr($m[0], [' markdown="1"' => ""]) . "\n\n";
-        }
-        return $m[0];
-    }, $content);
-}
+$content = convert($content);
 
-echo convert($content);
+echo $content;
 ~~~
 
 ### Idea: Embed Syntax
+
+_TODO_
+
+### Idea: Note Block
 
 _TODO_
 

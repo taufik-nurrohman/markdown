@@ -414,33 +414,33 @@ function lot(array $row, array $lot = [], $lazy = true): array {
             $v[1] = $chops;
             continue;
         }
-        if ($pattern && \is_string($v[0]) && \is_array($v[1])) {
-            $v[1] = lot($v[1], $lot, $lazy);
+        if ('a' === $v[0] || 'img' === $v[0]) {
+            if (!isset($v[4][0]) || false === $v[4][0]) {
+                continue; // Skip!
+            }
+            if (!isset($lot[0][$v[4][0]]) && $lazy) {
+                // Restore the original syntax
+                $v = [false, $v[4][1], [], -1];
+                continue;
+            }
+            $attr = $v[2];
+            if (!isset($attr[$k = 'a' === $v[0] ? 'href' : 'src'])) {
+                unset($attr[$k]);
+            }
+            if (!isset($attr['title'])) {
+                unset($attr['title']);
+            }
+            $v[2][$k] = $lot[0][$v[4][0]][0] ?? null;
+            $v[2]['title'] = $lot[0][$v[4][0]][1] ?? null;
+            $v[2] = \array_replace($v[2], $lot[0][$v[4][0]][2] ?? [], $attr);
+            if ($lazy) {
+                $v[4][0] = null; // Done!
+            }
             continue;
         }
-        if ('a' !== $v[0] && 'img' !== $v[0]) {
-            continue;
-        }
-        if (!isset($v[4][0]) || false === $v[4][0]) {
-            continue; // Skip!
-        }
-        if (!isset($lot[0][$v[4][0]]) && $lazy) {
-            // Restore the original syntax
-            $v = [false, $v[4][1], [], -1];
-            continue;
-        }
-        $attr = $v[2];
-        if (!isset($attr[$k = 'a' === $v[0] ? 'href' : 'src'])) {
-            unset($attr[$k]);
-        }
-        if (!isset($attr['title'])) {
-            unset($attr['title']);
-        }
-        $v[2][$k] = $lot[0][$v[4][0]][0] ?? null;
-        $v[2]['title'] = $lot[0][$v[4][0]][1] ?? null;
-        $v[2] = \array_replace($v[2], $lot[0][$v[4][0]][2] ?? [], $attr);
-        if ($lazy) {
-            $v[4][0] = null; // Done!
+        // Recurse!
+        if (\is_array($v[1])) {
+            $v[1] = lot($v[1], $lot);
         }
     }
     unset($v);
@@ -712,6 +712,18 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                     $title = $of[1] ?? null;
                     $content = $chop = \substr($chop, \strlen($n[0][0]));
                 }
+                // TODO
+                if ('^' === $m[1][0][0]) {
+                    $key = \trim(\substr($m[1][0], 1));
+                    $chops[] = ['sup', [['a', $key, [
+                        'href' => '#to:' . $key,
+                        'role' => 'doc-noteref'
+                    ]]], [
+                        'id' => 'from:' . $key
+                    ], -1];
+                    $content = $chop = \substr($chop, \strlen($m[0][0]));
+                    continue;
+                }
                 // …{asdf}
                 if (0 === \strpos(\trim($chop), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'")) . ')/', $chop, $o)) {
                     if ("" !== \trim(\substr($o[1], 1, -1))) {
@@ -722,7 +734,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true): array {
                 $chops[] = ['a', $row, \array_replace([
                     'href' => null !== $link ? u(v($link)) : null,
                     'title' => $title
-                ], $attr ?? []), -1, [$key ?? $m[1][0], $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
+                ], $attr ?? []), -1, [$key ?? \trim(\strtolower($m[1][0])), $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                 continue;
             }
             $chops[] = [false, $prev = '[', [], -1];
