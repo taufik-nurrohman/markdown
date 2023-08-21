@@ -527,6 +527,8 @@ opening HTML block tag is not considered to be a parsable CommonMark block. Addi
 end the raw HTML block state:
 
 ~~~ php
+<?php
+
 $content = file_get_contents('.\path\to\file.md');
 
 if (false !== strpos($content, ' markdown="1"')) {
