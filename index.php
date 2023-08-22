@@ -177,7 +177,7 @@ function data(?string $row): array {
     }
     if (0 === \strpos($row, '*')) {
         // `*[…`
-        if (1 === \strpos($row, '[')) {
+        if (1 === \strpos($row, '[') && false === \strpos($row, '](') && false === \strpos($row, '][')) {
             return [1, $row, [], $dent];
         }
         // `***`
