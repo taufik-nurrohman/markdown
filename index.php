@@ -620,6 +620,23 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             continue;
         }
         if (0 === \strpos($chop, '<')) {
+            if (0 === \strpos($chop, '<!') && \preg_match('/^<[!]((?:' . q('"') . '|' . q("'") . '|[^>])*)>/', $chop, $m)) {
+                if (0 === \strpos($m[0], '<!--') && '-->' === \substr($m[0], -3) && (4 === \strpos($m[0], '>') || false !== \strpos(\substr($m[1], 3, -2), '--') || '-' === \substr($m[0], -4, 1))) {
+                    // <https://spec.commonmark.org/0.30#example-625>
+                    // <https://spec.commonmark.org/0.30#example-626>
+                    $chops[] = [false, e($m[0]), [], -1];
+                    $content = $chop = \substr($chop, \strlen($m[0]));
+                    continue;
+                }
+                $chops[] = [false, $m[0], [], -1];
+                $content = $chop = \substr($chop, \strlen($m[0]));
+                continue;
+            }
+            if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<[?]((?:' . q('"') . '|' . q("'") . '|[^>])*)[?]>/', $chop, $m)) {
+                $chops[] = [false, $m[0], [], -1];
+                $content = $chop = \substr($chop, \strlen($m[0]));
+                continue;
+            }
             $test = (string) \strstr($chop, '>', true);
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
             if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
@@ -1211,14 +1228,23 @@ function rows(?string $content, array $lot = []): array {
         }
         // A blank line
         if (null === $current[0]) {
-            if ($prev && false !== \strpos(',dl,figure,pre,', ',' . $prev[0] . ',')) {
-                $blocks[$block][1] .= "\n";
-                continue;
-            }
-            // <https://spec.commonmark.org/0.30#example-197>
-            if ($prev && \is_int($prev[0]) && false === \strpos($prev[1], ']:')) {
-                $blocks[$block++][0] = 'p';
-                continue;
+            if ($prev) {
+                if (false !== \strpos(',dl,figure,pre,', ',' . $prev[0] . ',')) {
+                    $blocks[$block][1] .= "\n";
+                    continue;
+                }
+                if (\is_string($prev[1]) && (
+                    false !== \strpos($prev[1], '<!') ||
+                    false !== \strpos($prev[1], '<' . '?')
+                )) {
+                    $blocks[$block][1] .= "\n";
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.30#example-197>
+                if (\is_int($prev[0]) && false === \strpos($prev[1], ']:')) {
+                    $blocks[$block++][0] = 'p';
+                    continue;
+                }
             }
             // Default action is to start a new block after a blank line
             $block += 1;
