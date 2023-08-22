@@ -140,7 +140,6 @@ $out .= '<legend>';
 $out .= 'Preview';
 $out .= '</legend>';
 $out .= '<select name="view">';
-$out .= '<option' . ('fine' === $view ? ' selected' : "") . ' value="fine">Fine</option>';
 $out .= '<option' . ('raw' === $view ? ' selected' : "") . ' value="raw">Raw</option>';
 $out .= '<option' . ('result' === $view ? ' selected' : "") . ' value="result">HTML</option>';
 $out .= '<option' . ('source' === $view ? ' selected' : "") . ' value="source">Source</option>';
@@ -164,14 +163,7 @@ foreach ($files as $v) {
     ]);
     $out .= '</pre>';
     $start = microtime(true);
-    if ('fine' === $view) {
-        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
-        $out .= strtr(htmlspecialchars(x\markdown\fine(x\markdown\raw($raw)) ?? ""), [
-            "\t" => '<span class="char-tab">' . "\t" . '</span>',
-            ' ' => '<span class="char-space"> </span>'
-        ]);
-        $out .= '</pre>';
-    } else if ('raw' === $view) {
+    if ('raw' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
         [$blocks, $lot] = x\markdown\raw($raw);
         $out .= htmlspecialchars('$blocks = ' . var_export($blocks, true) . ';');
