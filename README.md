@@ -1,6 +1,8 @@
 Markdown to HTML Converter
 ==========================
 
+With 90% compliance to [CommonMark 0.30](https://spec.commonmark.org/0.30) specifications.
+
 Motivation
 ----------
 
@@ -308,7 +310,32 @@ other Markdown converters.
 
 ### List Block
 
-_TODO_
+List block follows the CommonMark specifications with one exception: if the next ordered list item uses a number less
+than the number of the previous ordered list item, a new list block will be created. This is different from the original
+specification, which does not care about the literal value of the number.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>1. asdf&#10;2. asdf&#10;3. asdf</code></pre></td>
+      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>1. asdf&#10;1. asdf&#10;1. asdf</code></pre></td>
+      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>1. asdf&#10;2. asdf&#10;1. asdf</code></pre></td>
+      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
 ### Raw Block
 
@@ -564,7 +591,7 @@ echo $content;
 
 I am against the task list feature because it promotes bad practices to abuse the form input element. Although from the
 presentation side it displays a check box interface correctly, I still believe that input elements should ideally be
-used inside a form element. There are several symbols that are more suitable, and even they are easier to read from the
+used inside a form element. There are several Unicode symbols that are more suitable and easier to read from the
 Markdown source, which means that this feature can actually be made using the existing list feature.
 
 In case you need it, or don’t want to update your existing task list syntax in your Markdown files, here’s the hack:

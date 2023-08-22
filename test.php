@@ -15,7 +15,7 @@ require __DIR__ . D . 'index.php';
 $test = $_GET['test'] ?? 'p';
 $view = $_GET['view'] ?? 'source';
 
-if ('LICENSE' === $test) {
+if ('LICENSE' === $test || 'TEST' === $test) {
     $files = [__DIR__ . D . 'LICENSE'];
 } else if ('README' === $test) {
     $files = [__DIR__ . D . 'README.md'];
@@ -133,6 +133,10 @@ $out .= ' ';
 $out .= '<button' . ('README' === $test ? ' disabled' : "") . ' name="test" type="submit" value="README">';
 $out .= 'README';
 $out .= '</button>';
+$out .= ' ';
+$out .= '<button' . ('TEST' === $test ? ' disabled' : "") . ' name="test" type="submit" value="TEST">';
+$out .= 'TEST';
+$out .= '</button>';
 
 $out .= '</fieldset>';
 $out .= '<fieldset>';
@@ -154,14 +158,31 @@ $out .= '</form>';
 foreach ($files as $v) {
     $content = "";
     $raw = file_get_contents($v);
-    $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
-    $out .= '<div style="display:flex;gap:1em;">';
-    $out .= '<pre style="background:#ccc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
-    $out .= strtr(htmlspecialchars($raw), [
-        "\t" => '<span class="char-tab">' . "\t" . '</span>',
-        ' ' => '<span class="char-space"> </span>'
-    ]);
-    $out .= '</pre>';
+    if ('TEST' !== $test) {
+        $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
+    }
+    $out .= '<div style="display:flex;gap:1em;margin:1em 0 0;">';
+    if ('TEST' !== $test) {
+        $out .= '<pre style="background:#ccc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+        $out .= strtr(htmlspecialchars($raw), [
+            "\t" => '<span class="char-tab">' . "\t" . '</span>',
+            ' ' => '<span class="char-space"> </span>'
+        ]);
+        $out .= '</pre>';
+    } else {
+        $out .= '<form method="get" style="display:flex;flex:1;flex-direction:column;">';
+        $out .= '<textarea name="value" style="background:#ffa;border:2px solid #000;color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;min-height:28em;outline:0;resize:vertical;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+        $out .= htmlspecialchars($raw);
+        $out .= '</textarea>';
+        $out .= '<p>';
+        $out .= '<button type="submit">';
+        $out .= 'Submit';
+        $out .= '</button>';
+        $out .= '</p>';
+        $out .= '<input name="test" type="hidden" value="' . $test . '">';
+        $out .= '<input name="view" type="hidden" value="' . $view . '">';
+        $out .= '</form>';
+    }
     $start = microtime(true);
     if ('raw' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
@@ -171,7 +192,7 @@ foreach ($files as $v) {
         $out .= htmlspecialchars('$lot = ' . var_export($lot, true) . ';');
         $out .= '</pre>';
     } else if ('result' === $view) {
-        $out .= '<div style="border:2px solid;flex:1;padding:1em;">';
+        $out .= '<div style="border:2px solid #000;color:#000;flex:1;padding:1em;">';
         $out .= x\markdown\from($raw);
         $out .= '</div>';
     } else if ('source' === $view) {
