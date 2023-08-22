@@ -365,12 +365,24 @@ function e(string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
 }
 
 function from(?string $content, array $lot = [], $block = true): ?string {
+    if (!$block) {
+        $row = row($content, $lot);
+        if (!$row[0]) {
+            return null;
+        }
+        if (\is_string($row[0])) {
+            $v = \trim(\preg_replace('/\s+/', ' ', $row[0]));
+            return "" !== $v ? $v : null;
+        }
+        foreach ($row[0] as &$v) {
+            $v = \is_array($v) ? s($v) : $v;
+        }
+        $v = \trim(\preg_replace('/\s+/', ' ', \implode("", $row[0])));
+        return "" !== $v ? $v : null;
+    }
     $rows = rows($content, $lot);
     if (!$rows[0]) {
         return null;
-    }
-    if (!$block) {
-        // TODO
     }
     foreach ($rows[0] as &$row) {
         $row = \is_array($row) ? s($row) : $row;
@@ -420,7 +432,7 @@ function lot($row, array $lot = [], $lazy = true) {
     }
     foreach ($row as &$v) {
         if (\is_array($v)) {
-            if (false === $v[0] && \is_string($v[1])) {
+            if ((false === $v[0] || '&' === $v[0]) && \is_string($v[1])) {
                 $v = $v[1];
                 continue;
             }
@@ -778,9 +790,9 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                     $chops[] = ['sup', [['a', $key, [
                         'href' => '#to:' . $key,
                         'role' => 'doc-noteref'
-                    ]]], [
+                    ], -1, [false, "", true]]], [
                         'id' => 'from:' . $key
-                    ], -1];
+                    ], -1, [$key]];
                     $content = $chop = \substr($chop, \strlen($m[0][0]));
                     continue;
                 }
