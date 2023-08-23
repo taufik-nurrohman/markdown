@@ -970,14 +970,14 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if ('?' === $prev[4][0]) {
-                    if (false !== \strpos($prev[1], '?' . '>')) {
+                    if (false !== \strpos(\preg_replace('/(' . q('"') . '|' . q("'") . ')/', "", $prev[1]), '?' . '>')) {
                         if (null === $current[0]) {
                             continue;
                         }
                         $blocks[++$block] = $current;
                         continue;
                     }
-                    if (false !== \strpos($row, '?' . '>')) {
+                    if (false !== \strpos(\preg_replace('/(' . q('"') . '|' . q("'") . ')/', "", $row), '?' . '>')) {
                         $blocks[$block++][1] .= "\n" . $row;
                         continue;
                     }
