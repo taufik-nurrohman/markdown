@@ -545,32 +545,34 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             $content = \substr($chop, 1);
             continue;
         }
-        if (0 === \strpos($chop, '![')) {
-            $row = row(\substr($chop, 1), $lot, false)[0][0];
-            if ('a' === $row[0]) {
-                $row[0] = 'img';
-                if (\is_array($row[1])) {
-                    $alt = "";
-                    foreach ($row[1] as $v) {
-                        // <https://spec.commonmark.org/0.30#example-573>
-                        if (\is_array($v) && 'img' === $v[0]) {
-                            $alt .= $v[2]['alt'] ?? "";
-                            continue;
+        if (0 === \strpos($chop, '!')) {
+            if (1 === \strpos($chop, '[')) {
+                $row = row(\substr($chop, 1), $lot, false)[0][0];
+                if ('a' === $row[0]) {
+                    $row[0] = 'img';
+                    if (\is_array($row[1])) {
+                        $alt = "";
+                        foreach ($row[1] as $v) {
+                            // <https://spec.commonmark.org/0.30#example-573>
+                            if (\is_array($v) && 'img' === $v[0]) {
+                                $alt .= $v[2]['alt'] ?? "";
+                                continue;
+                            }
+                            $alt .= \is_array($v) ? s($v) : $v;
                         }
-                        $alt .= \is_array($v) ? s($v) : $v;
+                    } else {
+                        $alt = $row[1];
                     }
-                } else {
-                    $alt = $row[1];
+                    $row[1] = false;
+                    // <https://spec.commonmark.org/0.30#example-572>
+                    $row[2]['alt'] = \trim(\strip_tags($alt));
+                    $row[2]['src'] = $row[2]['href'];
+                    $row[4][1] = '!' . $row[4][1];
+                    unset($row[2]['href']);
+                    $chops[] = $row;
+                    $content = $chop = \substr($chop, \strlen($prev = $row[4][1]));
+                    continue;
                 }
-                $row[1] = false;
-                // <https://spec.commonmark.org/0.30#example-572>
-                $row[2]['alt'] = \trim(\strip_tags($alt));
-                $row[2]['src'] = $row[2]['href'];
-                $row[4][1] = '!' . $row[4][1];
-                unset($row[2]['href']);
-                $chops[] = $row;
-                $content = $chop = \substr($chop, \strlen($prev = $row[4][1]));
-                continue;
             }
             $chops[] = [false, $prev = '!', [], -1];
             $content = $chop = \substr($chop, 1);
@@ -590,7 +592,6 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             $content = $chop = \substr($chop, \strlen($prev = $m[0]));
             continue;
         }
-        // TODO
         if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
             // A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode white-space, and
             // either (2a) not followed by a Unicode punctuation character, or (2b) followed by a Unicode
@@ -632,30 +633,31 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             continue;
         }
         if (0 === \strpos($chop, '<')) {
-            if (0 === \strpos($chop, '<!--') && \preg_match('/^<!--([\s\S]*?)-->/', $chop, $m)) {
+            if (0 === \strpos($chop, '<!--') && false !== ($n = \strpos($chop, '-->'))) {
+                $v = \substr($chop, 0, $n + 3);
                 // <https://spec.commonmark.org/0.30#example-625>
                 // <https://spec.commonmark.org/0.30#example-626>
-                if (4 === \strpos($m[0], '>') || false !== \strpos($m[1], '--') || '-' === \substr($m[0], -4, 1)) {
+                if (4 === \strpos($v, '>') || false !== \strpos(\substr($v, 4, -3), '--') || '-' === \substr($v, -4, 1)) {
                     $chops[] = [false, e($prev = '<'), [], -1];
                     $content = $chop = \substr($chop, 1);
                     continue;
                 }
-                $chops[] = [false, $m[0], [], -1];
-                $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                $chops[] = [false, \strtr($v, "\n", ' '), [], -1];
+                $content = $chop = \substr($chop, \strlen($prev = $v));
                 continue;
             }
-            if (0 === \strpos($chop, '<![CDATA[') && \preg_match('/^<!\[CDATA\[([\s\S]*?)\]\]>/', $chop, $m)) {
-                $chops[] = [false, $m[0], [], -1];
-                $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+            if (0 === \strpos($chop, '<![CDATA[') && ($n = \strpos($chop, ']]>')) > 8) {
+                $chops[] = [false, \strtr($v = \substr($chop, 0, $n + 3), "\n", ' '), [], -1];
+                $content = $chop = \substr($chop, \strlen($prev = $v));
                 continue;
             }
             if (0 === \strpos($chop, '<!') && \preg_match('/^<!((?:' . q('"') . '|' . q("'") . '|[^>])+)>/', $chop, $m)) {
-                $chops[] = [false, $m[0], [], -1];
+                $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
             if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<\?((?:' . q('"') . '|' . q("'") . '|[^>])+)\?>/', $chop, $m)) {
-                $chops[] = [false, $m[0], [], -1];
+                $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
@@ -970,14 +972,14 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if ('?' === $prev[4][0]) {
-                    if (false !== \strpos(\preg_replace('/(' . q('"') . '|' . q("'") . ')/', "", $prev[1]), '?' . '>')) {
+                    if (false !== \strpos(\preg_replace('/' . q('"') . '|' . q("'") . '/', "", $prev[1]), '?' . '>')) {
                         if (null === $current[0]) {
                             continue;
                         }
                         $blocks[++$block] = $current;
                         continue;
                     }
-                    if (false !== \strpos(\preg_replace('/(' . q('"') . '|' . q("'") . ')/', "", $row), '?' . '>')) {
+                    if (false !== \strpos(\preg_replace('/' . q('"') . '|' . q("'") . '/', "", $row), '?' . '>')) {
                         $blocks[$block++][1] .= "\n" . $row;
                         continue;
                     }
