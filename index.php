@@ -98,30 +98,6 @@ function a(?string $info, $raw = false) {
     return null;
 }
 
-// Takes out attribute(s) from its row
-function at(string $row) {
-    $at = [$row, []];
-    if ("" === ($row = \rtrim($row))) {
-        return $at;
-    }
-    // Must ends with `}` but not with `\}`
-    if ('}' !== \substr($row, -1) || '\\}' === \substr($row, -2)) {
-        return $at;
-    }
-    // Must contains `{` but not `\{`
-    if (false === ($a = \strpos($row, '{')) || '\\' === \substr($row, $a - 1, 1)) {
-        return $at;
-    }
-    if (\preg_match('/^(.+?)\s*(\{.+?\})\s*$/', $row, $m)) {
-        if ("" === \trim(\substr($m[2], 1, -1))) {
-            return $at;
-        }
-        $at[0] = $m[1];
-        $at[1] = a($m[2], true);
-    }
-    return $at;
-}
-
 function d(string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
     return \html_entity_decode($v, $as, 'UTF-8');
 }
@@ -389,7 +365,7 @@ function from(?string $content, array $lot = [], $block = true): ?string {
     }
     $content = \implode("", $rows[0]);
     // Merge sequence of definition list into single definition list
-    $content = \strtr($content, ['</dl><dl>' => ""]);
+    // $content = \strtr($content, ['</dl><dl>' => ""]);
     return $content;
 }
 
@@ -1005,60 +981,9 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
             }
-            if ('p' === $prev[0]) {
-                // <https://spec.commonmark.org/0.30#example-285>
-                // <https://spec.commonmark.org/0.30#example-304>
-                if ('ol' === $current[0] && ("" === $current[1] || 1 !== $current[4][1])) {
-                    $blocks[$block][1] .= "\n" . $row;
-                    continue;
-                }
-                // <https://spec.commonmark.org/0.30#example-285>
-                if ('ul' === $current[0] && "" === $current[1]) {
-                    if ('-' === $current[4][1]) {
-                        $blocks[$block][0] = 'h2';
-                        $blocks[$block][1] .= "\n" . $row;
-                        $blocks[$block][4] = [2, '-'];
-                        $block += 1;
-                        continue;
-                    }
-                    $blocks[$block][1] .= "\n" . $row;
-                    continue;
-                }
-                // Probably a definition list with gap(s) between the term(s) and their definition data. Check if the
-                // current paragraph is followed by one or more blank line(s) and a definition data. If so, convert the
-                // current paragraph to a part of the definition list.
-                if (null === $current[0]) {
-                    $back = 0;
-                    // Move the array pointer forward until reaching a non-blank row
-                    while (false !== ($next = \next($rows))) {
-                        ++$back;
-                        if (0 === \strpos($next, ': ')) {
-                            // If the next non-blank row appears to be a definition data row, consider the current blank
-                            // row as part of the definition list
-                            $current[0] = 'dl';
-                            break;
-                        }
-                        if ("" !== $next) {
-                            break;
-                        }
-                    }
-                    // Reset the array pointer to the normal pointer
-                    while (--$back >= 0) {
-                        \prev($rows);
-                    }
-                }
-            }
-            // Verify that the current block has a type of `dl`, and verify that the previous block has a type of
-            // `dl` or `p`. If so, merge the current block with the previous block, then change the type of the
-            // previous block to `dl`.
-            if ('dl' === $current[0] && ('dl' === $prev[0] || 'p' === $prev[0])) {
-                $blocks[$block][0] = 'dl';
-                $blocks[$block][1] .= "\n" . $row;
-                continue;
-            }
-            // Verify that the current block has already been converted to a definition list, then verify that the
-            // next row is a paragraph with initial indentation, then merge it with the previous block.
-            if ('dl' === $prev[0] && \strspn($row, ' ') >= 2) {
+            // Verify that the current block has already been converted to a definition list, then verify that the next
+            // row is a paragraph with indentation greater than 1, then merge it with the previous block.
+            if ('dl' === $prev[0] && \strspn($row, ' ') > 1) {
                 $row = \substr($row, 2); // Length of `: ` character(s)
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
@@ -1108,6 +1033,56 @@ function rows(?string $content, array $lot = []): array {
                 $row = \substr($row, $prev[3]);
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
+            }
+            if ('p' === $prev[0]) {
+                // Immediately followed by a definition data, convert previous block to a part of the definition list.
+                if ('dl' === $current[0]) {
+                    $blocks[$block][0] = 'dl';
+                    $blocks[$block][1] .= "\n" . $row;
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.30#example-285>
+                // <https://spec.commonmark.org/0.30#example-304>
+                if ('ol' === $current[0] && ("" === $current[1] || 1 !== $current[4][1])) {
+                    $blocks[$block][1] .= "\n" . $row;
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.30#example-285>
+                if ('ul' === $current[0] && "" === $current[1]) {
+                    if ('-' === $current[4][1]) {
+                        $blocks[$block][0] = 'h2';
+                        $blocks[$block][1] .= "\n" . $row;
+                        $blocks[$block][4] = [2, '-'];
+                        $block += 1;
+                        continue;
+                    }
+                    $blocks[$block][1] .= "\n" . $row;
+                    continue;
+                }
+                // Probably a definition list with gap(s) between the term(s) and their definition data. Check if the
+                // current block is followed by one or more blank line(s) and a definition data. If so, convert the
+                // current block to a part of the definition list.
+                if (null === $current[0]) {
+                    $b = 0;
+                    $skip = false;
+                    while (false !== ($next = \next($rows))) {
+                        ++$b;
+                        if ("" !== $next) {
+                            if (0 === \strpos($next, ': ')) {
+                                $blocks[$block][0] = 'dl';
+                                $blocks[$block][1] .= "\n";
+                                $skip = true;
+                            }
+                            break;
+                        }
+                    }
+                    while (--$b > 0) {
+                        \prev($rows);
+                    }
+                    if ($skip) {
+                        continue;
+                    }
+                }
             }
             // Here goes the bullet list block
             if ('ul' === $prev[0]) {
@@ -1231,6 +1206,12 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[++$block] = $current;
                 continue;
             }
+            // Found a definition data without its term
+            if ('dl' === $current[0] && !$prev) {
+                // Fall back to the default block
+                $blocks[++$block] = ['p', $current[1], [], $current[3]];
+                continue;
+            }
             // Enter image block
             if ('figure' === $current[0]) {
                 // Start a new image block
@@ -1253,7 +1234,7 @@ function rows(?string $content, array $lot = []): array {
         // A blank line
         if (null === $current[0]) {
             if ($prev) {
-                if (false !== \strpos(',dl,figure,pre,', ',' . $prev[0] . ',')) {
+                if (false !== \strpos(',figure,pre,', ',' . $prev[0] . ',')) {
                     $blocks[$block][1] .= "\n";
                     continue;
                 }
@@ -1273,6 +1254,10 @@ function rows(?string $content, array $lot = []): array {
     foreach ($blocks as $k => &$v) {
         if (false === $v[0]) {
             continue;
+        }
+        if ('dl' === $v[0] && isset($blocks[$k + 1]) && 'dl' === $blocks[$k + 1][0]) {
+            $v[1] .= "\n" . $blocks[$k + 1][1];
+            continue; // TODO
         }
         if (\is_int($v[0]) && \strpos($v[1], ']:') > 1) {
             // Match an abbreviation
@@ -1411,10 +1396,11 @@ function rows(?string $content, array $lot = []): array {
                 $v[1] = \substr($v[1], 0, \strpos($v[1], "\n" . $v[4][1]));
             }
             // Late attribute parsing
-            $at = at($v[1]);
-            if ($at[1]) {
-                $v[1] = $at[0];
-                $v[2] = \array_replace($v[2], $at[1]);
+            if (\strpos($v[1], '{') > 0 && \preg_match('/' . q('{}', true, q('"') . '|' . q("'")) . '$/', $v[1], $m, \PREG_OFFSET_CAPTURE)) {
+                if ("" !== \trim($m[1][0]) && '\\' !== \substr($v[1], $m[0][1] - 1, 1)) {
+                    $v[1] = \rtrim(\substr($v[1], 0, $m[0][1]));
+                    $v[2] = \array_replace($v[2], a(\rtrim($m[0][0]), true));
+                }
             }
             $v[1] = row($v[1], $lot)[0];
             continue;
