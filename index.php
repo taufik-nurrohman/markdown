@@ -213,7 +213,7 @@ function data(?string $row): array {
     if (0 === \strpos($row, ':')) {
         // `: …`
         if (false !== \strpos(" \t", \substr($row, 1, 1))) {
-            return ['dl', $row, [], $dent]; // Look like a part of a definition list
+            return ['dl', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0], ""]]; // Look like a definition list
         }
         return ['p', $row, [], $dent];
     }
@@ -364,8 +364,6 @@ function from(?string $content, array $lot = [], $block = true): ?string {
         $row = \is_array($row) ? s($row) : $row;
     }
     $content = \implode("", $rows[0]);
-    // Merge sequence of definition list into single definition list
-    // $content = \strtr($content, ['</dl><dl>' => ""]);
     return $content;
 }
 
@@ -436,6 +434,9 @@ function lot($row, array $lot = [], $lazy = true) {
                 }
                 continue;
             }
+            if ('code' === $v[0]) {
+                continue;
+            }
             // Recurse!
             if (\is_string($v[1])) {
                 $v[1] = [lot($v[1], $lot)];
@@ -452,29 +453,41 @@ function lot($row, array $lot = [], $lazy = true) {
         }
     }
     unset($v);
-    if (1 === \count($row)) {
-        if (\is_string($v = \reset($row))) {
-            return $v;
-        }
-        if (\is_array($v) && false === $v[0]) {
+    return m($row);
+}
+
+function m(array $row) {
+    if (!$row) {
+        return [];
+    }
+    if (1 === ($count = \count($row))) {
+        $v = \reset($row);
+        if (\is_array($v) && false === $v[0] && \is_string($v[1])) {
             return $v[1];
+        }
+        if (\is_string($v)) {
+            return $v;
         }
     }
     // Simplify an array of continuous string(s) into a single string
-    if (\count($row) > 1) {
-        foreach ($row as $k => $v) {
-            $prev = $row[$k - 1] ?? 0;
-            if (\is_string($prev) && \is_string($v)) {
-                $row[$k - 1] .= $v;
-                unset($row[$k]);
-                continue;
-            }
+    $row = \array_values($row);
+    foreach ($row as $k => $v) {
+        if (\is_string($row[$k - 1] ?? 0) && \is_string($v)) {
+            $row[$k - 1] .= $v;
+            unset($row[$k]);
+            continue;
         }
-        if (1 === \count($row) && \is_string($v = \reset($row))) {
+    }
+    if (1 === \count($row)) {
+        $v = \reset($row);
+        if (\is_array($v) && false === $v[0] && \is_string($v[1])) {
+            return $v[1];
+        }
+        if (\is_string($v)) {
             return $v;
         }
     }
-    return \array_values($row);
+    return $row;
 }
 
 function q(string $char = '"', $capture = false, string $before = ""): string {
@@ -618,22 +631,22 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                     $content = $chop = \substr($chop, 1);
                     continue;
                 }
-                $chops[] = [false, \strtr($v, "\n", ' '), [], -1];
+                $chops[] = [false, \strtr($v, "\n", ' '), [], -1, '!--'];
                 $content = $chop = \substr($chop, \strlen($prev = $v));
                 continue;
             }
             if (0 === \strpos($chop, '<![CDATA[') && ($n = \strpos($chop, ']]>')) > 8) {
-                $chops[] = [false, \strtr($v = \substr($chop, 0, $n + 3), "\n", ' '), [], -1];
+                $chops[] = [false, \strtr($v = \substr($chop, 0, $n + 3), "\n", ' '), [], -1, '![CDATA['];
                 $content = $chop = \substr($chop, \strlen($prev = $v));
                 continue;
             }
             if (0 === \strpos($chop, '<!') && \preg_match('/^<!((?:' . q('"') . '|' . q("'") . '|[^>])+)>/', $chop, $m)) {
-                $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1];
+                $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \rtrim(\strtok(\substr($m[0], 1), " \n\t>"), '/')];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
             if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<\?((?:' . q('"') . '|' . q("'") . '|[^>])+)\?>/', $chop, $m)) {
-                $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1];
+                $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \strtok(\substr($m[0], 1), " \n\t>")];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
@@ -657,14 +670,14 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 continue;
             }
             // <https://spec.commonmark.org/0.30#raw-html>
-            if (\preg_match('/^<\/[a-z][a-z\d-]*\s*>/i', $chop, $m)) {
-                $chops[] = [false, $m[0], [], -1];
+            if (\preg_match('/^<(\/[a-z][a-z\d-]*)\s*>/i', $chop, $m)) {
+                $chops[] = [false, $m[0], [], -1, $m[1]];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
             // <https://spec.commonmark.org/0.30#raw-html>
-            if (\preg_match('/^<[a-z][a-z\d-]*(\s[a-z:_][\w.:-]*(\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
-                $chops[] = [false, $m[0], [], -1];
+            if (\preg_match('/^<([a-z][a-z\d-]*)(\s[a-z:_][\w.:-]*(\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
+                $chops[] = [false, $m[0], [], -1, $m[1]];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
@@ -851,15 +864,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
     if (\is_string($chops = lot($chops, $lot, false))) {
         return [$chops, $lot];
     }
-    if (1 === \count($chops)) {
-        if (\is_string($chop = \reset($chops))) {
-            return [$chop, $lot];
-        }
-        if (\is_array($chop) && false === $chop[0] && \is_string($chop[1])) {
-            return [$chop[1], $lot];
-        }
-    }
-    return [$chops, $lot];
+    return [m($chops), $lot];
 }
 
 function rows(?string $content, array $lot = []): array {
@@ -983,8 +988,7 @@ function rows(?string $content, array $lot = []): array {
             }
             // Verify that the current block has already been converted to a definition list, then verify that the next
             // row is a paragraph with indentation greater than 1, then merge it with the previous block.
-            if ('dl' === $prev[0] && \strspn($row, ' ') > 1) {
-                $row = \substr($row, 2); // Length of `: ` character(s)
+            if ('dl' === $prev[0] && \strspn($row, ' ') >= $prev[4][0]) {
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
             }
@@ -1039,6 +1043,7 @@ function rows(?string $content, array $lot = []): array {
                 if ('dl' === $current[0]) {
                     $blocks[$block][0] = 'dl';
                     $blocks[$block][1] .= "\n" . $row;
+                    $blocks[$block][4] = $current[4];
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#example-285>
@@ -1071,6 +1076,7 @@ function rows(?string $content, array $lot = []): array {
                             if (0 === \strpos($next, ': ')) {
                                 $blocks[$block][0] = 'dl';
                                 $blocks[$block][1] .= "\n";
+                                $blocks[$block][4] = [2, ':', ""];
                                 $skip = true;
                             }
                             break;
@@ -1234,7 +1240,7 @@ function rows(?string $content, array $lot = []): array {
         // A blank line
         if (null === $current[0]) {
             if ($prev) {
-                if (false !== \strpos(',figure,pre,', ',' . $prev[0] . ',')) {
+                if (false !== \strpos(',dl,figure,pre,', ',' . $prev[0] . ',')) {
                     $blocks[$block][1] .= "\n";
                     continue;
                 }
@@ -1255,9 +1261,12 @@ function rows(?string $content, array $lot = []): array {
         if (false === $v[0]) {
             continue;
         }
-        if ('dl' === $v[0] && isset($blocks[$k + 1]) && 'dl' === $blocks[$k + 1][0]) {
-            $v[1] .= "\n" . $blocks[$k + 1][1];
-            continue; // TODO
+        if ('dl' === $v[0]) {
+            if (isset($blocks[$k + 1]) && 'dl' === $blocks[$k + 1][0]) {
+                $v[1] .= "\n" . $blocks[$k + 1][1];
+                unset($blocks[$k + 1]);
+            }
+            continue;
         }
         if (\is_int($v[0]) && \strpos($v[1], ']:') > 1) {
             // Match an abbreviation
@@ -1331,33 +1340,6 @@ function rows(?string $content, array $lot = []): array {
             $v[1] = rows($v[1], $lot)[0];
             continue;
         }
-        if ('dl' === $v[0]) {
-            [$a, $b] = \preg_split('/\n++(?=:[ \t])/', $v[1], 2);
-            $a = \explode("\n", $a);
-            $b = \preg_split('/\n++(?=:[ \t])/', $b);
-            $list_is_tight = false === \strpos($v[1], "\n\n");
-            foreach ($a as &$vv) {
-                $vv = ['dt', $vv, [], 0];
-            }
-            unset($vv);
-            foreach ($b as &$vv) {
-                $vv = \substr($vv, 2); // Length of `: ` character(s)
-                $vv = rows($vv, $lot)[0];
-                if ($list_is_tight && $vv) {
-                    foreach ($vv as &$vvv) {
-                        if ('p' === $vvv[0]) {
-                            $vvv[0] = false;
-                        }
-                    }
-                    unset($vvv);
-                }
-                $vv = ['dd', $vv, [], 0];
-            }
-            unset($vv);
-            $v[1] = \array_merge($a, $b);
-            $v[4][] = !$list_is_tight;
-            continue;
-        }
         if ('figure' === $v[0]) {
             if (false === \strpos($v[1] = \trim($v[1], "\n"), "\n")) {
                 $v[1] = $row = row($v[1], $lot)[0];
@@ -1396,7 +1378,7 @@ function rows(?string $content, array $lot = []): array {
                 $v[1] = \substr($v[1], 0, \strpos($v[1], "\n" . $v[4][1]));
             }
             // Late attribute parsing
-            if (\strpos($v[1], '{') > 0 && \preg_match('/' . q('{}', true, q('"') . '|' . q("'")) . '$/', $v[1], $m, \PREG_OFFSET_CAPTURE)) {
+            if (\strpos($v[1], '{') > 0 && \preg_match('/' . q('{}', true, q('"') . '|' . q("'")) . '\s*$/', $v[1], $m, \PREG_OFFSET_CAPTURE)) {
                 if ("" !== \trim($m[1][0]) && '\\' !== \substr($v[1], $m[0][1] - 1, 1)) {
                     $v[1] = \rtrim(\substr($v[1], 0, $m[0][1]));
                     $v[2] = \array_replace($v[2], a(\rtrim($m[0][0]), true));
@@ -1406,14 +1388,14 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if ('ol' === $v[0]) {
-            $list = \preg_split('/\n(?=\d++[).]\s)/', $v[1]);
+            $list = \preg_split('/\n++(?=\d++[).]\s)/', $v[1]);
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($list as &$vv) {
                 $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
                 $vv = rows($vv, $lot)[0];
-                if ($list_is_tight && $vv) {
+                if ($list_is_tight && \is_array($vv)) {
                     foreach ($vv as &$vvv) {
-                        if ('p' === $vvv[0]) {
+                        if (\is_array($vvv) && 'p' === $vvv[0]) {
                             $vvv[0] = false;
                         }
                     }
@@ -1465,14 +1447,14 @@ function rows(?string $content, array $lot = []): array {
             continue;
         }
         if ('ul' === $v[0]) {
-            $list = \preg_split('/\n(?=[*+-]\s)/', $v[1]);
+            $list = \preg_split('/\n++(?=[*+-]\s)/', $v[1]);
             $list_is_tight = false === \strpos($v[1], "\n\n");
             foreach ($list as &$vv) {
                 $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
                 $vv = rows($vv, $lot)[0];
-                if ($list_is_tight && $vv) {
+                if ($list_is_tight && \is_array($vv)) {
                     foreach ($vv as &$vvv) {
-                        if ('p' === $vvv[0]) {
+                        if (\is_array($vvv) && 'p' === $vvv[0]) {
                             $vvv[0] = false;
                         }
                     }
@@ -1490,6 +1472,32 @@ function rows(?string $content, array $lot = []): array {
         }
     }
     foreach ($blocks as &$v) {
+        // Late definition list parsing
+        if ('dl' === $v[0]) {
+            $list = \preg_split('/\n++(?=:\s|[^:\s])/', $v[1]);
+            $list_is_tight = false === \strpos($v[1], "\n\n");
+            foreach ($list as &$vv) {
+                if (\strlen($vv) > 2 && ':' === $vv[0] && false !== \strpos(" \t", $vv[1])) {
+                    $vv = rows(\substr(\strtr($vv, [
+                        "\n  " => "\n"
+                    ]), 2), $lot)[0];
+                    if ($list_is_tight && \is_array($vv)) {
+                        foreach ($vv as &$vvv) {
+                            if (\is_array($vvv) && 'p' === $vvv[0]) {
+                                $vvv[0] = false;
+                            }
+                        }
+                        unset($vvv);
+                    }
+                    $vv = ['dd', $vv, [], 0];
+                    continue;
+                }
+                $vv = ['dt', row($vv)[0], [], 0];
+            }
+            unset($vv);
+            $v[1] = $list;
+            $v[4][] = !$list_is_tight;
+        }
         $v[1] = lot($v[1], $lot);
     }
     return [$blocks, $lot];
