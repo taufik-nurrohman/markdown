@@ -310,9 +310,9 @@ other Markdown converters.
 
 ### List Block
 
-List block follows the CommonMark specifications with one exception: if the next ordered list item uses a number less
-than the number of the previous ordered list item, a new list block will be created. This is different from the original
-specification, which does not care about the literal value of the number.
+List block follows the CommonMark specifications with one exception: if the next ordered list item uses a number that is
+less than the number of the previous ordered list item, a new list block will be created. This is different from the
+original specification, which does not care about the literal value of the number.
 
 <table>
   <thead>
