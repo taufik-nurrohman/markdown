@@ -997,60 +997,29 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[$block][1] .= "\n" . $row;
                 continue;
             }
-            // Verify that the current block has already been converted to a definition list, then verify that the next
-            // row is a paragraph with indentation greater than 1, then merge it with the previous block.
-            if ('dl' === $prev[0] && \strspn($row, ' ') >= $prev[4][0]) {
-                $blocks[$block][1] .= "\n" . $row;
-                continue;
-            }
-            // List block is so complex that I decided to blindly concatenate all of the remaining line(s) until the
-            // very end of the stream by default when the first list marker is found. To exit the list, we will do so
-            // manually while we are in the list block.
-            if ('ol' === $prev[0]) {
-                // <https://spec.commonmark.org/0.30#example-99>
-                if ('h1' === $current[0] && '=' === $current[4][1]) {
-                    $blocks[++$block] = ['p', $current[1], [], $current[3]];
-                    continue;
-                }
-                // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
-                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0]) {
-                    $current[1] = $prev[4][1] . $prev[4][2] . "\n" . $current[1];
-                    $blocks[$block] = $current;
-                    continue;
-                }
-                // To exit the list, either start a new list marker with a lower number than the previous list number or
-                // use a different number suffix. For example, use `1)` to separate the previous list that was using
-                // `1.` as the list marker.
-                if ('ol' === $current[0] && $current[3] === $prev[3] && ($current[4][2] !== $prev[4][2] || $current[4][1] < $prev[4][1])) {
-                    // Remove final line break
-                    $blocks[$block][1] = \rtrim($prev[1], "\n");
-                    $blocks[++$block] = $current;
-                    continue;
-                }
-                if (null !== $current[0]) {
-                    if ('ol' !== $current[0] && $current[3] < $prev[4][0]) {
-                        if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
-                            $blocks[$block][1] .= "\n" . $row; // Lazy list
-                            continue;
+            if ('p' === $prev[0]) {
+                if (null === $current[0]) {
+                    $back = 0;
+                    while (false !== ($next = \next($rows))) {
+                        ++$back;
+                        if (($n = \strspn($next, ' ')) < 4) {
+                            $next = \substr($next, $n);
                         }
-                        // Remove final line break
-                        $blocks[$block][1] = \rtrim($prev[1], "\n");
-                        // Exit the list using block(s) other than the paragraph block
-                        $blocks[++$block] = $current;
-                        continue;
+                        if ("" !== $next) {
+                            if (0 === \strpos($next, ': ')) {
+                                $data = data($next);
+                                $blocks[$block][0] = $data[0];
+                                $blocks[$block][1] .= "\n";
+                                $blocks[$block][4] = $data[4];
+                            }
+                            break;
+                        }
+                    }
+                    while (--$back > 0) {
+                        \prev($rows);
                     }
                 }
-                // Update final number list to track the current highest number
-                if (isset($current[4][1]) && $current[3] === $prev[3]) {
-                    $blocks[$block][4][1] = $current[4][1];
-                }
-                // Continue as part of the list item content
-                $row = \substr($row, $prev[3]);
-                $blocks[$block][1] .= "\n" . $row;
-                continue;
-            }
-            if ('p' === $prev[0]) {
-                // Immediately followed by a definition data, convert previous block to a part of the definition list.
+                // Followed by a definition data, convert previous block to a part of the definition list.
                 if ('dl' === $current[0]) {
                     $blocks[$block][0] = 'dl';
                     $blocks[$block][1] .= "\n" . $row;
@@ -1075,33 +1044,68 @@ function rows(?string $content, array $lot = []): array {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
-                // Probably a definition list with gap(s) between the term(s) and their definition data. Check if the
-                // current block is followed by one or more blank line(s) and a definition data. If so, convert the
-                // current block to a part of the definition list.
-                if (null === $current[0]) {
-                    $b = 0;
-                    $skip = false;
-                    while (false !== ($next = \next($rows))) {
-                        ++$b;
-                        if ("" !== $next) {
-                            if (0 === \strpos($next, ': ')) {
-                                $blocks[$block][0] = 'dl';
-                                $blocks[$block][1] .= "\n";
-                                $blocks[$block][4] = [2, ':', ""];
-                                $skip = true;
-                            }
-                            break;
-                        }
-                    }
-                    while (--$b > 0) {
-                        \prev($rows);
-                    }
-                    if ($skip) {
+            }
+            // List block is so complex that I decided to blindly concatenate all of the remaining line(s) until the
+            // very end of the stream by default when the first list marker is found. To exit the list, we will do so
+            // manually while we are in the list block.
+            if ('dl' === $prev[0]) {
+                if (null !== $current[0]) {
+                    if ('dl' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
+                        // Remove final line break
+                        $blocks[$block][1] = \rtrim($prev[1], "\n");
+                        // Exit the list using block(s) other than the paragraph block
+                        $blocks[++$block] = $current;
                         continue;
                     }
                 }
+                // Continue as part of the list item content
+                $row = \substr($row, $prev[3]);
+                $blocks[$block][1] .= "\n" . $row;
+                continue;
             }
-            // Here goes the bullet list block
+            if ('ol' === $prev[0]) {
+                // <https://spec.commonmark.org/0.30#example-99>
+                if ('h1' === $current[0] && '=' === $current[4][1]) {
+                    $blocks[++$block] = ['p', $current[1], [], $current[3]];
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
+                if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0]) {
+                    $current[1] = $prev[4][1] . $prev[4][2] . "\n" . $current[1];
+                    $blocks[$block] = $current;
+                    continue;
+                }
+                // To exit the list, either start a new list marker with a lower number than the previous list number or
+                // use a different number suffix. For example, use `1)` to separate the previous list that was using
+                // `1.` as the list marker.
+                if ('ol' === $current[0] && $current[3] === $prev[3] && ($current[4][2] !== $prev[4][2] || $current[4][1] < $prev[4][1])) {
+                    // Remove final line break
+                    $blocks[$block][1] = \rtrim($prev[1], "\n");
+                    $blocks[++$block] = $current;
+                    continue;
+                }
+                if (null !== $current[0]) {
+                    if ('ol' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
+                        if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
+                            $blocks[$block][1] .= "\n" . $row; // Lazy list
+                            continue;
+                        }
+                        // Remove final line break
+                        $blocks[$block][1] = \rtrim($prev[1], "\n");
+                        // Exit the list using block(s) other than the paragraph block
+                        $blocks[++$block] = $current;
+                        continue;
+                    }
+                }
+                // Update final number list to track the current highest number
+                if (isset($current[4][1]) && $current[3] === $prev[3]) {
+                    $blocks[$block][4][1] = $current[4][1];
+                }
+                // Continue as part of the list item content
+                $row = \substr($row, $prev[3]);
+                $blocks[$block][1] .= "\n" . $row;
+                continue;
+            }
             if ('ul' === $prev[0]) {
                 // <https://spec.commonmark.org/0.30#example-99>
                 if ('h1' === $current[0] && '=' === $current[4][1]) {
@@ -1122,7 +1126,7 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
                 if (null !== $current[0]) {
-                    if ('ul' !== $current[0] && $current[3] < $prev[4][0]) {
+                    if ('ul' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
                         if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
                             $blocks[$block][1] .= "\n" . $row; // Lazy list
                             continue;
@@ -1223,12 +1227,12 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[++$block] = $current;
                 continue;
             }
-            // Found a definition data without its term
-            if ('dl' === $current[0] && !$prev) {
-                // Fall back to the default block
-                $blocks[++$block] = ['p', $current[1], [], $current[3]];
-                continue;
-            }
+            // // Found a definition data without its term
+            // if ('dl' === $current[0] && !$prev) {
+            //     // Fall back to the default block
+            //     $blocks[++$block] = ['p', $current[1], [], $current[3]];
+            //     continue;
+            // }
             // Enter image block
             if ('figure' === $current[0]) {
                 // Start a new image block
@@ -1251,7 +1255,7 @@ function rows(?string $content, array $lot = []): array {
         // A blank line
         if (null === $current[0]) {
             if ($prev) {
-                if (false !== \strpos(',dl,figure,pre,', ',' . $prev[0] . ',')) {
+                if (false !== \strpos(',figure,pre,', ',' . $prev[0] . ',')) {
                     $blocks[$block][1] .= "\n";
                     continue;
                 }
