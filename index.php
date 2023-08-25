@@ -373,7 +373,7 @@ function lot($row, array $lot = [], $lazy = true) {
         // Keep the `false` value because it is used to mark void element(s)
         return false === $row ? false : null;
     }
-    if (\is_string($row)) {
+    if (\is_string($row = m($row))) {
         // Optimize if current chunk is a complete word boundary
         if (isset($lot[1][$row])) {
             $title = $lot[1][$row];
@@ -405,9 +405,8 @@ function lot($row, array $lot = [], $lazy = true) {
         return $row;
     }
     foreach ($row as &$v) {
-        if (\is_array($v)) {
-            if ((false === $v[0] || '&' === $v[0]) && \is_string($v[1])) {
-                $v = $v[1];
+        if (\is_array($v) && isset($v[0])) {
+            if (false === $v[0] || 'code' === $v[0]) {
                 continue;
             }
             if ('a' === $v[0] || 'img' === $v[0]) {
@@ -434,31 +433,20 @@ function lot($row, array $lot = [], $lazy = true) {
                 }
                 continue;
             }
-            if ('code' === $v[0]) {
-                continue;
-            }
             // Recurse!
-            if (\is_string($v[1])) {
-                $v[1] = [lot($v[1], $lot)];
-                continue;
-            }
             if (\is_array($v[1])) {
                 $v[1] = lot($v[1], $lot);
                 continue;
             }
         }
-        if (\is_string($v)) {
-            $v = lot($v, $lot, $lazy);
-            continue;
-        }
     }
     unset($v);
-    return m($row);
+    return $row;
 }
 
-function m(array $row) {
-    if (!$row) {
-        return [];
+function m($row) {
+    if (!$row || !\is_array($row)) {
+        return $row;
     }
     if (1 === ($count = \count($row))) {
         $v = \reset($row);
@@ -487,7 +475,7 @@ function m(array $row) {
             return $v;
         }
     }
-    return $row;
+    return \array_values($row);
 }
 
 function q(string $char = '"', $capture = false, string $before = ""): string {
@@ -520,17 +508,17 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
     // situation, the code wrap will be consumed first.
     while (false !== ($chop = \strpbrk($content, '\\<`|*_![&' . "\n"))) {
         if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($chop)))) {
-            $chops[] = [false, e($prev), [], -1];
+            $chops[] = e($prev);
         }
         if (0 === \strpos($chop, "\n")) {
-            $prev = $chops[$last = \count($chops) - 1][1] ?? [];
+            $prev = $chops[$last = \count($chops) - 1] ?? [];
             if (\is_string($prev) && ('  ' === \substr(\strtr($prev, ["\t" => '  ']), -2))) {
-                $chops[$last][1] = $prev = \rtrim($prev);
+                $chops[$last] = $prev = \rtrim($prev);
                 $chops[] = ['br', false, [], -1];
                 $content = \ltrim(\substr($chop, 1));
                 continue;
             }
-            $chops[] = [false, $prev = ' ', [], -1];
+            $chops[] = ' ';
             $content = \substr($chop, 1);
             continue;
         }
@@ -563,13 +551,13 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                     continue;
                 }
             }
-            $chops[] = [false, $prev = '!', [], -1];
+            $chops[] = $prev = '!';
             $content = $chop = \substr($chop, 1);
             continue;
         }
         if (0 === \strpos($chop, '&')) {
             if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?:#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
-                $chops[] = [false, e($prev = '&'), [], -1];
+                $chops[] = e($prev = '&');
                 $content = $chop = \substr($chop, 1);
                 continue;
             }
@@ -606,7 +594,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             // `*…*` or `**…**`
             if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?:(?R)|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . ')+?(?:(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
-                    $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
+                    $chops[] = e(\substr($chop, 0, $m[0][1]));
                     $content = $chop = \substr($chop, $m[0][1]);
                 }
                 if ($em) {
@@ -617,7 +605,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                 continue;
             }
-            $chops[] = [false, $c, [], -1];
+            $chops[] = $c;
             $content = $chop = \substr($chop, 1);
             continue;
         }
@@ -627,7 +615,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 // <https://spec.commonmark.org/0.30#example-625>
                 // <https://spec.commonmark.org/0.30#example-626>
                 if (4 === \strpos($v, '>') || false !== \strpos(\substr($v, 4, -3), '--') || '-' === \substr($v, -4, 1)) {
-                    $chops[] = [false, e($prev = '<'), [], -1];
+                    $chops[] = e($prev = '<');
                     $content = $chop = \substr($chop, 1);
                     continue;
                 }
@@ -655,7 +643,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
                 // <https://spec.commonmark.org/0.30#example-605>
                 if (false !== \strpos($email = $m[1], '\\')) {
-                    $chops[] = [false, e($m[0]), [], -1];
+                    $chops[] = e($m[0]);
                     $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
@@ -681,7 +669,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
-            $chops[] = [false, e($prev = '<'), [], -1];
+            $chops[] = e($prev = '<');
             $content = $chop = \substr($chop, 1);
             continue;
         }
@@ -691,11 +679,11 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             if (\preg_match('/' . r('[]', true) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 $prev = $m[0][0];
                 if ($m[0][1] > 0) {
-                    $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
+                    $chops[] = e(\substr($chop, 0, $m[0][1]));
                     $content = $chop = \substr($chop, $m[0][1]);
                 }
                 $row = row($m[1][0], $lot)[0];
-                if ($no_deep_link && $row && false !== \strpos($m[1][0], '[')) {
+                if ($no_deep_link && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
                     $deep = false;
                     foreach ($row as $v) {
                         if (\is_array($v) && 'a' === $v[0]) {
@@ -706,11 +694,11 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                     }
                     // <https://spec.commonmark.org/0.30#example-517>
                     if ($deep) {
-                        $chops[] = [false, '[', [], -1];
+                        $chops[] = '[';
                         foreach ($row as $v) {
                             $chops[] = $v;
                         }
-                        $chops[] = [false, ']', [], -1];
+                        $chops[] = ']';
                         $content = $chop = \substr($chop, \strlen($m[0][0]));
                         continue;
                     }
@@ -749,7 +737,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                     // <https://spec.commonmark.org/0.30#example-492>
                     // <https://spec.commonmark.org/0.30#example-493>
                     if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
-                        $chops[] = [false, e(v(\strtr($m[0][0] . $n[0][0], "\n", ' '))), [], -1];
+                        $chops[] = e(v(\strtr($m[0][0] . $n[0][0], "\n", ' ')));
                         $content = $chop = \substr($chop, \strlen($n[0][0]));
                         continue;
                     }
@@ -762,7 +750,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                         // `[asdf](asdf asdf)`
                         // <https://spec.commonmark.org/0.30#example-487>
                         } else {
-                            $chops[] = [false, e(v(\strtr($m[0][0] . $n[0][0], "\n", ' '))), [], -1];
+                            $chops[] = e(v(\strtr($m[0][0] . $n[0][0], "\n", ' ')));
                             $content = $chop = \substr($chop, \strlen($n[0][0]));
                             continue;
                         }
@@ -794,7 +782,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                     ], -1, [false, "", true]]], [
                         'id' => 'from:' . $key
                     ], -1, [$key]];
-                    $content = $chop = \substr($chop, \strlen($m[0][0]));
+                    $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
                 }
                 // …{asdf}
@@ -807,15 +795,15 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 $chops[] = ['a', $row, \array_replace([
                     'href' => null !== $link ? u(v($link)) : null,
                     'title' => $title
-                ], $data ?? []), -1, [$key ?? \trim(\strtolower($m[1][0])), $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? ""), false]];
+                ], $data ?? []), -1, [$key ?? \trim(\strtolower($m[1][0])), $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? ""), false]];
                 continue;
             }
-            $chops[] = [false, $prev = '[', [], -1];
+            $chops[] = $prev = '[';
             $content = $chop = \substr($chop, 1);
             continue;
         }
         if ('\\' === $chop) {
-            $chops[] = [false, $prev = $chop, [], -1];
+            $chops[] = $prev = $chop;
             $content = $chop = "";
             break;
         }
@@ -827,7 +815,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 $prev = '\\';
                 continue;
             }
-            $chops[] = [false, e($prev = \substr($chop, 1, 1)), [], -1];
+            $chops[] = e($prev = \substr($chop, 1, 1));
             $content = $chop = \substr($chop, 2);
             continue;
         }
@@ -850,15 +838,15 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
-            $chops[] = [false, $prev = $v, [], -1];
+            $chops[] = $prev = $v;
             $content = $chop = \substr($chop, $n);
             continue;
         }
-        $chops[] = [false, e($prev = $chop), [], -1];
+        $chops[] = e($prev = $chop);
         $content = $chop = "";
     }
     if ("" !== $content) {
-        $chops[] = [false, e($prev = $content), [], -1];
+        $chops[] = e($prev = $content);
         $content = $chop = "";
     }
     if (\is_string($chops = lot($chops, $lot, false))) {
