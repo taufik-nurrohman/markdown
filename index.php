@@ -525,7 +525,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
         if (0 === \strpos($chop, '!')) {
             if (1 === \strpos($chop, '[')) {
                 $row = row(\substr($chop, 1), $lot, false)[0][0];
-                if ('a' === $row[0]) {
+                if (\is_array($row) && 'a' === $row[0]) {
                     $row[0] = 'img';
                     if (\is_array($row[1])) {
                         $alt = "";
@@ -545,7 +545,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                     $row[2]['alt'] = \trim(\strip_tags($alt));
                     $row[2]['src'] = $row[2]['href'];
                     $row[4][1] = '!' . $row[4][1];
-                    unset($row[2]['href']);
+                    unset($row[2]['href'], $row[2]['rel'], $row[2]['target']);
                     $chops[] = $row;
                     $content = $chop = \substr($chop, \strlen($prev = $row[4][1]));
                     continue;
@@ -653,7 +653,17 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             }
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
             if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $chop, $m)) {
-                $chops[] = ['a', e($m[1]), ['href' => u($m[1])], -1, [false, $m[0]]];
+                if (\parse_url($m[1], \PHP_URL_HOST) === ($_SERVER['HTTP_HOST'] ?? 0)) {
+                    $rel = $target = null;
+                } else {
+                    $rel = 'nofollow';
+                    $target = '_blank';
+                }
+                $chops[] = ['a', e($m[1]), [
+                    'href' => u($m[1]),
+                    'rel' => $rel,
+                    'target' => $target
+                ], -1, [false, $m[0]]];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
@@ -791,6 +801,19 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                         $data = \array_replace($data ?? [], a($o[1], true));
                         $content = $chop = \substr($chop, \strlen($o[0]));
                     }
+                }
+                $host = $_SERVER['HTTP_HOST'] ?? 0;
+                // ``
+                if (!$link) {
+                // `asdf`
+                } else if (0 !== \strpos($link, '//') && false === \strpos($link, '://')) {
+                // `//asdf` or `../asdf` or `/asdf` or `?asdf` or `#asdf`
+                } else if (0 !== \strpos($link, '//') && false !== \strpos('./?#', $link[0])) {
+                // `//127.0.0.1` or `*://127.0.0.1`
+                } else if (\parse_url($link, \PHP_URL_HOST) === $host) {
+                } else {
+                    $data['rel'] = $data['rel'] ?? 'nofollow';
+                    $data['target'] = $data['target'] ?? '_blank';
                 }
                 $chops[] = ['a', $row, \array_replace([
                     'href' => null !== $link ? u(v($link)) : null,
@@ -1312,6 +1335,18 @@ function rows(?string $content, array $lot = []): array {
                     }
                     if ($data = $n[3] ?? []) {
                         $data = a($n[3], true);
+                    }
+                    $host = $_SERVER['HTTP_HOST'] ?? 0;
+                    // ``
+                    if (!$link) {
+                    // `asdf`
+                    } else if (0 !== \strpos($link, '//') && false === \strpos($link, '://')) {
+                    // `//asdf` or `../asdf` or `/asdf` or `?asdf` or `#asdf`
+                    } else if (0 !== \strpos($link, '//') && false !== \strpos('./?#', $link[0])) {
+                    // `//127.0.0.1` or `*://127.0.0.1`
+                    } else if (\parse_url($link, \PHP_URL_HOST) === $host) {
+                        $data['rel'] = $data['rel'] ?? 'nofollow';
+                        $data['target'] = $data['target'] ?? '_blank';
                     }
                     // Queue the reference data to be used later
                     $lot_of_content[$v[0]][$key] = $lot[$v[0]][$key] = [u(v($link)), $title, $data];
