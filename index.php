@@ -394,7 +394,7 @@ function lot($row, array $lot = [], $lazy = true) {
         // Optimize if current chunk is a complete word boundary
         if (isset($lot[1][$row])) {
             $title = $lot[1][$row];
-            return ['abbr', $row, ['title' => "" !== $title ? $title : null], -1];
+            return [['abbr', $row, ['title' => "" !== $title ? $title : null], -1]];
         }
         // Else, chunk by word boundary
         $pattern = [];
@@ -423,9 +423,10 @@ function lot($row, array $lot = [], $lazy = true) {
     }
     foreach ($row as &$v) {
         if (\is_array($v) && isset($v[0])) {
-            if (false === $v[0]) {
+            if (false === $v[0] || 'code' === $v[0]) {
                 continue;
             }
+            $v[1] = lot($v[1], $lot);
             if ('a' === $v[0] || 'img' === $v[0]) {
                 if (!empty($v[4][2]) || false === $v[4][0]) {
                     continue; // Skip!
@@ -448,11 +449,6 @@ function lot($row, array $lot = [], $lazy = true) {
                 if ($lazy) {
                     $v[4][2] = true; // Done!
                 }
-                continue;
-            }
-            // Recurse!
-            if (\is_array($v[1])) {
-                $v[1] = lot($v[1], $lot);
                 continue;
             }
         }
