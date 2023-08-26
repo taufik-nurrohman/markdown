@@ -98,8 +98,8 @@ function a(?string $info, $raw = false) {
     return null;
 }
 
-function d(string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
-    return \html_entity_decode($v, $as, 'UTF-8');
+function d(?string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
+    return \html_entity_decode($v ?? "", $as, 'UTF-8');
 }
 
 function data(?string $row): array {
@@ -364,7 +364,24 @@ function from(?string $content, array $lot = [], $block = true): ?string {
         $row = \is_array($row) ? s($row) : $row;
     }
     $content = \implode("", $rows[0]);
+    $content = \strtr($content, ['</dl><dl>' => ""]);
     return $content;
+}
+
+function l(?string $link) {
+    // ``
+    if (!$link) {
+        return true;
+    }
+    // `asdf` or `../asdf` or `/asdf` or `?asdf` or `#asdf`
+    if (0 !== \strpos($link, '//') && (false === \strpos($link, '://') || false !== \strpos('./?#', $link[0]))) {
+        return true;
+    }
+    // `//127.0.0.1` or `*://127.0.0.1`
+    if (\parse_url($link, \PHP_URL_HOST) === ($_SERVER['HTTP_HOST'] ?? 0)) {
+        return true;
+    }
+    return false;
 }
 
 // Apply reference(s), abbreviation(s), and foot-note(s) data to the row(s)
@@ -406,7 +423,7 @@ function lot($row, array $lot = [], $lazy = true) {
     }
     foreach ($row as &$v) {
         if (\is_array($v) && isset($v[0])) {
-            if (false === $v[0] || 'code' === $v[0]) {
+            if (false === $v[0]) {
                 continue;
             }
             if ('a' === $v[0] || 'img' === $v[0]) {
@@ -653,7 +670,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             }
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
             if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^<>\x00-\x20]*)>/i', $chop, $m)) {
-                if (\parse_url($m[1], \PHP_URL_HOST) === ($_SERVER['HTTP_HOST'] ?? 0)) {
+                if (l($m[1])) {
                     $rel = $target = null;
                 } else {
                     $rel = 'nofollow';
@@ -802,20 +819,12 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                         $content = $chop = \substr($chop, \strlen($o[0]));
                     }
                 }
-                $host = $_SERVER['HTTP_HOST'] ?? 0;
-                // ``
-                if (!$link) {
-                // `asdf`
-                } else if (0 !== \strpos($link, '//') && false === \strpos($link, '://')) {
-                // `//asdf` or `../asdf` or `/asdf` or `?asdf` or `#asdf`
-                } else if (0 !== \strpos($link, '//') && false !== \strpos('./?#', $link[0])) {
-                // `//127.0.0.1` or `*://127.0.0.1`
-                } else if (\parse_url($link, \PHP_URL_HOST) === $host) {
-                } else {
+                if (!l($link)) {
                     $data['rel'] = $data['rel'] ?? 'nofollow';
                     $data['target'] = $data['target'] ?? '_blank';
                 }
                 $chops[] = ['a', $row, \array_replace([
+                    // Need to retain the `null` value if it is, otherwise the reference link style feature won’t work
                     'href' => null !== $link ? u(v($link)) : null,
                     'title' => $title
                 ], $data ?? []), -1, [$key ?? \trim(\strtolower($m[1][0])), $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? ""), false]];
@@ -998,28 +1007,7 @@ function rows(?string $content, array $lot = []): array {
                 continue;
             }
             if ('p' === $prev[0]) {
-                if (null === $current[0]) {
-                    $back = 0;
-                    while (false !== ($next = \next($rows))) {
-                        ++$back;
-                        if (($n = \strspn($next, ' ')) < 4) {
-                            $next = \substr($next, $n);
-                        }
-                        if ("" !== $next) {
-                            if (0 === \strpos($next, ': ')) {
-                                $data = data($next);
-                                $blocks[$block][0] = $data[0];
-                                $blocks[$block][1] .= "\n";
-                                $blocks[$block][4] = $data[4];
-                            }
-                            break;
-                        }
-                    }
-                    while (--$back > 0) {
-                        \prev($rows);
-                    }
-                }
-                // Followed by a definition data, convert previous block to a part of the definition list.
+                // Followed by a definition data block. Convert the previous paragraph as its definition term(s).
                 if ('dl' === $current[0]) {
                     $blocks[$block][0] = 'dl';
                     $blocks[$block][1] .= "\n" . $row;
@@ -1227,12 +1215,6 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[++$block] = $current;
                 continue;
             }
-            // // Found a definition data without its term
-            // if ('dl' === $current[0] && !$prev) {
-            //     // Fall back to the default block
-            //     $blocks[++$block] = ['p', $current[1], [], $current[3]];
-            //     continue;
-            // }
             // Enter image block
             if ('figure' === $current[0]) {
                 // Start a new image block
@@ -1276,11 +1258,20 @@ function rows(?string $content, array $lot = []): array {
         if (false === $v[0]) {
             continue;
         }
+        if ('p' === $v[0] && isset($blocks[$k + 1]) && 'dl' === $blocks[$k + 1][0]) {
+            $v[0] = 'dl';
+            $v[1] .= "\n\n" . $blocks[$k + 1][1];
+            $v[4] = $blocks[$k + 1][4];
+            unset($blocks[$k + 1]);
+            // Parse the definition list later
+            continue;
+        }
         if ('dl' === $v[0]) {
-            if (isset($blocks[$k + 1]) && 'dl' === $blocks[$k + 1][0]) {
-                $v[1] .= "\n" . $blocks[$k + 1][1];
-                unset($blocks[$k + 1]);
+            // Must be a definition data without its term(s). Fall it back to the default block type!
+            if (0 === \strpos($v[1], ': ')) {
+                $v = ['p', $v[1], [], $v[3]];
             }
+            // Parse the definition list later
             continue;
         }
         if (\is_int($v[0]) && \strpos($v[1], ']:') > 1) {
@@ -1340,15 +1331,7 @@ function rows(?string $content, array $lot = []): array {
                     if ($data = $n[3] ?? []) {
                         $data = a($n[3], true);
                     }
-                    $host = $_SERVER['HTTP_HOST'] ?? 0;
-                    // ``
-                    if (!$link) {
-                    // `asdf`
-                    } else if (0 !== \strpos($link, '//') && false === \strpos($link, '://')) {
-                    // `//asdf` or `../asdf` or `/asdf` or `?asdf` or `#asdf`
-                    } else if (0 !== \strpos($link, '//') && false !== \strpos('./?#', $link[0])) {
-                    // `//127.0.0.1` or `*://127.0.0.1`
-                    } else if (\parse_url($link, \PHP_URL_HOST) === $host) {
+                    if (!l($link)) {
                         $data['rel'] = $data['rel'] ?? 'nofollow';
                         $data['target'] = $data['target'] ?? '_blank';
                     }
@@ -1527,7 +1510,7 @@ function rows(?string $content, array $lot = []): array {
         }
         $v[1] = lot($v[1], $lot);
     }
-    return [$blocks, $lot];
+    return [\array_values($blocks), $lot];
 }
 
 function s(array $data): ?string {
@@ -1573,7 +1556,7 @@ function s(array $data): ?string {
     return "" !== $out ? $out : null;
 }
 
-function u(string $v): string {
+function u(?string $v): string {
     \preg_match('/^([^?#]*)?([?][^#]*)?([#].*)?$/', d($v), $m);
     return \strtr(\rawurlencode($m[1]), [
         '%25' => '%',
@@ -1593,8 +1576,8 @@ function u(string $v): string {
 }
 
 // <https://spec.commonmark.org/0.30#example-12>
-function v(string $content): string {
-    return $content ? \strtr($content, [
+function v(?string $content): string {
+    return null !== $content ? \strtr($content, [
         "\\'" => "'",
         "\\\\" => "\\",
         '\!' => '!',
@@ -1627,5 +1610,5 @@ function v(string $content): string {
         '\|' => '|',
         '\}' => '}',
         '\~' => '~'
-    ]) : $content;
+    ]) : "";
 }

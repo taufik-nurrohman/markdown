@@ -51,6 +51,15 @@ body > div > div blockquote {
   padding-right: 1.25em;
 }
 
+body > div > div caption,
+body > div > div figcaption {
+  font-style: italic;
+}
+
+body > div > div dt {
+  font-weight: bold;
+}
+
 body > div > div img[src$='.gif'] {
   display: inline-block;
   vertical-align: middle;
@@ -110,7 +119,6 @@ body > div > div > :last-child {
   text-align: center;
   top: 0;
 }
-
 CSS;
 $out .= '</style>';
 $out .= '</head>';

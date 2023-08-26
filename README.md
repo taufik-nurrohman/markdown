@@ -145,6 +145,11 @@ Inline attributes always win over native syntax attributes and pre-defined attri
   </tbody>
 </table>
 
+### Links
+
+Relative links and absolute links with the server’s host name will be treated as internal links, otherwise they will be
+treated as external links and will automatically get `rel="nofollow"` and `target="_blank"` attributes.
+
 ### Code Block
 
 I try to avoid conflict between different Markdown dialects and try to support whatever dialect you are using. For
