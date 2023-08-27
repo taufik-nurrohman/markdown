@@ -11,7 +11,7 @@ function a(?string $info, $raw = false) {
         if ("" === ($info = \trim(\substr($info, 1, -1)))) {
             return $raw ? [] : null;
         }
-        $pattern = '/([#.](?:\\\\[#.]|[\w:-])+|(?:[\w:.-]+(?:=(?:' . q('"') . '|' . q("'") . '|\S+)?)?))/';
+        $pattern = '/([#.](?>\\\\[#.]|[\w:-])+|(?>[\w:.-]+(?>=(?>' . q('"') . '|' . q("'") . '|\S+)?)?))/';
         foreach (\preg_split($pattern, $info, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
             if ("" === \trim($v)) {
                 continue; // Skip the space(s)
@@ -495,14 +495,14 @@ function q(string $char = '"', $capture = false, string $before = ""): string {
     $a = \preg_quote($char[0], '/');
     $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
-    return '(?:' . $a . ($capture ? '(' : "") . '(?:' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\])*' . ($capture ? ')' : "") . $b . ')';
+    return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\])*' . ($capture ? ')' : "") . $b . ')';
 }
 
 function r(string $char = '[]', $capture = false, string $before = ""): string {
     $a = \preg_quote($char[0], '/');
     $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
-    return '(?:' . $a . ($capture ? '(' : "") . '(?:(?:(?R)|' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\])*)*' . ($capture ? ')' : "") . $b . ')';
+    return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\]|(?R))*' . ($capture ? ')' : "") . $b . ')';
 }
 
 function raw(?string $content): array {
@@ -569,7 +569,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             continue;
         }
         if (0 === \strpos($chop, '&')) {
-            if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?:#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
+            if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?>#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
                 $chops[] = e($prev = '&');
                 $content = $chop = \substr($chop, 1);
                 continue;
@@ -593,7 +593,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             // `***…***`
-            if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?:(?R)|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']{1,2})+?(?:(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -605,7 +605,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             $n = \strspn($chop, $c);
             $em = 1 === $n || $n > 2 ? "" : '{2}';
             // `*…*` or `**…**`
-            if (\preg_match('/(?:(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?:(?R)|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . ')+?(?:(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = e(\substr($chop, 0, $m[0][1]));
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -641,19 +641,19 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 $content = $chop = \substr($chop, \strlen($prev = $v));
                 continue;
             }
-            if (0 === \strpos($chop, '<!') && \preg_match('/^<!((?:' . q('"') . '|' . q("'") . '|[^>])+)>/', $chop, $m)) {
+            if (0 === \strpos($chop, '<!') && \preg_match('/^<!((?>' . q('"') . '|' . q("'") . '|[^>])+)>/', $chop, $m)) {
                 $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \rtrim(\strtok(\substr($m[0], 1), " \n\t>"), '/')];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
-            if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<\?((?:' . q('"') . '|' . q("'") . '|[^>])+)\?>/', $chop, $m)) {
+            if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<\?((?>' . q('"') . '|' . q("'") . '|[^>])+)\?>/', $chop, $m)) {
                 $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \strtok(\substr($m[0], 1), " \n\t>")];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
             $test = (string) \strstr($chop, '>', true);
             // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
-            if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
+            if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?(?>\.[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
                 // <https://spec.commonmark.org/0.30#example-605>
                 if (false !== \strpos($email = $m[1], '\\')) {
                     $chops[] = e($m[0]);
@@ -687,7 +687,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
                 continue;
             }
             // <https://spec.commonmark.org/0.30#raw-html>
-            if (\preg_match('/^<([a-z][a-z\d-]*)(\s[a-z:_][\w.:-]*(\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
+            if (\preg_match('/^<([a-z][a-z\d-]*)(\s[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
                 $chops[] = [false, $m[0], [], -1, $m[1]];
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
@@ -856,7 +856,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             } else {
                 $r = $c . '{1,' . ($n - 1) . '}|' . $c . '{' . ($n + 1) . ',}';
             }
-            if (\preg_match('/^' . $v . '((?:\\\\' . $c . '|[^' . $c . ']|(?<!' . $c . ')(?:' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
+            if (\preg_match('/^' . $v . '((?>\\\\' . $c . '|[^' . $c . ']|(?<!' . $c . ')(?>' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
                 // <https://spec.commonmark.org/0.30#code-span>
                 $raw = \strtr($m[1], "\n", ' ');
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
@@ -1264,7 +1264,7 @@ function rows(?string $content, array $lot = []): array {
         }
         if ('dl' === $v[0]) {
             // Must be a definition data without its term(s). Fall it back to the default block type!
-            if (0 === \strpos($v[1], ': ')) {
+            if (\strlen($v[1]) > 2 && ':' === $v[1][0] && false !== \strpos(" \t", $v[1][1])) {
                 $v = ['p', $v[1], [], $v[3]];
             }
             // Parse the definition list later
@@ -1283,10 +1283,23 @@ function rows(?string $content, array $lot = []): array {
                 $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = $title;
                 continue;
             }
-            // Match a reference
+            // Match a foot-note or a reference
             if (0 === \strpos($v[1], '[') && \preg_match('/' . r('[]', true) . '/', $v[1], $m) && ':' === \substr($v[1], \strlen($m[0]), 1)) {
+                if (0 === \strpos($m[1], '^')) {
+                    $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', \substr($m[1], 1))));
+                    $note = \substr($v[1], \strlen($m[0]) + 1);
+                    $d = \str_repeat(' ', \strlen($m[0]) + 1 + \strspn($note, ' '));
+                    if (isset($lot_of_content[$v[0]][$key])) {
+                        continue;
+                    }
+                    // Queue the foot-note data to be used later
+                    $lot_of_content[$v[0]][$key] = $lot[$v[0]][$key] = rows(\strtr(\ltrim($note), [
+                        "\n" . $d => "\n" // TODO
+                    ]), $lot)[0];
+                    continue;
+                }
                 $data = $key = $link = $title = null;
-                if (\preg_match('/^\s*(' . q('<>') . '|\S+?)(?:\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?(?:\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?\s*$/', \substr($v[1], \strlen($m[0]) + 1), $n)) {
+                if (\preg_match('/^\s*(' . q('<>') . '|\S+?)(?>\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?(?>\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?\s*$/', \substr($v[1], \strlen($m[0]) + 1), $n)) {
                     // Remove reference block from the structure
                     unset($blocks[$k]);
                     // <https://spec.commonmark.org/0.30#matches>
@@ -1506,7 +1519,34 @@ function rows(?string $content, array $lot = []): array {
         }
         $v[1] = lot($v[1], $lot);
     }
-    return [\array_values($blocks), $lot];
+    $blocks = \array_values($blocks);
+    if (!empty($lot[2])) {
+        $notes = ['div', [
+            ['hr', false, [], 0, '-'],
+            ['ol', [], [], 0, [0, 1, '.']]
+        ], [
+            'role' => 'doc-endnotes'
+        ], 0];
+        foreach ($lot[2] as $k => $v) {
+            if (\is_array($v) && \is_array($last = \array_pop($v))) {
+                if ('p' === $last[0]) {
+                    $last[1] = (array) $last[1];
+                    $last[1][] = ' ';
+                    $last[1][] = ['a', [['&', '&#8617;', [], -1]], [
+                        'href' => '#from:' . $k,
+                        'role' => 'doc-backlink'
+                    ], -1];
+                    $last[1] = m($last[1]);
+                }
+                $v[] = $last;
+            }
+            $notes[1][1][1][] = ['li', $v, [
+                'id' => 'to:' . $k
+            ], 0];
+        }
+        $blocks['notes'] = $notes;
+    }
+    return [$blocks, $lot];
 }
 
 function s(array $data): ?string {
