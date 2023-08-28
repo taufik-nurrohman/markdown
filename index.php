@@ -899,13 +899,14 @@ function rows(?string $content, array $lot = []): array {
     $blocks = [];
     $rows = \explode("\n", $content);
     foreach ($rows as $row) {
-        // <https://spec.commonmark.org/0.30#tabs>
-        if (false !== ($n = \strpos($row, "\t")) && $n < 4) {
-            $row = \substr($row, 0, $n) . \str_repeat(' ', 4 - $n) . \substr($row, $n + 1);
+        // TODO: Preserve tab character(s)
+        while (false !== ($before = \strstr($row, "\t", true))) {
+            $v = \strlen($before);
+            $row = $before . \str_repeat(' ', 4 - $v % 4) . \substr($row, $v + 1);
         }
         $current = data($row); // `[$type, $row, $data, $dent, …]`
         // If a block is available in the index `$block`, it indicates that we have a previous block.
-         if ($prev = $blocks[$block] ?? 0) {
+        if ($prev = $blocks[$block] ?? 0) {
             // Raw HTML
             if (false === $prev[0]) {
                 if ('!--' === $prev[4]) {
@@ -1355,7 +1356,7 @@ function rows(?string $content, array $lot = []): array {
         }
         if ('blockquote' === $v[0]) {
             $v[1] = \substr(\strtr($v[1], ["\n>" => "\n"]), 1);
-            $v[1] = \substr(\strtr("\n" . $v[1], ["\n " => "\n"]), 1); // Remove optional space
+            $v[1] = \substr(\strtr("\n" . $v[1], ["\n " => "\n"]), 1); // Remove space
             $v[1] = rows($v[1], $lot)[0];
             continue;
         }
@@ -1519,6 +1520,7 @@ function rows(?string $content, array $lot = []): array {
         }
         $v[1] = lot($v[1], $lot);
     }
+    unset($v);
     $blocks = \array_values($blocks);
     if (!empty($lot[2])) {
         $notes = ['div', [
