@@ -200,7 +200,7 @@ function data(?string $row): array {
         if (\strspn($test, '-') === ($v = \strlen($test)) && $v > 2) {
             return ['hr', $row, [], $dent, '-'];
         }
-        if (\strspn($test, '-|') === ($v = \strlen($test)) && $v > 1) {
+        if (\strspn($test, '-:|') === ($v = \strlen($test)) && $v > 1) {
             return ['table', $row, [], $dent, [0, 0]];
         }
         // `- …`
@@ -301,6 +301,9 @@ function data(?string $row): array {
                 return ['p', $row, [], $dent];
             }
             return ['pre', $row, a($info, true), $dent, $fence];
+        }
+        if (false !== \strpos(\strstr(\substr($row, 1), '`'), '|')) {
+            return ['table', $row, [], $dent, [0, 0]];
         }
         return ['p', $row, [], $dent];
     }
@@ -495,21 +498,21 @@ function q(string $char = '"', $capture = false, string $before = ""): string {
     $a = \preg_quote($char[0], '/');
     $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
-    return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\])*' . ($capture ? ')' : "") . $b . ')';
+    return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . '\\\\]|\\\\.)*' . ($capture ? ')' : "") . $b . ')';
 }
 
 function r(string $char = '[]', $capture = false, string $before = ""): string {
     $a = \preg_quote($char[0], '/');
     $b = \preg_quote($char[1] ?? $char[0], '/');
     $c = $a . ($b === $a ? "" : $b);
-    return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\]|(?R))*' . ($capture ? ')' : "") . $b . ')';
+    return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . '\\\\]|\\\\.|(?R))*' . ($capture ? ')' : "") . $b . ')';
 }
 
 function raw(?string $content, $block = true): array {
     return rows($content, $block);
 }
 
-function row(?string $content, array $lot = [], $can_deep_link = false) {
+function row(?string $content, array $lot = []) {
     if ("" === \trim($content ?? "")) {
         return [[], $lot];
     }
@@ -519,7 +522,7 @@ function row(?string $content, array $lot = [], $can_deep_link = false) {
     // here I prioritize the code over the table column separator to ensure that if any character “|” is found after “`”
     // then that character can be considered as the content of the code and does not need to be escaped because in this
     // situation, the code wrap will be consumed first.
-    while (false !== ($chop = \strpbrk($content, '\\<`|*_![&' . "\n"))) {
+    while (false !== ($chop = \strpbrk($content, '\\<`' . (isset($lot['is_table']) ? '|' : "") . '*_![&' . "\n"))) {
         if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($chop)))) {
             $chops[] = e($prev);
         }
@@ -537,7 +540,9 @@ function row(?string $content, array $lot = [], $can_deep_link = false) {
         }
         if (0 === \strpos($chop, '!')) {
             if (1 === \strpos($chop, '[')) {
-                $row = row(\substr($chop, 1), $lot, true)[0][0];
+                $lot['is_image'] = 1;
+                $row = row(\substr($chop, 1), $lot)[0][0];
+                unset($lot['is_image']);
                 if (\is_array($row) && 'a' === $row[0]) {
                     $row[0] = 'img';
                     if (\is_array($row[1])) {
@@ -582,18 +587,25 @@ function row(?string $content, array $lot = [], $can_deep_link = false) {
             $content = $chop = \substr($chop, \strlen($prev = $m[0]));
             continue;
         }
+        // A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode white-space, and either
+        // (2a) not followed by a Unicode punctuation character, or (2b) followed by a Unicode punctuation character and
+        // preceded by Unicode white-space or a Unicode punctuation character. For purpose(s) of this definition, the
+        // beginning and the end of the line count as Unicode white-space.
+        //
+        // A right-flanking delimiter run is a delimiter run that is (1) not preceded by Unicode white-space, and either
+        // (2a) not preceded by a Unicode punctuation character, or (2b) preceded by a Unicode punctuation character and
+        // followed by Unicode white-space or a Unicode punctuation character. For purpose(s) of this definition, the
+        // beginning and the end of the line count as Unicode white-space.
+        //
+        // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
         if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
-            // A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode white-space, and
-            // either (2a) not followed by a Unicode punctuation character, or (2b) followed by a Unicode
-            // punctuation character and preceded by Unicode white-space or a Unicode punctuation character. For
-            // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
-            // A right-flanking delimiter run is a delimiter run that is (1) not preceded by Unicode white-space,
-            // and either (2a) not preceded by a Unicode punctuation character, or (2b) preceded by a Unicode
-            // punctuation character and followed by Unicode white-space or a Unicode punctuation character. For
-            // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
-            // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
+            // <https://spec.commonmark.org/0.30#example-341>
+            $contains = '`(?>[^`\\\\]|\\\\`)+`';
+            if (isset($lot['is_table'])) {
+                $contains .= '|(?<=\\\\)[|]';
+            }
             // `***…***`
-            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>`[^`]+`|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>' . $contains . '|[^' . $c . '\\\\]|\\\\[' . $c . ']|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -605,7 +617,7 @@ function row(?string $content, array $lot = [], $can_deep_link = false) {
             $n = \strspn($chop, $c);
             $em = 1 === $n || $n > 2 ? "" : '{2}';
             // `*…*` or `**…**`
-            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>`[^`]+`|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>' . $contains . '|[^' . $c . '\\\\]|\\\\[' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = e(\substr($chop, 0, $m[0][1]));
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -698,15 +710,17 @@ function row(?string $content, array $lot = [], $can_deep_link = false) {
         }
         if (0 === \strpos($chop, '[')) {
             $data = $key = $link = $title = null;
+            // <https://spec.commonmark.org/0.30#example-342>
+            $contains = '`(?>[^`\\\\]|\\\\`)+`';
             // `[asdf]…`
-            if (\preg_match('/' . r('[]', true, '`[^`]+`') . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/' . r('[]', true, $contains) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 $prev = $m[0][0];
                 if ($m[0][1] > 0) {
                     $chops[] = e(\substr($chop, 0, $m[0][1]));
                     $content = $chop = \substr($chop, $m[0][1]);
                 }
                 $row = row($m[1][0], $lot)[0];
-                if (!$can_deep_link && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
+                if (!isset($lot['is_image']) && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
                     $deep = false;
                     foreach ($row as $v) {
                         if (\is_array($v) && 'a' === $v[0]) {
@@ -852,11 +866,11 @@ function row(?string $content, array $lot = [], $can_deep_link = false) {
             if (1 === $n) {
                 $r = $c . '{2,}';
             } else if (2 === $n) {
-                $r = $c . '|' . $c . '{3,}';
+                $r = $c . '{3,}|' . $c;
             } else {
-                $r = $c . '{1,' . ($n - 1) . '}|' . $c . '{' . ($n + 1) . ',}';
+                $r = $c . '{' . ($n + 1) . ',}|' . $c . '{1,' . ($n - 1) . '}';
             }
-            if (\preg_match('/^' . $v . '((?>\\\\' . $c . '|[^' . $c . ']|(?<!' . $c . ')(?:' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
+            if (\preg_match('/^' . $v . '((?>[^' . $c . '\\\\]|\\\\' . $c . '|(?<!' . $c . ')(?>' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
                 // <https://spec.commonmark.org/0.30#code-span>
                 $raw = \strtr($m[1], "\n", ' ');
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
@@ -868,6 +882,11 @@ function row(?string $content, array $lot = [], $can_deep_link = false) {
             }
             $chops[] = $prev = $v;
             $content = $chop = \substr($chop, $n);
+            continue;
+        }
+        if (isset($lot['is_table']) && 0 === \strpos($chop, '|')) {
+            $chops[] = ['|', null, [], -1];
+            $content = $chop = \substr($chop, 1);
             continue;
         }
         $chops[] = e($prev = $chop);
@@ -1448,20 +1467,51 @@ function rows(?string $content, array $lot = []): array {
                 ['tbody', [], [], 0]
             ];
             $rows = \explode("\n", $v[1]);
-            foreach (\explode('|', \trim(\array_shift($rows), " \t|")) as $vv) {
-                $table[0][1][0][1][] = ['th', \trim($vv), [], 0];
+            $headers = \trim(\array_shift($rows) ?? "", " \t|");
+            $styles = \trim(\array_shift($rows) ?? "", " \t|");
+            // Missing table header separator
+            if ("" === $styles) {
+                $v = ['p', row($v[1], $lot)[0], [], $v[3]];
+                continue;
             }
-            \array_shift($rows);
-            foreach ($rows as $vv) {
-                $row = ['tr', [], [], 0];
-                foreach (\explode('|', \trim($vv, " \t|")) as $vvv) {
-                    $row[1][] = ['td', \trim($vvv), [], 0];
+            // Invalid table header separator
+            if (\strspn($styles, " \t-:|") !== \strlen($styles)) {
+                $v = ['p', row($v[1], $lot)[0], [], $v[3]];
+                continue;
+            }
+            $lot['is_table'] = 1;
+            $th = [];
+            if (\is_array($headers = row($headers, $lot)[0])) {
+                $k = 0;
+                foreach ($headers as $header) {
+                    $th[$k] = $th[$k] ?? ['th', [], [], 0];
+                    if (\is_array($header)) {
+                        if ('|' === $header[0]) {
+                            $k += 1;
+                            continue;
+                        }
+                        $th[$k][1][] = $header;
+                        continue;
+                    }
+                    if (\is_string($header)) {
+                        if ("" !== ($header = \trim($header))) {
+                            $th[$k][1][] = $header;
+                        }
+                        continue;
+                    }
+                    $th[$k][1][] = $header;
                 }
-                $table[1][1][] = $row;
+                foreach ($th as &$h) {
+                    $h[1] = m($h[1]);
+                }
+                unset($h);
+            } else {
+                $th[] = ['th', $headers, [], 0];
             }
-            if (empty($table[1][1])) {
-                unset($table[1]);
-            }
+            $table[0][1][0][1] = $th;
+            unset($lot['is_table']);
+            echo json_encode($th);
+            echo '<br/>';
             $v[1] = $table;
             continue;
         }
