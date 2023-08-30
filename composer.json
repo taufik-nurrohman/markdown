@@ -10,7 +10,7 @@
     }
   ],
   "autoload": {
-    "files": ["index.php"]
+    "files": ["from.php", "to.php"]
   },
   "description": "Obviously, a Markdown to HTML converter.",
   "funding": [

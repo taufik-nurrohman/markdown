@@ -10,7 +10,7 @@ define('D', DIRECTORY_SEPARATOR);
 define('P', "\u{001A}");
 define('PATH', __DIR__);
 
-require __DIR__ . D . 'index.php';
+require __DIR__ . D . 'from.php';
 
 if ('POST' === $_SERVER['REQUEST_METHOD']) {
     $_SESSION['test'] = $_POST['value'] ?? "";
@@ -219,7 +219,7 @@ foreach ($files as $v) {
     $start = microtime(true);
     if ('raw' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
-        [$blocks, $lot] = x\markdown\raw($raw);
+        [$blocks, $lot] = x\markdown\from\raw($raw);
         $out .= htmlspecialchars('$blocks = ' . var_export($blocks, true) . ';');
         $out .= "\n\n";
         $out .= htmlspecialchars('$lot = ' . var_export($lot, true) . ';');

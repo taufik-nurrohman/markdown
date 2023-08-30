@@ -1,5 +1,3 @@
-![Markdown Logo](https://github.com/taufik-nurrohman/markdown/assets/1669261/52fe52db-ae3b-4f40-8e0e-78cfe266282f)
-
 Markdown to HTML Converter
 ==========================
 
@@ -34,7 +32,8 @@ create this project separately as it might have potential to be used by other de
 
 This converter can be installed using [Composer](https://packagist.org/packages/taufik-nurrohman/markdown), but it
 doesn’t need any other dependencies and just uses Composer’s ability to automatically include files. Those of you who
-don’t use Composer should be able to include the `index.php` file directly into your application without any problems.
+don’t use Composer should be able to include the `from.php` and `to.php` files directly into your application without
+any problems.
 
 Usage
 -----
@@ -61,14 +60,15 @@ echo convert('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 
 ### Using File
 
-Require the `index.php` file in your application:
+Require the `from.php` and `to.php` files in your application:
 
 ~~~ php
 <?php
 
 use function x\markdown\from as convert;
 
-require 'index.php';
+require 'from.php';
+require 'to.php';
 
 echo convert('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
@@ -79,6 +79,20 @@ Options
 ~~~ php
 from(?string $content, bool $block = true): ?string;
 ~~~
+
+Parameter  | Description
+---------- | -----------
+`$content` | Your Markdown content.
+`$block`   | If this option is set to `false`, Markdown blocks will be ignored.
+
+~~~ php
+to(?string $content, bool $block = true): ?string;
+~~~
+
+Parameter  | Description
+---------- | -----------
+`$content` | Your HTML content.
+`$block`   | If this option is set to `false`, HTML blocks will be ignored.
 
 Dialect
 -------
