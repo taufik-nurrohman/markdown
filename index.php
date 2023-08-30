@@ -503,7 +503,7 @@ function r(string $char = '[]', $capture = false, string $before = ""): string {
 }
 
 function raw(?string $content, $block = true): array {
-    return rows($content, [], $block);
+    return $block ? rows($content) : row($content);
 }
 
 function row(?string $content, array $lot = []) {
