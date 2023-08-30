@@ -340,30 +340,30 @@ function e(string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
     return \htmlspecialchars($v, $as, 'UTF-8');
 }
 
-function from(?string $content, array $lot = [], $block = true): ?string {
+function from(?string $content, $block = true): ?string {
     if (!$block) {
-        $row = row($content, $lot);
-        if (!$row[0]) {
+        [$row] = row($content);
+        if (!$row) {
             return null;
         }
-        if (\is_string($row[0])) {
-            $v = \trim(\preg_replace('/\s+/', ' ', $row[0]));
-            return "" !== $v ? $v : null;
+        if (\is_string($row)) {
+            $content = \trim(\preg_replace('/\s+/', ' ', $row));
+            return "" !== $content ? $content : null;
         }
-        foreach ($row[0] as &$v) {
+        foreach ($row as &$v) {
             $v = \is_array($v) ? s($v) : $v;
         }
-        $v = \trim(\preg_replace('/\s+/', ' ', \implode("", $row[0])));
-        return "" !== $v ? $v : null;
+        $content = \trim(\preg_replace('/\s+/', ' ', \implode("", $row)));
+        return "" !== $content ? $content : null;
     }
-    $rows = rows($content, $lot);
-    if (!$rows[0]) {
+    [$rows] = rows($content);
+    if (!$rows) {
         return null;
     }
-    foreach ($rows[0] as &$row) {
+    foreach ($rows as &$row) {
         $row = \is_array($row) ? s($row) : $row;
     }
-    $content = \implode("", $rows[0]);
+    $content = \implode("", $rows);
     $content = \strtr($content, ['</dl><dl>' => ""]);
     return $content;
 }
@@ -505,11 +505,11 @@ function r(string $char = '[]', $capture = false, string $before = ""): string {
     return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '\\\\.|[^' . $c . '\\\\]|(?R))*' . ($capture ? ')' : "") . $b . ')';
 }
 
-function raw(?string $content): array {
-    return rows($content);
+function raw(?string $content, $block = true): array {
+    return rows($content, $block);
 }
 
-function row(?string $content, array $lot = [], $no_deep_link = true) {
+function row(?string $content, array $lot = [], $can_deep_link = false) {
     if ("" === \trim($content ?? "")) {
         return [[], $lot];
     }
@@ -537,7 +537,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
         }
         if (0 === \strpos($chop, '!')) {
             if (1 === \strpos($chop, '[')) {
-                $row = row(\substr($chop, 1), $lot, false)[0][0];
+                $row = row(\substr($chop, 1), $lot, true)[0][0];
                 if (\is_array($row) && 'a' === $row[0]) {
                     $row[0] = 'img';
                     if (\is_array($row[1])) {
@@ -593,7 +593,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             // purposes of this definition, the beginning and the end of the line count as Unicode white-space.
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             // `***…***`
-            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>`[^`]+`|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -605,7 +605,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             $n = \strspn($chop, $c);
             $em = 1 === $n || $n > 2 ? "" : '{2}';
             // `*…*` or `**…**`
-            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>`[^`]+`|\\\\[' . $c . ']|[^' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = e(\substr($chop, 0, $m[0][1]));
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -699,14 +699,14 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
         if (0 === \strpos($chop, '[')) {
             $data = $key = $link = $title = null;
             // `[asdf]…`
-            if (\preg_match('/' . r('[]', true) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/' . r('[]', true, '`[^`]+`') . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 $prev = $m[0][0];
                 if ($m[0][1] > 0) {
                     $chops[] = e(\substr($chop, 0, $m[0][1]));
                     $content = $chop = \substr($chop, $m[0][1]);
                 }
                 $row = row($m[1][0], $lot)[0];
-                if ($no_deep_link && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
+                if (!$can_deep_link && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
                     $deep = false;
                     foreach ($row as $v) {
                         if (\is_array($v) && 'a' === $v[0]) {
@@ -856,7 +856,7 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
             } else {
                 $r = $c . '{1,' . ($n - 1) . '}|' . $c . '{' . ($n + 1) . ',}';
             }
-            if (\preg_match('/^' . $v . '((?>\\\\' . $c . '|[^' . $c . ']|(?<!' . $c . ')(?>' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
+            if (\preg_match('/^' . $v . '((?>\\\\' . $c . '|[^' . $c . ']|(?<!' . $c . ')(?:' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
                 // <https://spec.commonmark.org/0.30#code-span>
                 $raw = \strtr($m[1], "\n", ' ');
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
@@ -886,7 +886,6 @@ function row(?string $content, array $lot = [], $no_deep_link = true) {
 function rows(?string $content, array $lot = []): array {
     // List of reference(s), abbreviation(s), and foot-note(s)
     $lot = \array_replace([[], [], []], $lot);
-    $lot_of_content = [[], [], []];
     if ("" === \trim($content ?? "")) {
         return [[], $lot];
     }
@@ -1278,10 +1277,13 @@ function rows(?string $content, array $lot = []): array {
                 unset($blocks[$k]);
                 // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave similar
                 // to the reference specification.
-                $m[1] = \trim(\preg_replace('/\s+/', ' ', $m[1]));
+                $key = \trim(\preg_replace('/\s+/', ' ', $m[1]));
                 // Queue the abbreviation data to be used later
                 $title = \trim(\substr($v[1], \strlen($m[0]) + 2));
-                $lot_of_content[$v[0]][$m[1]] = $lot[$v[0]][$m[1]] = $title;
+                if (isset($lot[$v[0]][$key])) {
+                    continue;
+                }
+                $lot[$v[0]][$key] = $title;
                 continue;
             }
             // Match a foot-note or a reference
@@ -1290,11 +1292,11 @@ function rows(?string $content, array $lot = []): array {
                     $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', \substr($m[1], 1))));
                     $note = \substr($v[1], \strlen($m[0]) + 1);
                     $d = \str_repeat(' ', \strlen($m[0]) + 1 + \strspn($note, ' '));
-                    if (isset($lot_of_content[$v[0]][$key])) {
+                    if (isset($lot[$v[0]][$key])) {
                         continue;
                     }
                     // Queue the foot-note data to be used later
-                    $lot_of_content[$v[0]][$key] = $lot[$v[0]][$key] = rows(\strtr(\ltrim($note), [
+                    $lot[$v[0]][$key] = rows(\strtr(\ltrim($note), [
                         "\n" . $d => "\n" // TODO
                     ]), $lot)[0];
                     continue;
@@ -1305,11 +1307,8 @@ function rows(?string $content, array $lot = []): array {
                     unset($blocks[$k]);
                     // <https://spec.commonmark.org/0.30#matches>
                     $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', $m[1])));
-                    // Pre-defined reference data from the `$lot` variable can be overridden, but not if it is from the
-                    // data that is embedded in the `$content` variable to conform to the CommonMark specification about
-                    // reference priority.
                     // <https://spec.commonmark.org/0.30#example-204>
-                    if (isset($lot_of_content[$v[0]][$key])) {
+                    if (isset($lot[$v[0]][$key])) {
                         continue;
                     }
                     if ($link = $n[1] ?? "") {
@@ -1346,7 +1345,7 @@ function rows(?string $content, array $lot = []): array {
                         $data['target'] = $data['target'] ?? '_blank';
                     }
                     // Queue the reference data to be used later
-                    $lot_of_content[$v[0]][$key] = $lot[$v[0]][$key] = [u(v($link)), $title, $data];
+                    $lot[$v[0]][$key] = [u(v($link)), $title, $data];
                     continue;
                 }
                 $v[0] = 'p';

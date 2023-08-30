@@ -75,7 +75,7 @@ Options
 -------
 
 ~~~ php
-from(?string $content, array $lot = [], bool $block = true): ?string;
+from(?string $content, bool $block = true): ?string;
 ~~~
 
 Dialect
@@ -579,6 +579,19 @@ Your Markdown content is represented as variable `$content`. If you modify the c
 is called, it means that you modify the Markdown content before it is converted. If you modify the content after the
 function `convert()` is called, it means that you modify the results of the Markdown conversion.
 
+### XHTML to HTML5
+
+This converter escapes invalid HTML elements and takes care of HTML special characters that you put in the Markdown
+attribute syntax, so it is safe to replace `' />'` with `'>'` directly from the results of the Markdown conversion:
+
+~~~ php
+$content = convert($content);
+
+$content = strtr($content, [' />' => '>']);
+
+echo $content;
+~~~
+
 ### Add Strike Feature
 
 This method allows you to add strike-through syntax, as you may have already noticed in the
@@ -597,7 +610,8 @@ echo $content;
 I am against the task list feature because it promotes bad practices to abuse the form input element. Although from the
 presentation side it displays a check box interface correctly, I still believe that input elements should ideally be
 used inside a form element. There are several Unicode symbols that are more suitable and easier to read from the
-Markdown source, which means that this feature can actually be made using the existing list feature.
+Markdown source like &#x2610; and &#x2612;, which means that this feature can actually be made using the existing list
+feature.
 
 In case you need it, or don’t want to update your existing task list syntax in your Markdown files, here’s the hack:
 
@@ -614,31 +628,79 @@ $content = strtr($content, [
 echo $content;
 ~~~
 
-### Make the `markdown="1"` Attribute Work
+### Pre-Defined Abbreviations, Notes, and References
 
-Make `markdown="1"` attribute work as featured in
-[Markdown Extra](https://michelf.ca/projects/php-markdown/extra#markdown-attr). Line that sits directly below the
-opening HTML block tag is not considered to be a parsable CommonMark block. Adding a blank line before it is enough to
-end the raw HTML block state:
+_TODO_
+
+### Idea: Embed Syntax
+
+The [CommonMark specification for automatic links](https://spec.commonmark.org/0.30#autolinks) doesn’t limit specific
+types of URL protocols. It just specifies the format so we can take advantage of the automatic link syntax to render it
+as a kind of “embed syntax”, which you can then turn it into a chunk of HTML elements.
+
+I’m sure this idea has never been done before and that’s why I want to be the first to mention it. But I’m not going to
+integrate this feature directly into my converter to keep it slim. I just want to give you a couple of ideas:
+
+#### YouTube Video Embed
+
+An embed syntax to display a YouTube video by video ID.
+
+~~~ md
+<youtube:dQw4w9WgXcQ>
+~~~
 
 ~~~ php
-<?php
-
-$content = preg_replace_callback('/^[ ]{0,3}<[^>]+>/m', static function ($m) {
-    if (false !== strpos($m[0], ' markdown="1"')) {
-        return strtr($m[0], [' markdown="1"' => ""]) . "\n\n";
-    }
-    return $m[0];
-}, $content);
+$content = preg_replace('/^[ ]{0,3}<youtube:([^>]+)>\s*$/m', '<iframe src="https://www.youtube.com/embed/$1"></iframe>', $content);
 
 $content = convert($content);
 
 echo $content;
 ~~~
 
-### Idea: Embed Syntax
+#### GitHub Gist Embed
 
-_TODO_
+An embed syntax to display a GitHub gist by gist ID.
+
+~~~ md
+<gist:9c96049ca6c66e30e50793f5aef4818b>
+~~~
+
+~~~ php
+$content = preg_replace('/^[ ]{0,3}<gist:([^>]+)>\s*$/m', '<script src="https://gist.github.com/taufik-nurrohman/$1.js"></script>', $content);
+
+$content = convert($content);
+
+echo $content;
+~~~
+
+#### Form Embed
+
+An embed syntax to display a HTML form that was generated from the server side with a reference ID of `18a4596d42c` and
+a `title` parameter to customize the HTML form title.
+
+~~~ md
+<form:18a4596d42c?title=Form+Title>
+~~~
+
+~~~ php
+$content = preg_replace_callback('/^[ ]{0,3}<form:([^#>?]+)([?][^#>]*)?([#][^>]*)?>\s*$/m', static function ($m) {
+    $path = $m[1];
+    $content = "";
+    parse_str(substr($m[2] ?? "", 1), $state);
+    $content .= '<form action="/form/' . $path . '" method="post">';
+    if (!empty($state['title'])) {
+        $content .= '<h1>' . $state['title'] . '</h1>';
+    }
+    // … etc.
+    // Be careful not to include blank line(s), or the raw HTML block state will end before the HTML form is complete!
+    $content .= '</form>';
+    return $content;
+}, $content);
+
+$content = convert($content);
+
+echo $content;
+~~~
 
 ### Idea: Note Block
 
