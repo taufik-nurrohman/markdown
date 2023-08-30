@@ -78,6 +78,10 @@ body > div > div table {
   width: 100%;
 }
 
+body > div > div table + table {
+  margin-top: 1em;
+}
+
 body > div > div td,
 body > div > div th {
   border: 1px solid;
@@ -222,7 +226,7 @@ foreach ($files as $v) {
         $out .= '</pre>';
     } else if ('result' === $view) {
         $out .= '<div style="border:2px solid #000;color:#000;flex:1;padding:1em;">';
-        $out .= strtr(x\markdown\from($raw), [
+        $out .= strtr(x\markdown\from($raw) ?? "", [
             'asdf.gif' => 'test/asdf.gif',
             'asdf.jpg' => 'test/asdf.jpg'
         ]);

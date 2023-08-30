@@ -117,6 +117,9 @@ function data(?string $row): array {
     if ("" === $row) {
         return [null, $row, [], $dent];
     }
+    if (false !== \strpos($row, '|')) {
+        return ['table', $row, [], $dent, [0, 0]];
+    }
     // `!…`
     if (0 === \strpos($row, '!')) {
         if (
@@ -199,9 +202,6 @@ function data(?string $row): array {
         ]);
         if (\strspn($test, '-') === ($v = \strlen($test)) && $v > 2) {
             return ['hr', $row, [], $dent, '-'];
-        }
-        if (\strspn($test, '-:|') === ($v = \strlen($test)) && $v > 1) {
-            return ['table', $row, [], $dent, [0, 0]];
         }
         // `- …`
         if (false !== \strpos(" \t", \substr($row, 1, 1))) {
@@ -302,9 +302,6 @@ function data(?string $row): array {
             }
             return ['pre', $row, a($info, true), $dent, $fence];
         }
-        if (false !== \strpos(\strstr(\substr($row, 1), '`'), '|')) {
-            return ['table', $row, [], $dent, [0, 0]];
-        }
         return ['p', $row, [], $dent];
     }
     // `~…`
@@ -332,9 +329,6 @@ function data(?string $row): array {
     if (false !== \strpos(').', \substr($row, $n, 1)) && false !== \strpos(" \t", \substr($row, $n + 1, 1))) {
         $start = (int) \substr($row, 0, $n);
         return ['ol', $row, ['start' => 1 !== $start ? $start : null], $dent, [$n + 1 + \strspn($row, ' ', $n + 1), $start, \substr($row, $n, 1)]];
-    }
-    if (false !== \strpos($row, '|')) {
-        return ['table', $row, [], $dent, [0, 0]];
     }
     return ['p', $row, [], $dent];
 }
@@ -387,7 +381,7 @@ function l(?string $link) {
     return false;
 }
 
-// Apply reference(s), abbreviation(s), and foot-note(s) data to the row(s)
+// Apply reference(s), abbreviation(s), and note(s) data to the row(s)
 function lot($row, array $lot = [], $lazy = true) {
     if (!$row) {
         // Keep the `false` value because it is used to mark void element(s)
@@ -509,7 +503,7 @@ function r(string $char = '[]', $capture = false, string $before = ""): string {
 }
 
 function raw(?string $content, $block = true): array {
-    return rows($content, $block);
+    return rows($content, [], $block);
 }
 
 function row(?string $content, array $lot = []) {
@@ -601,11 +595,8 @@ function row(?string $content, array $lot = []) {
         if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
             // <https://spec.commonmark.org/0.30#example-341>
             $contains = '`(?>[^`\\\\]|\\\\`)+`';
-            if (isset($lot['is_table'])) {
-                $contains .= '|(?<=\\\\)[|]';
-            }
             // `***…***`
-            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>' . $contains . '|[^' . $c . '\\\\]|\\\\[' . $c . ']|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>' . $contains . '|[^' . $c . '\\\\]|\\\\.|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -617,7 +608,7 @@ function row(?string $content, array $lot = []) {
             $n = \strspn($chop, $c);
             $em = 1 === $n || $n > 2 ? "" : '{2}';
             // `*…*` or `**…**`
-            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>' . $contains . '|[^' . $c . '\\\\]|\\\\[' . $c . ']|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+            if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>' . $contains . '|[^' . $c . '\\\\]|\\\\.|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                 if ($m[0][1] > 0) {
                     $chops[] = e(\substr($chop, 0, $m[0][1]));
                     $content = $chop = \substr($chop, $m[0][1]);
@@ -870,7 +861,7 @@ function row(?string $content, array $lot = []) {
             } else {
                 $r = $c . '{' . ($n + 1) . ',}|' . $c . '{1,' . ($n - 1) . '}';
             }
-            if (\preg_match('/^' . $v . '((?>[^' . $c . '\\\\]|\\\\' . $c . '|(?<!' . $c . ')(?>' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
+            if (\preg_match('/^' . $v . '((?>[^' . $c . ']|(?<!' . $c . ')(?>' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
                 // <https://spec.commonmark.org/0.30#code-span>
                 $raw = \strtr($m[1], "\n", ' ');
                 if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
@@ -885,7 +876,7 @@ function row(?string $content, array $lot = []) {
             continue;
         }
         if (isset($lot['is_table']) && 0 === \strpos($chop, '|')) {
-            $chops[] = ['|', null, [], -1];
+            $chops[] = [false, '|', [], -1];
             $content = $chop = \substr($chop, 1);
             continue;
         }
@@ -903,7 +894,7 @@ function row(?string $content, array $lot = []) {
 }
 
 function rows(?string $content, array $lot = []): array {
-    // List of reference(s), abbreviation(s), and foot-note(s)
+    // List of reference(s), abbreviation(s), and note(s)
     $lot = \array_replace([[], [], []], $lot);
     if ("" === \trim($content ?? "")) {
         return [[], $lot];
@@ -1012,7 +1003,7 @@ function rows(?string $content, array $lot = []): array {
                     continue;
                 }
             }
-            // Reference, abbreviation, or foot-note
+            // Reference, abbreviation, or note
             if (\is_int($prev[0]) && "" !== $current[1]) {
                 if (\is_int($current[0])) {
                     $blocks[++$block] = $current;
@@ -1157,6 +1148,12 @@ function rows(?string $content, array $lot = []): array {
                 $blocks[$block][1] .= "" !== $prev[1] ? "\n" . $row : $row;
                 continue;
             }
+            if ('blockquote' === $prev[0]) {
+                if ('p' === $current[0]) {
+                    $blocks[$block][1] .= "\n" . $row; // Lazy quote block
+                    continue;
+                }
+            }
             if ('figure' === $prev[0]) {
                 // Exit image block
                 if ('p' !== $current[0] && null !== $current[0]) {
@@ -1165,12 +1162,6 @@ function rows(?string $content, array $lot = []): array {
                 }
                 if ($current[3] > $prev[3]) {
                     $blocks[$block][1] .= "\n" . $current[1];
-                    continue;
-                }
-            }
-            if ('blockquote' === $prev[0]) {
-                if ('p' === $current[0]) {
-                    $blocks[$block][1] .= "\n" . $row; // Lazy quote block
                     continue;
                 }
             }
@@ -1305,7 +1296,7 @@ function rows(?string $content, array $lot = []): array {
                 $lot[$v[0]][$key] = $title;
                 continue;
             }
-            // Match a foot-note or a reference
+            // Match a note or a reference
             if (0 === \strpos($v[1], '[') && \preg_match('/' . r('[]', true) . '/', $v[1], $m) && ':' === \substr($v[1], \strlen($m[0]), 1)) {
                 if (0 === \strpos($m[1], '^')) {
                     $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', \substr($m[1], 1))));
@@ -1314,7 +1305,7 @@ function rows(?string $content, array $lot = []): array {
                     if (isset($lot[$v[0]][$key])) {
                         continue;
                     }
-                    // Queue the foot-note data to be used later
+                    // Queue the note data to be used later
                     $lot[$v[0]][$key] = rows(\strtr(\ltrim($note), [
                         "\n" . $d => "\n" // TODO
                     ]), $lot)[0];
@@ -1460,7 +1451,6 @@ function rows(?string $content, array $lot = []): array {
             $v[2] = [];
             continue;
         }
-        // TODO
         if ('table' === $v[0]) {
             $table = [
                 ['thead', [['tr', [], [], 0]], 0],
@@ -1469,49 +1459,127 @@ function rows(?string $content, array $lot = []): array {
             $rows = \explode("\n", $v[1]);
             $headers = \trim(\array_shift($rows) ?? "", " \t|");
             $styles = \trim(\array_shift($rows) ?? "", " \t|");
-            // Missing table header separator
+            // Header-less table
+            if (\strspn($headers, " \t-:|") === \strlen($headers)) {
+                \array_unshift($rows, $styles);
+                $styles = $headers;
+                $headers = "";
+            }
+            // Missing table header line
             if ("" === $styles) {
                 $v = ['p', row($v[1], $lot)[0], [], $v[3]];
                 continue;
             }
-            // Invalid table header separator
+            // Invalid table header line
             if (\strspn($styles, " \t-:|") !== \strlen($styles)) {
                 $v = ['p', row($v[1], $lot)[0], [], $v[3]];
                 continue;
             }
+            $styles = \explode('|', $styles);
+            $styles_count = \count($styles);
+            foreach ($styles as &$vv) {
+                $vv = \trim($vv);
+                if (':' === $vv[0] && ':' === \substr($vv, -1)) {
+                    $vv = 'center';
+                    continue;
+                }
+                if (':' === $vv[0]) {
+                    $vv = 'left';
+                    continue;
+                }
+                if (':' === \substr($vv, -1)) {
+                    $vv = 'right';
+                    continue;
+                }
+                $vv = null;
+            }
+            unset($vv);
             $lot['is_table'] = 1;
-            $th = [];
-            if (\is_array($headers = row($headers, $lot)[0])) {
-                $k = 0;
-                foreach ($headers as $header) {
-                    $th[$k] = $th[$k] ?? ['th', [], [], 0];
-                    if (\is_array($header)) {
-                        if ('|' === $header[0]) {
-                            $k += 1;
+            if ("" !== $headers) {
+                $th = [];
+                if (\is_array($headers = row($headers, $lot)[0])) {
+                    $i = 0;
+                    foreach ($headers as $vv) {
+                        $th[$i] = $th[$i] ?? ['th', [], [], 0];
+                        if (\is_array($vv)) {
+                            if (false === $vv[0] && '|' === $vv[1]) {
+                                $i += 1;
+                                continue;
+                            }
+                            $th[$i][1][] = $vv;
                             continue;
                         }
-                        $th[$k][1][] = $header;
-                        continue;
+                        $th[$i][1][] = $vv;
                     }
-                    if (\is_string($header)) {
-                        if ("" !== ($header = \trim($header))) {
-                            $th[$k][1][] = $header;
+                    foreach ($th as $kk => &$vv) {
+                        $vv[1] = m($vv[1]);
+                        if (\is_array($vv[1])) {
+                            if (\is_string(\reset($vv[1]))) {
+                                $vv[1][$kk = \key($vv[1])] = \ltrim($vv[1][$kk]);
+                            }
+                            if (\is_string(\end($vv[1]))) {
+                                $vv[1][$kk = \key($vv[1])] = \rtrim($vv[1][$kk]);
+                            }
+                        } else if (\is_string($vv[1])) {
+                            $vv[1] = \trim($vv[1]);
                         }
-                        continue;
+                        if (isset($styles[$kk])) {
+                            $vv[2]['style'] = 'text-align: ' . $styles[$kk] . ';';
+                        }
                     }
-                    $th[$k][1][] = $header;
+                    unset($vv);
+                } else {
+                    $th[] = ['th', \trim($headers), [], 0];
                 }
-                foreach ($th as &$h) {
-                    $h[1] = m($h[1]);
-                }
-                unset($h);
-            } else {
-                $th[] = ['th', $headers, [], 0];
+                $table[0][1][0][1] = \array_pad(\array_slice($th, 0, $styles_count), $styles_count, ['th', "", [], 0]);
             }
-            $table[0][1][0][1] = $th;
+            foreach ($rows as $row) {
+                $td = [];
+                if (\is_array($row = row(\trim($row, " \t|"), $lot)[0])) {
+                    $i = 0;
+                    foreach ($row as $vv) {
+                        $td[$i] = $td[$i] ?? ['td', [], [], 0];
+                        if (\is_array($vv)) {
+                            if (false === $vv[0] && '|' === $vv[1]) {
+                                $i += 1;
+                                continue;
+                            }
+                            $td[$i][1][] = $vv;
+                            continue;
+                        }
+                        $td[$i][1][] = $vv;
+                    }
+                    foreach ($td as $kk => &$vv) {
+                        $vv[1] = m($vv[1]);
+                        if (\is_array($vv[1])) {
+                            if (\is_string(\reset($vv[1]))) {
+                                $vv[1][$kk = \key($vv[1])] = \ltrim($vv[1][$kk]);
+                            }
+                            if (\is_string(\end($vv[1]))) {
+                                $vv[1][$kk = \key($vv[1])] = \rtrim($vv[1][$kk]);
+                            }
+                        } else if (\is_string($vv[1])) {
+                            $vv[1] = \trim($vv[1]);
+                        }
+                        if (isset($styles[$kk])) {
+                            $vv[2]['style'] = 'text-align: ' . $styles[$kk] . ';';
+                        }
+                    }
+                    unset($vv);
+                } else {
+                    $td[] = ['td', \trim($row), [], 0];
+                }
+                $table[1][1][] = ['tr', \array_pad(\array_slice($td, 0, $styles_count), $styles_count, ['td', "", [], 0]), [], 0];
+            }
             unset($lot['is_table']);
-            echo json_encode($th);
-            echo '<br/>';
+            // Remove empty `<thead>`
+            if (empty($table[0][1][0][1])) {
+                unset($table[0]);
+            }
+            // Remove empty `<tbody>`
+            if (empty($table[1][1])) {
+                unset($table[1]);
+            }
             $v[1] = $table;
             continue;
         }

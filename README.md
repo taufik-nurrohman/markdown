@@ -150,6 +150,29 @@ Inline attributes always win over native syntax attributes and pre-defined attri
 Relative links and absolute links with the server’s host name will be treated as internal links, otherwise they will be
 treated as external links and will automatically get `rel="nofollow"` and `target="_blank"` attributes.
 
+### Notes
+
+_TODO_
+
+### Soft Break
+
+Soft breaks are collapsed to spaces in non-critical parts such as in paragraphs and list items:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>asdf asdf asdf asdf&#10;asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre></td>
+      <td><pre><code>&lt;p&gt;asdf asdf asdf asdf asdf asdf asdf asdf&lt;/p&gt;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
 ### Code Block
 
 I try to avoid conflict between different Markdown dialects and try to support whatever dialect you are using. For
@@ -269,80 +292,7 @@ Here’s how the code block results compare across each Markdown converter:
   </tbody>
 </table>
 
-### Foot Notes
-
-_TODO_
-
-### Image Block
-
-Markdown was initiated before the HTML5 era. When the `<figure>` element was introduced, people started using it as a
-feature to display an image with a caption. Most Markdown converters will convert image syntax that stands alone on a
-single line as an image element wrapped in a paragraph element in the output. My converter would instead wrap it in a
-figure element. Because for now, it seems like a figure element would be more desirable in this situation.
-
-Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces greater than 1 but
-less than 4.
-
-<table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><pre><code>![asdf](asdf.jpg)</code></pre></td>
-      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;/figure&gt;</code></pre></td>
-    </tr>
-    <tr>
-      <td><pre><code>![asdf](asdf.jpg)&#10; asdf</code></pre></td>
-      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;figcaption&gt;asdf&lt;/figcaption&gt;&lt;/figure&gt;</code></pre></td>
-    </tr>
-    <tr>
-      <td><pre><code>![asdf](asdf.jpg)&#10; asdf&#10;&#10; asdf&#10;&#10;asdf</code></pre></td>
-      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;figcaption&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;/figcaption&gt;&lt;/figure&gt;&lt;p&gt;asdf&lt;/p&gt;</code></pre></td>
-    </tr>
-    <tr>
-      <td><pre><code>![asdf](asdf.jpg) asdf</code></pre></td>
-      <td><pre><code>&lt;p&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt; asdf&lt;/p&gt;</code></pre></td>
-    </tr>
-  </tbody>
-</table>
-
-FYI, this format should also be valid for average Markdown files. And so it will be gracefully degraded when parsed by
-other Markdown converters.
-
-### List Block
-
-List block follows the CommonMark specifications with one exception: if the next ordered list item uses a number that is
-less than the number of the previous ordered list item, a new list block will be created. This is different from the
-original specification, which does not care about the literal value of the number.
-
-<table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><pre><code>1. asdf&#10;2. asdf&#10;3. asdf</code></pre></td>
-      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
-    </tr>
-    <tr>
-      <td><pre><code>1. asdf&#10;1. asdf&#10;1. asdf</code></pre></td>
-      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
-    </tr>
-    <tr>
-      <td><pre><code>1. asdf&#10;2. asdf&#10;1. asdf</code></pre></td>
-      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
-    </tr>
-  </tbody>
-</table>
-
-### Raw Block
+### HTML Block
 
 CommonMark doesn’t care about the DOM and therefore also doesn’t care if a HTML element is perfectly balanced or not.
 Unlike the original Markdown syntax specification which doesn’t allow you to convert Markdown syntax inside a HTML
@@ -515,9 +465,15 @@ unlikely to occur:
   </tbody>
 </table>
 
-### Soft Break
+### Image Block
 
-Soft breaks are collapsed to spaces in non-critical parts such as in paragraphs and list items:
+Markdown was initiated before the HTML5 era. When the `<figure>` element was introduced, people started using it as a
+feature to display an image with a caption. Most Markdown converters will convert image syntax that stands alone on a
+single line as an image element wrapped in a paragraph element in the output. My converter would instead wrap it in a
+figure element. Because for now, it seems like a figure element would be more desirable in this situation.
+
+Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces greater than 1 but
+less than 4.
 
 <table>
   <thead>
@@ -528,11 +484,59 @@ Soft breaks are collapsed to spaces in non-critical parts such as in paragraphs 
   </thead>
   <tbody>
     <tr>
-      <td><pre><code>asdf asdf asdf asdf&#10;asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre></td>
-      <td><pre><code>&lt;p&gt;asdf asdf asdf asdf asdf asdf asdf asdf&lt;/p&gt;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre></td>
+      <td><pre><code>![asdf](asdf.jpg)</code></pre></td>
+      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;/figure&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>![asdf](asdf.jpg)&#10; asdf</code></pre></td>
+      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;figcaption&gt;asdf&lt;/figcaption&gt;&lt;/figure&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>![asdf](asdf.jpg)&#10; asdf&#10;&#10; asdf&#10;&#10;asdf</code></pre></td>
+      <td><pre><code>&lt;figure&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt;&lt;figcaption&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;/figcaption&gt;&lt;/figure&gt;&lt;p&gt;asdf&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>![asdf](asdf.jpg) asdf</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;img alt="asdf" src="asdf.jpg" /&gt; asdf&lt;/p&gt;</code></pre></td>
     </tr>
   </tbody>
 </table>
+
+FYI, this format should also be valid for average Markdown files. And so it will be gracefully degraded when parsed by
+other Markdown converters.
+
+### List Block
+
+List block follows the CommonMark specifications with one exception: if the next ordered list item uses a number that is
+less than the number of the previous ordered list item, a new list block will be created. This is different from the
+original specification, which does not care about the literal value of the number.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>1. asdf&#10;2. asdf&#10;3. asdf</code></pre></td>
+      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>1. asdf&#10;1. asdf&#10;1. asdf</code></pre></td>
+      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>1. asdf&#10;2. asdf&#10;1. asdf</code></pre></td>
+      <td><pre><code>&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;&lt;ol&gt;&lt;li&gt;asdf&lt;/li&gt;&lt;/ol&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
+### Table Block
+
+_TODO_
 
 XSS
 ---
