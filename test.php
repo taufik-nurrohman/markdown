@@ -222,7 +222,10 @@ foreach ($files as $v) {
         $out .= '</pre>';
     } else if ('result' === $view) {
         $out .= '<div style="border:2px solid #000;color:#000;flex:1;padding:1em;">';
-        $out .= x\markdown\from($raw);
+        $out .= strtr(x\markdown\from($raw), [
+            'asdf.gif' => 'test/asdf.gif',
+            'asdf.jpg' => 'test/asdf.jpg'
+        ]);
         $out .= '</div>';
     } else if ('source' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
