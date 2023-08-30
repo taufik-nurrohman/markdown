@@ -43,6 +43,11 @@ $out .= 'Test';
 $out .= '</title>';
 $out .= '<style>';
 $out .= <<<CSS
+
+body > div > div a {
+  text-decoration: none;
+}
+
 body > div > div blockquote {
   border-left: 4px solid #eee;
   margin-left: 0;
@@ -123,6 +128,7 @@ body > div > div > :last-child {
   text-align: center;
   top: 0;
 }
+
 CSS;
 $out .= '</style>';
 $out .= '</head>';
