@@ -103,6 +103,10 @@ body > div > div > :last-child {
   margin-bottom: 0;
 }
 
+body > div > div :target {
+  background: #ff0;
+}
+
 .char-space,
 .char-tab {
   opacity: 0.5;

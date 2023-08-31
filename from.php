@@ -459,6 +459,19 @@ namespace x\markdown\from {
                     }
                     continue;
                 }
+                if ('sup' === $v[0]) {
+                    if (!empty($v[4][2]) || false === $v[4][0]) {
+                        continue; // Skip!
+                    }
+                    if (!isset($lot[2][$v[4][0]]) && $lazy) {
+                        // Restore the original syntax
+                        $v = $v[4][1];
+                        continue;
+                    }
+                    if ($lazy) {
+                        $v[4][0][2] = true;
+                    }
+                }
             }
         }
         unset($v);
@@ -715,18 +728,17 @@ namespace x\markdown\from {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
-                    // TODO
+                    $content = $chop = \substr($chop, \strlen($prev));
                     // `[^asdf]`
                     if (0 === \strpos($m[1][0], '^')) {
                         $key = \trim(\substr($m[1][0], 1));
                         $note_count[$key] = ($note_count[$key] ?? 0) + 1;
-                        $chops[] = ['sup', [['a', (string) (\is_numeric($key) ? $key : $note_count[$key]), [
+                        $chops[] = ['sup', [['a', (string) \count($note_count), [
                             'href' => '#to:' . $key,
                             'role' => 'doc-noteref'
                         ], -1, [false, "", true]]], [
                             'id' => 'from:' . $key . ($note_count[$key] > 1 ? '.' . $note_count[$key] : "")
-                        ], -1, [$key]];
-                        $content = $chop = \substr($chop, \strlen($prev));
+                        ], -1, [$key, $prev, false]];
                         $lot['note_count'] = $note_count;
                         continue;
                     }
@@ -747,11 +759,9 @@ namespace x\markdown\from {
                                 $chops[] = $v;
                             }
                             $chops[] = ']';
-                            $content = $chop = \substr($chop, \strlen($prev));
                             continue;
                         }
                     }
-                    $content = $chop = \substr($chop, \strlen($prev));
                     // `…(asdf)`
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>'), $is_table ? '|' : "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $prev = $n[0][0];
@@ -1035,11 +1045,13 @@ namespace x\markdown\from {
                     }
                 }
                 // Reference, abbreviation, or note
-                if (\is_int($prev[0]) && "" !== $current[1]) {
-                    if (\is_int($current[0])) {
+                if (\is_int($prev[0]) && (2 === $prev[0] || "" !== $current[1])) {
+                    if (\is_int($current[0]) || (2 === $prev[0] && false === \strpos(" \t", $row[0] ?? "") && "\n" === \substr($prev[1], -1))) {
                         $blocks[++$block] = $current;
                         continue;
                     }
+                    echo json_encode($row);
+                    echo '<br/>';
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
@@ -1704,7 +1716,9 @@ namespace x\markdown\from {
                     'id' => 'to:' . $k
                 ], 0];
             }
-            $blocks['notes'] = $notes;
+            if ($notes[1][1][1]) {
+                $blocks['notes'] = $notes;
+            }
         }
         return [$blocks, $lot];
     }
