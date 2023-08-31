@@ -669,7 +669,13 @@ I am against the task list feature because it promotes bad practices to abuse th
 presentation side it displays a check box interface correctly, I still believe that input elements should ideally be
 used inside a form element. There are several Unicode symbols that are more suitable and easier to read from the
 Markdown source like &#x2610; and &#x2612;, which means that this feature can actually be made using the existing list
-feature.
+feature:
+
+~~~ md
+- ☒ asdf 
+- ☐ asdf 
+- ☐ asdf 
+~~~
 
 In case you need it, or don’t want to update your existing task list syntax in your Markdown files, here’s the hack:
 
