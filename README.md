@@ -767,8 +767,8 @@ _TODO_
 License
 -------
 
-This software is licensed under the [MIT license](LICENSE). But please consider
-[donating](https://github.com/sponsors/taufik-nurrohman) if you benefit financially from this software.
+This library is licensed under the [MIT license](LICENSE). Please consider
+[donating](https://github.com/sponsors/taufik-nurrohman) if you benefit financially from this library.
 
 Links
 -----
