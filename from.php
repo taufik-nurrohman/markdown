@@ -259,6 +259,10 @@ namespace x\markdown\from {
                 if (0 === \strpos($t, '![')) {
                     $t = \substr($t, 0, \strrpos($t, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
                 }
+                // `<!---…`
+                if (0 === \strpos($t, '!--')) {
+                    return [false, $row, [], $dent, '!--'];
+                }
                 if (false !== \strpos('!?', $t[0])) {
                     return [false, $row, [], $dent, $t];
                 }
@@ -505,11 +509,9 @@ namespace x\markdown\from {
         }
         $chops = [];
         $prev = ""; // Capture the previous chunk
-        // Because syntax can collide with each other, I need to prioritize them based on their importance. For example,
-        // here I prioritize the code over the table column separator to ensure that if any character “|” is found after “`”
-        // then that character can be considered as the content of the code and does not need to be escaped because in this
-        // situation, the code wrap will be consumed first.
-        while (false !== ($chop = \strpbrk($content, '\\<`' . (isset($lot['is_table']) ? '|' : "") . '*_![&' . "\n"))) {
+        $is_image = isset($lot['is_image']);
+        $is_table = isset($lot['is_table']);
+        while (false !== ($chop = \strpbrk($content, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
             if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($chop)))) {
                 $chops[] = e($prev);
             }
@@ -574,24 +576,24 @@ namespace x\markdown\from {
                 $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
-            // A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode white-space, and either
-            // (2a) not followed by a Unicode punctuation character, or (2b) followed by a Unicode punctuation character and
-            // preceded by Unicode white-space or a Unicode punctuation character. For purpose(s) of this definition, the
-            // beginning and the end of the line count as Unicode white-space.
+            // A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode white-space, and
+            // either (2a) not followed by a Unicode punctuation character, or (2b) followed by a Unicode punctuation
+            // character and preceded by Unicode white-space or a Unicode punctuation character. For purpose(s) of this
+            // definition, the beginning and the end of the line count as Unicode white-space.
             //
-            // A right-flanking delimiter run is a delimiter run that is (1) not preceded by Unicode white-space, and either
-            // (2a) not preceded by a Unicode punctuation character, or (2b) preceded by a Unicode punctuation character and
-            // followed by Unicode white-space or a Unicode punctuation character. For purpose(s) of this definition, the
-            // beginning and the end of the line count as Unicode white-space.
+            // A right-flanking delimiter run is a delimiter run that is (1) not preceded by Unicode white-space, and
+            // either (2a) not preceded by a Unicode punctuation character, or (2b) preceded by a Unicode punctuation
+            // character and followed by Unicode white-space or a Unicode punctuation character. For purpose(s) of this
+            // definition, the beginning and the end of the line count as Unicode white-space.
             //
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 // <https://spec.commonmark.org/0.30#example-341>
-                $contains = '`(?>[^`\\\\]|\\\\`)+`';
+                $contains = '`(?>[^`\\\\]|\\\\`(?!`))+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
                 // `***…***`
-                if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>' . $contains . '|[^' . $c . '\\\\]|\\\\.|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>' . $contains . '|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
-                        $chops[] = [false, e(\substr($chop, 0, $m[0][1])), [], -1];
+                        $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
                     $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c];
@@ -601,7 +603,7 @@ namespace x\markdown\from {
                 $n = \strspn($chop, $c);
                 $em = 1 === $n || $n > 2 ? "" : '{2}';
                 // `*…*` or `**…**`
-                if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>' . $contains . '|[^' . $c . '\\\\]|\\\\.|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']' . $em . '(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']' . $em . '(?=[\p{P}]))(?>' . $contains . '|[' . $c . ']' . (1 === $n ? '{2}' : "") . '|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']' . $em . '(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']' . $em . '(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
@@ -623,7 +625,7 @@ namespace x\markdown\from {
                     $v = \substr($chop, 0, $n + 3);
                     // <https://spec.commonmark.org/0.30#example-625>
                     // <https://spec.commonmark.org/0.30#example-626>
-                    if (4 === \strpos($v, '>') || false !== \strpos(\substr($v, 4, -3), '--') || '-' === \substr($v, -4, 1)) {
+                    if ($n < 4 || false !== \strpos(\substr($v, 4, -3), '--') || ('-' === \substr($v, -4, 1) && '<!---->' !== $v)) {
                         $chops[] = e($prev = '<');
                         $content = $chop = \substr($chop, 1);
                         continue;
@@ -637,12 +639,12 @@ namespace x\markdown\from {
                     $content = $chop = \substr($chop, \strlen($prev = $v));
                     continue;
                 }
-                if (0 === \strpos($chop, '<!') && \preg_match('/^<!((?>' . q('"') . '|' . q("'") . '|[^>])+)>/', $chop, $m)) {
+                if (0 === \strpos($chop, '<!') && \preg_match('/^<![a-z](?>' . q('"') . '|' . q("'") . '|[^>])+>/i', $chop, $m)) {
                     $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \rtrim(\strtok(\substr($m[0], 1), " \n\t>"), '/')];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
-                if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<\?((?>' . q('"') . '|' . q("'") . '|[^>])+)\?>/', $chop, $m)) {
+                if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<\?(?>' . q('"') . '|' . q("'") . '|[^>])+\?>/', $chop, $m)) {
                     $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \strtok(\substr($m[0], 1), " \n\t>")];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
@@ -704,7 +706,7 @@ namespace x\markdown\from {
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
                     $row = row($m[1][0], $lot)[0];
-                    if (!isset($lot['is_image']) && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
+                    if (!$is_image && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
                         $deep = false;
                         foreach ($row as $v) {
                             if (\is_array($v) && 'a' === $v[0]) {
@@ -818,7 +820,7 @@ namespace x\markdown\from {
                         $data['target'] = $data['target'] ?? '_blank';
                     }
                     $chops[] = ['a', $row, \array_replace([
-                        // Need to retain the `null` value if it is, otherwise the reference link style feature won’t work
+                        // Need to retain the `null` value, otherwise the reference link style feature won’t work
                         'href' => null !== $link ? u(v($link)) : null,
                         'title' => $title
                     ], $data ?? []), -1, [$key ?? \trim(\strtolower($m[1][0])), $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? ""), false]];
@@ -868,7 +870,7 @@ namespace x\markdown\from {
                 $content = $chop = \substr($chop, $n);
                 continue;
             }
-            if (isset($lot['is_table']) && 0 === \strpos($chop, '|')) {
+            if ($is_table && 0 === \strpos($chop, '|')) {
                 $chops[] = [false, '|', [], -1];
                 $content = $chop = \substr($chop, 1);
                 continue;
@@ -911,14 +913,39 @@ namespace x\markdown\from {
                 // Raw HTML
                 if (false === $prev[0]) {
                     if ('!--' === $prev[4]) {
-                        if (false !== \strpos($prev[1], '-->')) {
+                        if (false !== ($n = \strpos($prev[1], '-->'))) {
+                            if ($n < 4) {
+                                $blocks[$block++] = ['p', $prev[1], [], $prev[3]];
+                                continue;
+                            }
+                            if (false !== \strpos(\substr($prev[1], 4, $n - 4), '--')) {
+                                [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
+                                $blocks[$block] = ['p', $a, [], $prev[3]];
+                                if ("" !== $b && \is_array($b = rows($b, $lot)[0])) {
+                                    foreach ($b as $bb) {
+                                        $blocks[++$block] = $bb;
+                                    }
+                                }
+                                continue;
+                            }
                             if (null === $current[0]) {
                                 continue;
                             }
                             $blocks[++$block] = $current;
                             continue;
                         }
-                        if (false !== \strpos($row, '-->')) {
+                        if (false !== ($n = \strpos($row, '-->'))) {
+                            if ('-' === \substr($row, $n - 1, 1)) {
+                                [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
+                                $blocks[$block] = ['p', $a, [], $prev[3]];
+                                if ("" !== $b && \is_array($b = rows($b, $lot)[0])) {
+                                    foreach ($b as $bb) {
+                                        $blocks[++$block] = $bb;
+                                    }
+                                }
+                                $blocks[++$block] = ['p', e($row), [], $current[3]];
+                                continue;
+                            }
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
@@ -1032,8 +1059,8 @@ namespace x\markdown\from {
                     }
                 }
                 // List block is so complex that I decided to blindly concatenate all of the remaining line(s) until the
-                // very end of the stream by default when the first list marker is found. To exit the list, we will do so
-                // manually while we are in the list block.
+                // very end of the stream by default when the first list marker is found. To exit the list, we will do
+                // so manually while we are in the list block.
                 if ('dl' === $prev[0]) {
                     if (null !== $current[0]) {
                         if ('dl' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
@@ -1055,15 +1082,15 @@ namespace x\markdown\from {
                         $blocks[++$block] = ['p', $current[1], [], $current[3]];
                         continue;
                     }
-                    // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
+                    // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
                     if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0]) {
                         $current[1] = $prev[4][1] . $prev[4][2] . "\n" . $current[1];
                         $blocks[$block] = $current;
                         continue;
                     }
-                    // To exit the list, either start a new list marker with a lower number than the previous list number or
-                    // use a different number suffix. For example, use `1)` to separate the previous list that was using
-                    // `1.` as the list marker.
+                    // To exit the list, either start a new list marker with a lower number than the previous list
+                    // number or use a different number suffix. For example, use `1)` to separate the previous list that
+                    // was using `1.` as the list marker.
                     if ('ol' === $current[0] && $current[3] === $prev[3] && ($current[4][2] !== $prev[4][2] || $current[4][1] < $prev[4][1])) {
                         // Remove final line break
                         $blocks[$block][1] = \rtrim($prev[1], "\n");
@@ -1098,7 +1125,7 @@ namespace x\markdown\from {
                         $blocks[++$block] = ['p', $current[1], [], $current[3]];
                         continue;
                     }
-                    // <https://spec.commonmark.org/0.30#example-278> but with indent that is less than the minimum required
+                    // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
                     if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0]) {
                         $current[1] = $prev[4][1] . "\n" . $current[1];
                         $blocks[$block] = $current;
@@ -1225,6 +1252,11 @@ namespace x\markdown\from {
                     $blocks[++$block] = ['p', $current[1], [], $current[3]];
                     continue;
                 }
+                // Look like a Setext-header level 2, but preceded by a blank line, treat it as a paragraph block
+                if ('h2' === $current[0] && '-' === $current[4][1] && (!$prev || null === $prev[0])) {
+                    $blocks[++$block] = ['p', $current[1], [], $current[3]];
+                    continue;
+                }
                 // An ATX-header block or thematic break
                 if ('h' === $current[0][0]) {
                     $blocks[++$block] = $current;
@@ -1277,8 +1309,8 @@ namespace x\markdown\from {
                 if (0 === \strpos($v[1], '*[') && \preg_match('/' . r('[]', true) . '/', \substr($v[1], 1), $m) && ':' === \substr($v[1], \strlen($m[0]) + 1, 1)) {
                     // Remove abbreviation block from the structure
                     unset($blocks[$k]);
-                    // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave similar
-                    // to the reference specification.
+                    // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave
+                    // similar to the reference specification.
                     $key = \trim(\preg_replace('/\s+/', ' ', $m[1]));
                     // Queue the abbreviation data to be used later
                     $title = \trim(\substr($v[1], \strlen($m[0]) + 2));
