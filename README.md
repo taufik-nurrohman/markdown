@@ -650,7 +650,7 @@ $content = strtr($content, [' />' => '>']);
 echo $content;
 ~~~
 
-### Add Strike Feature
+### Strike
 
 This method allows you to add strike-through syntax, as you may have already noticed in the
 [GFM specification](https://github.github.com/gfm):
@@ -663,7 +663,7 @@ $content = preg_replace('/((?<![~])[~]{1,2}(?![~]))([^~]+)\1/', '<del>$2</del>',
 echo $content;
 ~~~
 
-### Add Task List Feature
+### Task List
 
 I am against the task list feature because it promotes bad practices to abuse the form input element. Although from the
 presentation side it displays a check box interface correctly, I still believe that input elements should ideally be
