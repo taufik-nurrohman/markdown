@@ -422,7 +422,7 @@ namespace x\markdown\from {
         }
         foreach ($row as &$v) {
             if (\is_array($v) && isset($v[0])) {
-                if (false === $v[0] || 'code' === $v[0]) {
+                if (false === $v[0] || 'abbr' === $v[0] || 'code' === $v[0]) {
                     continue;
                 }
                 $v[1] = lot($v[1], $lot);
