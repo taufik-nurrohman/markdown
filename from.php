@@ -42,7 +42,7 @@ namespace x\markdown\from {
             if ("" === ($info = \trim(\substr($info, 1, -1)))) {
                 return $raw ? [] : null;
             }
-            $pattern = '/([#.](?>\\\\[#.]|[\w:-])+|(?>[\w:.-]+(?>=(?>' . q('"') . '|' . q("'") . '|\S+)?)?))/';
+            $pattern = '/([#.](?>\\\\.|[\w:-])+|(?>[\w:.-]+(?>=(?>' . q('"') . '|' . q("'") . '|\S+)?)?))/';
             foreach (\preg_split($pattern, $info, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
                 if ("" === \trim($v)) {
                     continue; // Skip the space(s)
@@ -68,6 +68,15 @@ namespace x\markdown\from {
                     // `{a="b"}` or `{a='b'}`
                     if ('"' === $v[1][0] || "'" === $v[1][0]) {
                         $v[1] = v(\substr($v[1], 1, -1));
+                    // `{a=false}`
+                    } else if ('false' === $v[1]) {
+                        $v[1] = false;
+                    // `{a=true}`
+                    } else if ('true' === $v[1]) {
+                        $v[1] = true;
+                    // `{a=null}`
+                    } else if ('null' === $v[1]) {
+                        $v[1] = null;
                     }
                     if ('class' === $v[0]) {
                         $class[] = $v[1]; // Merge class value(s)
@@ -511,6 +520,7 @@ namespace x\markdown\from {
         $prev = ""; // Capture the previous chunk
         $is_image = isset($lot['is_image']);
         $is_table = isset($lot['is_table']);
+        static $note_count = 0;
         while (false !== ($chop = \strpbrk($content, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
             if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($chop)))) {
                 $chops[] = e($prev);
@@ -705,6 +715,20 @@ namespace x\markdown\from {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
+                    // TODO
+                    // `[^asdf]`
+                    if (0 === \strpos($m[1][0], '^')) {
+                        $key = \trim(\substr($m[1][0], 1));
+                        $note_count += 1;
+                        $chops[] = ['sup', [['a', (string) (\is_numeric($key) ? $key : $note_count), [
+                            'href' => '#to:' . $key,
+                            'role' => 'doc-noteref'
+                        ], -1, [false, "", true]]], [
+                            'id' => 'from:' . $key . '.' . $note_count
+                        ], -1, [$key]];
+                        $content = $chop = \substr($chop, \strlen($prev));
+                        continue;
+                    }
                     $row = row($m[1][0], $lot)[0];
                     if (!$is_image && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
                         $deep = false;
@@ -722,11 +746,11 @@ namespace x\markdown\from {
                                 $chops[] = $v;
                             }
                             $chops[] = ']';
-                            $content = $chop = \substr($chop, \strlen($m[0][0]));
+                            $content = $chop = \substr($chop, \strlen($prev));
                             continue;
                         }
                     }
-                    $content = $chop = \substr($chop, \strlen($m[0][0]));
+                    $content = $chop = \substr($chop, \strlen($prev));
                     // `…(asdf)`
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>'), $is_table ? '|' : "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $prev = $n[0][0];
@@ -794,19 +818,6 @@ namespace x\markdown\from {
                         $link = $of[0] ?? null;
                         $title = $of[1] ?? null;
                         $content = $chop = \substr($chop, \strlen($n[0][0]));
-                    }
-                    // TODO
-                    // `[^asdf]`
-                    if (0 === \strpos($m[1][0], '^')) {
-                        $key = \trim(\substr($m[1][0], 1));
-                        $chops[] = ['sup', [['a', $key, [
-                            'href' => '#to:' . $key,
-                            'role' => 'doc-noteref'
-                        ], -1, [false, "", true]]], [
-                            'id' => 'from:' . $key
-                        ], -1, [$key]];
-                        $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
-                        continue;
                     }
                     // …{asdf}
                     if (0 === \strpos(\trim($chop), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'"), $is_table ? '|' : "") . ')/', $chop, $o)) {
@@ -1330,9 +1341,9 @@ namespace x\markdown\from {
                             continue;
                         }
                         // Queue the note data to be used later
-                        $lot[$v[0]][$key] = rows(\strtr(\ltrim($note), [
+                        $lot[$v[0]][$key] = [rows(\strtr(\ltrim($note), [
                             "\n" . $d => "\n" // TODO
-                        ]), $lot)[0];
+                        ]), [$lot[0], $lot[1]])[0], 0];
                         continue;
                     }
                     $data = $key = $link = $title = null;
@@ -1671,19 +1682,18 @@ namespace x\markdown\from {
                 'role' => 'doc-endnotes'
             ], 0];
             foreach ($lot[2] as $k => $v) {
-                if (\is_array($v) && \is_array($last = \array_pop($v))) {
+                if (\is_array($v[0]) && \is_array($last = \array_pop($v[0]))) {
                     if ('p' === $last[0]) {
                         $last[1] = (array) $last[1];
-                        $last[1][] = ' ';
+                        $last[1][] = ['&', '&#160;', [], -1];
                         $last[1][] = ['a', [['&', '&#8617;', [], -1]], [
                             'href' => '#from:' . $k,
                             'role' => 'doc-backlink'
                         ], -1];
-                        $last[1] = m($last[1]);
                     }
-                    $v[] = $last;
+                    $v[0][] = $last;
                 }
-                $notes[1][1][1][] = ['li', $v, [
+                $notes[1][1][1][] = ['li', $v[0], [
                     'id' => 'to:' . $k
                 ], 0];
             }
