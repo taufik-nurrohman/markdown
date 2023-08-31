@@ -1,5 +1,5 @@
-Markdown to HTML Converter
-==========================
+Markdown Parser
+===============
 
 With 90% compliance to [CommonMark 0.30](https://spec.commonmark.org/0.30) specifications.
 
@@ -173,7 +173,29 @@ treated as external links and will automatically get `rel="nofollow"` and `targe
 
 ### Notes
 
-_TODO_
+Notes follow the [Markdown Extra’s notes syntax](https://michelf.ca/projects/php-markdown/extra#footnotes) but with
+slightly different HTML output, following the [Mecha](https://github.com/mecha-cms) naming style. Multi-line notes also
+don’t have to be indented by four spaces as required by Markdown Extra. A space or tab is enough to continue the note.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>asdf [^1]&#10;&#10;[^1]: asdf</code></pre></td>
+      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&lt;div role="doc-endnotes"&gt;&lt;hr /&gt;&lt;ol&gt;&lt;li id="to:1"&gt;&lt;p&gt;asdf&amp;#160;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>asdf [^1]&#10;&#10;[^1]:&#10;&#10;  asdf&#10;  ====&#10;&#10;  asdf&#10;  asdf&#10;&#10;      asdf&#10;&#10;  asdf&#10;  asdf&#10;&#10;asdf</code></pre></td>
+      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;div role="doc-endnotes"&gt;&lt;hr /&gt;&lt;ol&gt;&lt;li id="to:1"&gt;&lt;h1&gt;asdf&lt;/h1&gt;&lt;p&gt;asdf asdf&lt;/p&gt;&lt;pre&gt;&lt;code&gt;asdf&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;asdf asdf&amp;#160;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
 
 ### Soft Break
 
@@ -694,7 +716,51 @@ echo $content;
 
 ### Pre-Defined Abbreviations, Notes, and References
 
-_TODO_
+By inserting abbreviations, notes, and references at the end of the Markdown content, it will be as if you had
+pre-defined abbreviations, notes, and references feature. This should be placed at the end of the Markdown content,
+because according to the [link reference definitions](https://spec.commonmark.org/0.30#example-204) specification, the
+first declared reference always takes precedence:
+
+~~~ php
+$abbreviations = [
+    'CSS' => 'Cascading Style Sheet',
+    'HTML' => 'Hyper Text Markup Language',
+    'JS' => 'JavaScript'
+];
+
+$references = [
+    'mecha-cms' => ['https://github.com/mecha-cms', 'Mecha CMS', []],
+    'taufik-nurrohman' => ['https://github.com/taufik-nurrohman', 'Taufik Nurrohman', []],
+];
+
+$suffix = "";
+
+if (!empty($abbreviations)) {
+    foreach ($abbreviations as $k => $v) {
+        $suffix .= "\n*[" . $k . ']: ' . $v; 
+    }
+}
+
+if (!empty($references)) {
+    foreach ($references as $k => $v) {
+        [$link, $title, $attributes] = $v;
+        $reference = '[' . $k . ']: ' . $link;
+        if (!empty($title)) {
+            $reference .= ' "' . $title . '"';
+        }
+        if (!empty($attributes)) {
+            $reference .= ' {';
+            foreach ($attributes as $kk => $vv) { /* … */ }
+            $reference .= '}';
+        }
+        $suffix .= "\n" . $reference;
+    }
+}
+
+$content = from_markdown($content . "\n" . $suffix);
+
+echo $content;
+~~~
 
 ### Idea: Embed Syntax
 
@@ -768,7 +834,53 @@ echo $content;
 
 ### Idea: Note Block
 
-_TODO_
+Several people have discussed this feature, and I think I like
+[this answer](https://stackoverflow.com/a/41449789/1163000) the most. The syntax is compatible with native Markdown
+syntax, which is nice to look at directly through the Markdown source, even when it gets rendered to HTML:
+
+~~~ md
+------------------------------
+
+  **NOTE:** asdf asdf asdf
+
+------------------------------
+~~~
+
+~~~ md
+------------------------------
+
+  **NOTE:**
+
+  asdf asdf asdf asdf
+  asdf asdf asdf asdf
+
+  asdf asdf asdf asdf
+
+------------------------------
+~~~
+
+Most Markdown converters will render the syntax above to this HTML, which is still acceptable to be treated as a note
+block from its presentation, despite its broken semantic:
+
+~~~ html
+<hr /><p><strong>NOTE:</strong> asdf asdf asdf</p><hr />
+~~~
+
+~~~ html
+<hr /><p><strong>NOTE:</strong></p><p>asdf asdf asdf asdf asdf asdf asdf asdf</p><p>asdf asdf asdf asdf</p><hr />
+~~~
+
+With regular expressions, you can improve its [semantic](https://w3c.github.io/aria#note):
+
+~~~ php
+$content = from_markdown($content);
+
+$content = preg_replace_callback('/<hr\s*\/?>(<p><strong>NOTE:<\/strong>[\s\S]*?<\/p>)<hr\s*\/?>/', static function ($m) {
+    return '<div role="note">' . $m[1] . '</div>';
+}, $content);
+
+echo $content;
+~~~
 
 License
 -------

@@ -1045,13 +1045,24 @@ namespace x\markdown\from {
                     }
                 }
                 // Reference, abbreviation, or note
-                if (\is_int($prev[0]) && (2 === $prev[0] || "" !== $current[1])) {
-                    if (\is_int($current[0]) || (2 === $prev[0] && false === \strpos(" \t", $row[0] ?? "") && "\n" === \substr($prev[1], -1))) {
+                if (\is_int($prev[0])) {
+                    if (\is_int($current[0])) {
                         $blocks[++$block] = $current;
                         continue;
                     }
-                    $blocks[$block][1] .= "\n" . $row;
-                    continue;
+                    $row = \substr($row, $prev[3]);
+                    if (2 === $prev[0]) {
+                        if ("" !== $current[1] && false === \strpos(" \t", $row[0]) && "\n" === \substr($prev[1], -1)) {
+                            $blocks[++$block] = $current;
+                            continue;
+                        }
+                        $blocks[$block][1] .= "\n" . $row;
+                        continue;
+                    }
+                    if ("" !== $current[1]) {
+                        $blocks[$block][1] .= "\n" . $row;
+                        continue;
+                    }
                 }
                 if ('p' === $prev[0]) {
                     // Followed by a definition data block. Convert the previous paragraph as its definition term(s).
@@ -1351,11 +1362,23 @@ namespace x\markdown\from {
                         if (isset($lot[$v[0]][$key])) {
                             continue;
                         }
+                        if ("" === \trim($note)) {
+                            $v = ['p', row($v[1], $lot)[0], [], $v[3]];
+                            continue;
+                        }
+                        if (false !== \strpos(" \n", $note[0])) {
+                            $note = \substr($note, 1);
+                        } else if ("\t" === $note[0]) {
+                            $note = '   ' . \substr($note[0]);
+                        }
+                        // Remove indent(s)
+                        [$a, $b] = \explode("\n", $note . "\n", 2);
+                        $note = \trim(\strtr("\n" . $a . "\n" . $b, [
+                            "\n" . \str_repeat(' ', \strspn(\trim($b, "\n"), ' ')) => "\n"
+                        ]), "\n");
                         // Queue the note data to be used later
-                        $lot_0 = [$lot[0], $lot[1]];
-                        $lot[$v[0]][$key] = rows(\strtr(\ltrim($note), [
-                            "\n" . $d => "\n" // TODO
-                        ]), $lot_0)[0];
+                        $lot_of_note = [$lot[0], $lot[1]];
+                        $lot[$v[0]][$key] = rows($note, $lot_of_note)[0];
                         continue;
                     }
                     $data = $key = $link = $title = null;
@@ -1707,8 +1730,21 @@ namespace x\markdown\from {
                                 'role' => 'doc-backlink'
                             ], -1];
                         }
+                        $v[] = $last;
+                    } else {
+                        $v[] = $last;
+                        $p = ['p', [], [], 0];
+                        for ($i = 0, $j = $lot['note_count'][$k]; $i < $j; ++$i) {
+                            if ($i > 0) {
+                                $p[1][] = ['&', '&#160;', [], -1];
+                            }
+                            $p[1][] = ['a', [['&', '&#8617;', [], -1]], [
+                                'href' => '#from:' . $k . ($i > 0 ? '.' . ($i + 1) : ""),
+                                'role' => 'doc-backlink'
+                            ], -1];
+                        }
+                        $v[] = $p;
                     }
-                    $v[] = $last;
                 }
                 $notes[1][1][1][] = ['li', $v, [
                     'id' => 'to:' . $k
@@ -1717,6 +1753,7 @@ namespace x\markdown\from {
             if ($notes[1][1][1]) {
                 $blocks['notes'] = $notes;
             }
+            unset($lot['note_count']);
         }
         return [$blocks, $lot];
     }

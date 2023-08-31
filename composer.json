@@ -12,7 +12,7 @@
   "autoload": {
     "files": ["from.php", "to.php"]
   },
-  "description": "Obviously, a Markdown to HTML converter.",
+  "description": "Obviously, a Markdown parser.",
   "funding": [
     {
       "type": "other",
