@@ -764,8 +764,11 @@ echo $content;
 
 _TODO_
 
-Questions
----------
+License
+-------
+
+This software is licensed under the [MIT license](LICENSE). But if you benefit financially from this software, please
+consider [donating](https://github.com/sponsors/taufik-nurrohman).
 
 _TODO_
 
