@@ -393,7 +393,7 @@ namespace x\markdown\from {
         return false;
     }
     // Apply reference(s), abbreviation(s), and note(s) data to the row(s)
-    function lot($row, array $lot = [], $lazy = true) {
+    function lot($row, array &$lot = [], $lazy = true) {
         if (!$row) {
             // Keep the `false` value because it is used to mark void element(s)
             return false === $row ? false : null;
@@ -512,7 +512,7 @@ namespace x\markdown\from {
     function raw(?string $content, $block = true): array {
         return $block ? rows($content) : row($content);
     }
-    function row(?string $content, array $lot = []) {
+    function row(?string $content, array &$lot = []) {
         if ("" === \trim($content ?? "")) {
             return [[], $lot];
         }
@@ -520,7 +520,7 @@ namespace x\markdown\from {
         $prev = ""; // Capture the previous chunk
         $is_image = isset($lot['is_image']);
         $is_table = isset($lot['is_table']);
-        static $note_count = 0;
+        $note_count = $lot['note_count'] ?? [];
         while (false !== ($chop = \strpbrk($content, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
             if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($chop)))) {
                 $chops[] = e($prev);
@@ -719,14 +719,15 @@ namespace x\markdown\from {
                     // `[^asdf]`
                     if (0 === \strpos($m[1][0], '^')) {
                         $key = \trim(\substr($m[1][0], 1));
-                        $note_count += 1;
-                        $chops[] = ['sup', [['a', (string) (\is_numeric($key) ? $key : $note_count), [
+                        $note_count[$key] = ($note_count[$key] ?? 0) + 1;
+                        $chops[] = ['sup', [['a', (string) (\is_numeric($key) ? $key : $note_count[$key]), [
                             'href' => '#to:' . $key,
                             'role' => 'doc-noteref'
                         ], -1, [false, "", true]]], [
-                            'id' => 'from:' . $key . '.' . $note_count
+                            'id' => 'from:' . $key . ($note_count[$key] > 1 ? '.' . $note_count[$key] : "")
                         ], -1, [$key]];
                         $content = $chop = \substr($chop, \strlen($prev));
+                        $lot['note_count'] = $note_count;
                         continue;
                     }
                     $row = row($m[1][0], $lot)[0];
@@ -898,7 +899,7 @@ namespace x\markdown\from {
         }
         return [m($chops), $lot];
     }
-    function rows(?string $content, array $lot = []): array {
+    function rows(?string $content, array &$lot = []): array {
         // List of reference(s), abbreviation(s), and note(s)
         $lot = \array_replace([[], [], []], $lot);
         if ("" === \trim($content ?? "")) {
@@ -1341,9 +1342,10 @@ namespace x\markdown\from {
                             continue;
                         }
                         // Queue the note data to be used later
-                        $lot[$v[0]][$key] = [rows(\strtr(\ltrim($note), [
+                        $lot_0 = [$lot[0], $lot[1]];
+                        $lot[$v[0]][$key] = rows(\strtr(\ltrim($note), [
                             "\n" . $d => "\n" // TODO
-                        ]), [$lot[0], $lot[1]])[0], 0];
+                        ]), $lot_0)[0];
                         continue;
                     }
                     $data = $key = $link = $title = null;
@@ -1682,18 +1684,23 @@ namespace x\markdown\from {
                 'role' => 'doc-endnotes'
             ], 0];
             foreach ($lot[2] as $k => $v) {
-                if (\is_array($v[0]) && \is_array($last = \array_pop($v[0]))) {
+                if (!isset($lot['note_count'][$k])) {
+                    continue;
+                }
+                if (\is_array($v) && \is_array($last = \array_pop($v))) {
                     if ('p' === $last[0]) {
                         $last[1] = (array) $last[1];
-                        $last[1][] = ['&', '&#160;', [], -1];
-                        $last[1][] = ['a', [['&', '&#8617;', [], -1]], [
-                            'href' => '#from:' . $k,
-                            'role' => 'doc-backlink'
-                        ], -1];
+                        for ($i = 0, $j = $lot['note_count'][$k]; $i < $j; ++$i) {
+                            $last[1][] = ['&', '&#160;', [], -1];
+                            $last[1][] = ['a', [['&', '&#8617;', [], -1]], [
+                                'href' => '#from:' . $k . ($i > 0 ? '.' . ($i + 1) : ""),
+                                'role' => 'doc-backlink'
+                            ], -1];
+                        }
                     }
-                    $v[0][] = $last;
+                    $v[] = $last;
                 }
-                $notes[1][1][1][] = ['li', $v[0], [
+                $notes[1][1][1][] = ['li', $v, [
                     'id' => 'to:' . $k
                 ], 0];
             }
