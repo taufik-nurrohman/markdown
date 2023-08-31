@@ -51,11 +51,12 @@ Require the generated auto-loader file in your application:
 ~~~ php
 <?php
 
-use function x\markdown\from as convert;
+use function x\markdown\from as from_markdown;
+use function x\markdown\to as to_markdown;
 
 require 'vendor/autoload.php';
 
-echo convert('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 ### Using File
@@ -65,13 +66,17 @@ Require the `from.php` and `to.php` files in your application:
 ~~~ php
 <?php
 
-use function x\markdown\from as convert;
+use function x\markdown\from as from_markdown;
+use function x\markdown\to as to_markdown;
 
 require 'from.php';
 require 'to.php';
 
-echo convert('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
+
+The `to.php` file is optional and is used to convert HTML to Markdown. If you just want to convert Markdown to HTML, you
+don’t need to include this file.
 
 Options
 -------
@@ -552,7 +557,40 @@ original specification, which does not care about the literal value of the numbe
 
 ### Table Block
 
-_TODO_
+Table block follows the [Markdown Extra’s table block syntax](https://michelf.ca/projects/php-markdown/extra#table).
+However, there are a few additional features and rules:
+
+ - The actual number of columns follows the number of columns in the table header separator. If you have columns in
+   table header and/or table data with a number that exceeds the actual number of columns, the excess columns will be
+   discarded. If you have columns in table header and/or table data with a number that is less than the actual number of
+   columns, several empty columns will be added automatically to the right side.
+ - Literal pipe characters in table columns must be escaped. Exceptions are those that appear in code span and attribute
+   values of raw HTML tags.
+ - Header-less table is supported, but may not be compatible with other Markdown converters. Consider using this feature
+   as rarely as possible, unless you have no plans to switch to other Markdown converters in the future.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>asdf | asdf&#10;---- | ----&#10;asdf | asdf</code></pre></td>
+      <td><pre><code>&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;asdf&lt;/th&gt;&lt;th&gt;asdf&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td&gt;asdf&lt;/td&gt;&lt;td&gt;asdf&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>asdf | asdf&#10;---- | ----</code></pre></td>
+      <td><pre><code>&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;asdf&lt;/th&gt;&lt;th&gt;asdf&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;/table&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>---- | ----&#10;asdf | asdf</code></pre></td>
+      <td><pre><code>&lt;table&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td&gt;asdf&lt;/td&gt;&lt;td&gt;asdf&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
 XSS
 ---
@@ -595,9 +633,9 @@ Tweaks
 Not all Markdown dialects are supported for various reasons. Some of the modification methods below can be implemented
 to add features that you might find in other Markdown converters.
 
-Your Markdown content is represented as variable `$content`. If you modify the content before the function `convert()`
-is called, it means that you modify the Markdown content before it is converted. If you modify the content after the
-function `convert()` is called, it means that you modify the results of the Markdown conversion.
+Your Markdown content is represented as variable `$content`. If you modify the content before the function
+`from_markdown()` is called, it means that you modify the Markdown content before it is converted. If you modify the
+content after the function `from_markdown()` is called, it means that you modify the results of the Markdown conversion.
 
 ### XHTML to HTML5
 
@@ -605,7 +643,7 @@ This converter escapes invalid HTML elements and takes care of HTML special char
 attribute syntax, so it is safe to replace `' />'` with `'>'` directly from the results of the Markdown conversion:
 
 ~~~ php
-$content = convert($content);
+$content = from_markdown($content);
 
 $content = strtr($content, [' />' => '>']);
 
@@ -618,7 +656,7 @@ This method allows you to add strike-through syntax, as you may have already not
 [GFM specification](https://github.github.com/gfm):
 
 ~~~ php
-$content = convert($content);
+$content = from_markdown($content);
 
 $content = preg_replace('/((?<![~])[~]{1,2}(?![~]))([^~]+)\1/', '<del>$2</del>', $content);
 
@@ -636,7 +674,7 @@ feature.
 In case you need it, or don’t want to update your existing task list syntax in your Markdown files, here’s the hack:
 
 ~~~ php
-$content = convert($content);
+$content = from_markdown($content);
 
 $content = strtr($content, [
     '<li><p>[ ] ' => '<li><p>&#x2610; ',
@@ -672,7 +710,7 @@ An embed syntax to display a YouTube video by video ID.
 ~~~ php
 $content = preg_replace('/^[ ]{0,3}<youtube:([^>]+)>\s*$/m', '<iframe src="https://www.youtube.com/embed/$1"></iframe>', $content);
 
-$content = convert($content);
+$content = from_markdown($content);
 
 echo $content;
 ~~~
@@ -688,7 +726,7 @@ An embed syntax to display a GitHub gist by gist ID.
 ~~~ php
 $content = preg_replace('/^[ ]{0,3}<gist:([^>]+)>\s*$/m', '<script src="https://gist.github.com/taufik-nurrohman/$1.js"></script>', $content);
 
-$content = convert($content);
+$content = from_markdown($content);
 
 echo $content;
 ~~~
@@ -717,7 +755,7 @@ $content = preg_replace_callback('/^[ ]{0,3}<form:([^#>?]+)([?][^#>]*)?([#][^>]*
     return $content;
 }, $content);
 
-$content = convert($content);
+$content = from_markdown($content);
 
 echo $content;
 ~~~
