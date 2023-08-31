@@ -1050,8 +1050,6 @@ namespace x\markdown\from {
                         $blocks[++$block] = $current;
                         continue;
                     }
-                    echo json_encode($row);
-                    echo '<br/>';
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
