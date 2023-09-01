@@ -261,7 +261,7 @@ namespace x\markdown\from {
             if ($t = \rtrim(\strtok(\substr($row, 1), " \n\t>"), '/')) {
                 // The `:` and `@` character is not a valid part of a HTML element name, so it must be a link syntax
                 // <https://spec.commonmark.org/0.30#tag-name>
-                if (\strpos($t, ':') > 0 || \strpos($t, '@') > 0) {
+                if (false !== \strpos($t, ':') || false !== \strpos($t, '@')) {
                     return ['p', $row, [], $dent];
                 }
                 // `<![…`
