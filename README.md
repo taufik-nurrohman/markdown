@@ -646,8 +646,8 @@ post-processing the generated HTML markup before putting it out to the web:
 Tests
 -----
 
-Clone this repository into the root of your web server that supports PHP and then you can open the `test.php` file with
-your browser to see the result and the performance of this converter in various cases.
+Clone this repository into the root of your web server that supports PHP and then you can open the `test/from.php` and
+`test/to.php` file with your browser to see the result and the performance of this converter in various cases.
 
 Tweaks
 ------

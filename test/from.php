@@ -1,5 +1,9 @@
 <?php session_start();
 
+if (!in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1'])) {
+    exit;
+}
+
 error_reporting(E_ALL | E_STRICT);
 
 ini_set('display_errors', true);
@@ -39,7 +43,7 @@ $out .= '<html dir="ltr">';
 $out .= '<head>';
 $out .= '<meta charset="utf-8">';
 $out .= '<title>';
-$out .= 'Test';
+$out .= 'Markdown to HTML';
 $out .= '</title>';
 $out .= '<style>';
 $out .= <<<CSS
@@ -194,7 +198,7 @@ foreach ($files as $v) {
         $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
     } else {
         $raw = $_SESSION['test'] ?? "";
-        if (\strlen($raw) > 50000) {
+        if (strlen($raw) > 50000) {
             $raw = '*Maximum character length for this demo page must be less than or equal to 50000 characters.*';
         }
         unset($_SESSION['test']);

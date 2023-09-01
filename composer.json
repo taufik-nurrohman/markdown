@@ -1,6 +1,6 @@
 {
   "archive": {
-    "exclude": ["/.git", "/test", "/test.php"]
+    "exclude": ["/.git", "/test"]
   },
   "authors": [
     {
