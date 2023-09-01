@@ -105,7 +105,7 @@ namespace x\markdown\from {
             }
             return $out ? ' ' . \implode(' ', $out) : null;
         }
-        foreach (\preg_split('/\s++|(?=[#.])/', $info, -1, \PREG_SPLIT_NO_EMPTY) as $v) {
+        foreach (\preg_split('/\s+|(?=[#.])/', $info, -1, \PREG_SPLIT_NO_EMPTY) as $v) {
             if ('#' === $v[0]) {
                 $id = $id ?? \substr($v, 1);
                 continue;
@@ -1487,7 +1487,7 @@ namespace x\markdown\from {
                 continue;
             }
             if ('ol' === $v[0]) {
-                $list = \preg_split('/\n++(?=\d++[).]\s)/', $v[1]);
+                $list = \preg_split('/\n+(?=\d+[).]\s)/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
@@ -1654,7 +1654,7 @@ namespace x\markdown\from {
                 continue;
             }
             if ('ul' === $v[0]) {
-                $list = \preg_split('/\n++(?=[*+-]\s)/', $v[1]);
+                $list = \preg_split('/\n+(?=[*+-]\s)/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
@@ -1681,7 +1681,7 @@ namespace x\markdown\from {
         foreach ($blocks as &$v) {
             // Late definition list parsing
             if ('dl' === $v[0]) {
-                $list = \preg_split('/\n++(?=:\s|[^:\s])/', $v[1]);
+                $list = \preg_split('/\n+(?=:\s|[^:\s])/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     if (\strlen($vv) > 2 && ':' === $vv[0] && false !== \strpos(" \t", $vv[1])) {
