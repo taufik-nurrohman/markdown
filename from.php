@@ -612,7 +612,7 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 // <https://spec.commonmark.org/0.30#example-341>
-                $contains = '`(?>[^`\\\\]|\\\\`(?!`))+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
+                $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
                 // `***…***`
                 if (\preg_match('/(?>(?<![' . $c . '])[' . $c . ']{3}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{3}(?=[\p{P}]))(?>' . $contains . '|[' . $c . ']{1,2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{3}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{3}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
@@ -720,7 +720,7 @@ namespace x\markdown\from {
             if (0 === \strpos($chop, '[')) {
                 $data = $key = $link = $title = null;
                 // <https://spec.commonmark.org/0.30#example-342>
-                $contains = '`(?>[^`\\\\]|\\\\`(?!`))+`';
+                $contains = '`[^`]+`';
                 // `[asdf]…`
                 if (\preg_match('/' . r('[]', true, $contains, $is_table ? '|' : "") . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     $prev = $m[0][0];
