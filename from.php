@@ -156,7 +156,7 @@ namespace x\markdown\from {
             return [null, $row, [], $dent];
         }
         if (false !== \strpos($row, '|')) {
-            return ['table', $row, [], $dent, [0, 0]];
+            return ['table', $row, [], $dent];
         }
         // `!…`
         if (0 === \strpos($row, '!')) {

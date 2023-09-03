@@ -694,9 +694,9 @@ Markdown source like &#x2610; and &#x2612;, which means that this feature can ac
 feature:
 
 ~~~ md
-- ☒ asdf 
-- ☐ asdf 
-- ☐ asdf 
+- ☒ asdf
+- ☐ asdf
+- ☐ asdf
 ~~~
 
 In case you need it, or don’t want to update your existing task list syntax in your Markdown files, here’s the hack:
