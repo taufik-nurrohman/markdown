@@ -320,11 +320,11 @@ Here’s how the code block results compare across each Markdown converter:
     </tr>
     <tr>
       <td><pre><code>~~~ asdf asdf&#10;asdf&#10;~~~</code></pre></td>
-      <td><pre><code>&lt;pre&gt;&lt;code class="language-asdf language-asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+      <td><pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
     </tr>
     <tr>
       <td><pre><code>~~~ .asdf.asdf&#10;asdf&#10;~~~</code></pre></td>
-      <td><pre><code>&lt;pre&gt;&lt;code class="asdf asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
+      <td><pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre></td>
     </tr>
     <tr>
       <td><pre><code>~~~ {#asdf.asdf}&#10;asdf&#10;~~~</code></pre></td>

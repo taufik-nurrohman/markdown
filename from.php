@@ -88,7 +88,7 @@ namespace x\markdown\from {
                 // `{a}`
                 $a[$v] = true;
             }
-            if ($class) {
+            if ($class = \array_unique($class)) {
                 \sort($class);
                 $a['class'] = \implode(' ', $class);
             }
@@ -116,7 +116,7 @@ namespace x\markdown\from {
             }
             $class[] = 'language-' . $v;
         }
-        if ($class) {
+        if ($class = \array_unique($class)) {
             \sort($class);
             $a['class'] = \implode(' ', $class);
         }
