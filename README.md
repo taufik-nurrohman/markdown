@@ -102,8 +102,8 @@ Parameter  | Description
 Dialect
 -------
 
-From time to time, the history of Mecha slowly forms the dialect of my Markdown writing style. The Markdown extension
-used by Mecha [was first](https://github.com/mecha-cms/mecha/tree/v1.2.2) built with
+From time to time, the history of Mecha slowly forms my Markdown writing style. The Markdown extension used by Mecha
+[was first](https://github.com/mecha-cms/mecha/tree/v1.2.2) built with
 [Michel Fortin’s Markdown converter](https://michelf.ca/projects/php-markdown) (which I believe is the very first port
 of a PHP-based Markdown converter originally written in Perl by
 [John Gruber](https://daringfireball.net/projects/markdown)). Until the release of
@@ -174,8 +174,9 @@ treated as external links and will automatically get `rel="nofollow"` and `targe
 ### Notes
 
 Notes follow the [Markdown Extra’s notes syntax](https://michelf.ca/projects/php-markdown/extra#footnotes) but with
-slightly different HTML output, following the [Mecha](https://github.com/mecha-cms) naming style. Multi-line notes also
-don’t have to be indented by four spaces as required by Markdown Extra. A space or tab is enough to continue the note.
+slightly different HTML output to match with the [Mecha](https://github.com/mecha-cms)’s common naming style. Multi-line
+notes also don’t have to be indented by four spaces as required by Markdown Extra. A space or tab is enough to continue
+the note.
 
 <table>
   <thead>
@@ -550,7 +551,7 @@ other Markdown converters.
 
 ### List Block
 
-List block follows the CommonMark specifications with one exception: if the next ordered list item uses a number that is
+List blocks follow the CommonMark specifications with one exception: if the next ordered list item uses a number that is
 less than the number of the previous ordered list item, a new list block will be created. This is different from the
 original specification, which does not care about the literal value of the number.
 
@@ -579,7 +580,7 @@ original specification, which does not care about the literal value of the numbe
 
 ### Table Block
 
-Table block follows the [Markdown Extra’s table block syntax](https://michelf.ca/projects/php-markdown/extra#table).
+Table blocks follow the [Markdown Extra’s table block syntax](https://michelf.ca/projects/php-markdown/extra#table).
 However, there are a few additional features and rules:
 
  - The actual number of columns follows the number of columns in the table header separator. If you have columns in
@@ -590,6 +591,7 @@ However, there are a few additional features and rules:
    values of raw HTML tags.
  - Header-less table is supported, but may not be compatible with other Markdown converters. Consider using this feature
    as rarely as possible, unless you have no plans to switch to other Markdown converters in the future.
+ - Table caption is supported and can be created using the same syntax as the image block’s caption syntax.
 
 <table>
   <thead>

@@ -60,9 +60,21 @@ body > div > div blockquote {
   padding-right: 1.25em;
 }
 
+body > div > div figure {
+  text-align: center;
+}
+
+body > div > div figure img {
+  display: block;
+  margin: 0 auto;
+}
+
 body > div > div caption,
 body > div > div figcaption {
+  caption-side: bottom;
   font-style: italic;
+  margin-top: 0.5em;
+  text-align: center;
 }
 
 body > div > div dt {

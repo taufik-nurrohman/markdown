@@ -543,11 +543,11 @@ namespace x\markdown\from {
                 if (\is_string($prev) && ('  ' === \substr(\strtr($prev, ["\t" => '  ']), -2))) {
                     $chops[$last] = $prev = \rtrim($prev);
                     $chops[] = ['br', false, [], -1];
-                    $content = \ltrim(\substr($chop, 1));
+                    $content = $chop = \ltrim(\substr($chop, 1));
                     continue;
                 }
                 $chops[] = ' ';
-                $content = \substr($chop, 1);
+                $content = $chop = \substr($chop, 1);
                 continue;
             }
             if (0 === \strpos($chop, '!')) {
@@ -611,9 +611,11 @@ namespace x\markdown\from {
             //
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
-                $contains = '`[^`]+`'; // <https://spec.commonmark.org/0.30#example-341>
-                $contains .= '|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
-                if (\preg_match('/(?>[' . $c . '](?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . '](?=[\p{P}]))(?>' . $contains . '|[' . $c . ']{2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . '](?![' . $c . '])|(?<=[\p{P}])[' . $c . '](?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                $n = \strspn($chop, $c);
+                $contains = '(`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.|[' . $c . ']{2}|(?R))+?';
+                $enter = '(?>(?<![' . $c . '])[' . $c . '](?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . '](?=[\p{P}]))';
+                $exit = '(?>(?<![\p{P}\s])[' . $c . '](?![' . $c . '])|(?<=[\p{P}])[' . $c . '](?=[\p{P}\s]|$))';
+                if ((1 === $n || $n > 2) && \preg_match('/' . $enter . $contains . $exit . '/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
@@ -635,7 +637,10 @@ namespace x\markdown\from {
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
                 }
-                if (\preg_match('/(?>[' . $c . ']{2}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{2}(?=[\p{P}]))(?>' . $contains . '|[' . $c . ']{1}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                $contains = '(`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.|[' . $c . '](?![' . $c . '])|(?R))+?';
+                $enter = '(?>(?<![' . $c . '])[' . $c . ']{2}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{2}(?=[\p{P}]))';
+                $exit = '(?>(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s]|$))';
+                if (\preg_match('/' . $enter . $contains . $exit . '/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
@@ -1223,6 +1228,25 @@ namespace x\markdown\from {
                         continue;
                     }
                 }
+                if ('table' === $prev[0]) {
+                    if ('table' === $current[0] && "\n" !== \substr($prev[1], -1)) {
+                        $blocks[$block][1] .= "\n" . $row;
+                        continue;
+                    }
+                    // Exit table block
+                    if (isset($prev[4]) && null === $current[0]) {
+                        $block += 1;
+                        continue;
+                    }
+                    if ('p' !== $current[0] && null !== $current[0]) {
+                        $blocks[++$block] = $current;
+                        continue;
+                    }
+                    if ($current[3] > $prev[3]) {
+                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $current[1] : $current[1];
+                        continue;
+                    }
+                }
                 // Indented code block
                 if ('pre' === $current[0] && $current[3] >= 4) {
                     $row = \substr($row, 4);
@@ -1306,7 +1330,7 @@ namespace x\markdown\from {
             // A blank line
             if (null === $current[0]) {
                 if ($prev) {
-                    if (false !== \strpos(',figure,pre,', ',' . $prev[0] . ',')) {
+                    if (false !== \strpos(',figure,pre,table,', ',' . $prev[0] . ',')) {
                         $blocks[$block][1] .= "\n";
                         continue;
                     }
@@ -1532,7 +1556,7 @@ namespace x\markdown\from {
                     ['thead', [['tr', [], [], 0]], 0],
                     ['tbody', [], [], 0]
                 ];
-                $rows = \explode("\n", $v[1]);
+                $rows = \explode("\n", \trim($v[1], "\n"));
                 $headers = \trim(\array_shift($rows) ?? "", " \t|");
                 $styles = \trim(\array_shift($rows) ?? "", " \t|");
                 // Header-less table
@@ -1655,6 +1679,9 @@ namespace x\markdown\from {
                 // Remove empty `<tbody>`
                 if (empty($table[1][1])) {
                     unset($table[1]);
+                }
+                if (!empty($v[4])) {
+                    \array_unshift($table, ['caption', row($v[4], $lot)[0], [], 0]);
                 }
                 $v[1] = $table;
                 continue;
