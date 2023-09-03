@@ -611,32 +611,36 @@ namespace x\markdown\from {
             //
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
-                // <https://spec.commonmark.org/0.30#example-341>
-                $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
+                $contains = '`[^`]+`'; // <https://spec.commonmark.org/0.30#example-341>
+                $contains .= '|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
                 if (\preg_match('/(?>[' . $c . '](?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . '](?=[\p{P}]))(?>' . $contains . '|[' . $c . ']{2}|(?R))+?(?>(?<![\p{P}\s])[' . $c . '](?![' . $c . '])|(?<=[\p{P}])[' . $c . '](?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
+                    // `***…***`
                     if ($c . $c . $c === \substr($m[0][0], 0, 3) && $c . $c . $c === \substr($m[0][0], -3)) {
-                        $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c . $c];
+                        $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c . $c . $c];
                         $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                         continue;
                     }
+                    // `**…**`
                     if ($c . $c === \substr($m[0][0], 0, 2) && $c . $c === \substr($m[0][0], -2)) {
                         $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
                         $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                         continue;
                     }
+                    // `*…*`
                     $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
                 }
-                if (\preg_match('/(?>[' . $c . ']{2}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{2}(?=[\p{P}]))(?>' . $contains . '|[' . $c . '](?![' . $c . '])|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/(?>[' . $c . ']{2}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{2}(?=[\p{P}]))(?>' . $contains . '|[' . $c . ']{1}|(?R))+?(?>(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s]|$))/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
+                    // `**…**`
                     $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
