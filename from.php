@@ -612,40 +612,106 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $n = \strspn($chop, $c);
-                $contains = '(`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.|[' . $c . ']{2}|(?R))+?';
-                $enter = '(?>(?<![' . $c . '])[' . $c . '](?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . '](?=[\p{P}]))';
-                $exit = '(?>(?<![\p{P}\s])[' . $c . '](?![' . $c . '])|(?<=[\p{P}])[' . $c . '](?=[\p{P}\s]|$))';
-                if ((1 === $n || $n > 2) && \preg_match('/' . $enter . $contains . $exit . '/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                $pattern = '/' .
+                    // `<em>…`
+                    '(?>' .
+                        '(?<![' . $c . '])[' . $c . '](?![\p{P}\s])' .
+                    '|' .
+                        '(?<=^|[\p{P}\s])[' . $c . '](?=[\p{P}])' .
+                    ')' .
+                    '(' .
+                        // <https://spec.commonmark.org/0.30#example-341>
+                        '`[^`]+`' .
+                    '|' .
+                        // `…`
+                        '[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
+                    '|' .
+                        // `<strong>…`
+                        '(?>' .
+                            '[' . $c . ']{2}(?![\p{P}\s])' .
+                        '|' .
+                            '(?<=[\p{P}\s])[' . $c . ']{2}(?=[\p{P}])' .
+                        ')' .
+                        '(' .
+                            // <https://spec.commonmark.org/0.30#example-341>
+                            '`[^`]+`' .
+                        '|' .
+                            // `…`
+                            '[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
+                        ')+?' .
+                        // `…</strong>`
+                        '(?>' .
+                            '(?<![\p{P}\s])[' . $c . ']{2}' .
+                        '|' .
+                            '(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s])' .
+                        ')' .
+                    '|' .
+                        '(?R)' .
+                    ')+?' .
+                    // `…</em>`
+                    '(?>' .
+                        '(?<![\p{P}\s])[' . $c . '](?![' . $c . '])' .
+                    '|' .
+                        '(?<=[\p{P}])[' . $c . '](?=[\p{P}\s]|$)' .
+                    ')' .
+                '/u';
+                if ((1 === $n || $n > 2) && \preg_match($pattern, $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
-                    // `***…***`
-                    if ($c . $c . $c === \substr($m[0][0], 0, 3) && $c . $c . $c === \substr($m[0][0], -3)) {
-                        $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c . $c . $c];
-                        $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
-                        continue;
-                    }
-                    // `**…**`
-                    if ($c . $c === \substr($m[0][0], 0, 2) && $c . $c === \substr($m[0][0], -2)) {
-                        $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
-                        $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
-                        continue;
-                    }
-                    // `*…*`
                     $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
                 }
-                $contains = '(`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.|[' . $c . '](?![' . $c . '])|(?R))+?';
-                $enter = '(?>(?<![' . $c . '])[' . $c . ']{2}(?![\p{P}\s])|(?<=^|[\p{P}\s])[' . $c . ']{2}(?=[\p{P}]))';
-                $exit = '(?>(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])|(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s]|$))';
-                if (\preg_match('/' . $enter . $contains . $exit . '/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                $pattern = '/' .
+                    // `<strong>…`
+                    '(?>' .
+                        '(?<![' . $c . '])[' . $c . ']{2}(?![\p{P}\s])' .
+                    '|' .
+                        '(?<=^|[\p{P}\s])[' . $c . ']{2}(?=[\p{P}])' .
+                    ')' .
+                    '(' .
+                        // <https://spec.commonmark.org/0.30#example-341>
+                        '`[^`]+`' .
+                    '|' .
+                        // `…`
+                        '[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
+                    '|' .
+                        // `<em>…`
+                        '(?>' .
+                            '[' . $c . '](?![\p{P}\s])' .
+                        '|' .
+                            '(?<=[\p{P}\s])[' . $c . '](?=[\p{P}])' .
+                        ')' .
+                        '(' .
+                            // <https://spec.commonmark.org/0.30#example-341>
+                            '`[^`]+`' .
+                        '|' .
+                            // `…`
+                            '[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
+                        ')+?' .
+                        // `…</em>`
+                        '(?>' .
+                            '(?<![\p{P}\s])[' . $c . ']' .
+                        '|' .
+                            '(?<=[\p{P}])[' . $c . '](?=[\p{P}\s])' .
+                        ')' .
+                    '|' .
+                        '(?R)' .
+                    ')+?' .
+                    // `…</strong>`
+                    '(?>' .
+                        '(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])' .
+                    '|' .
+                        '(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s]|$)' .
+                    ')' .
+                '/u';
+                if (\preg_match($pattern, $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
-                    // `**…**`
                     $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
@@ -935,7 +1001,7 @@ namespace x\markdown\from {
         $blocks = [];
         $rows = \explode("\n", $content);
         foreach ($rows as $row) {
-            // TODO: Preserve tab character(s)
+            // TODO: Keep tab character(s)
             while (false !== ($before = \strstr($row, "\t", true))) {
                 $v = \strlen($before);
                 $row = $before . \str_repeat(' ', 4 - $v % 4) . \substr($row, $v + 1);
@@ -1219,33 +1285,36 @@ namespace x\markdown\from {
                 }
                 if ('figure' === $prev[0]) {
                     // Exit image block
-                    if ('p' !== $current[0] && null !== $current[0]) {
+                    if (null !== $current[0] && $current[3] <= $prev[3]) {
                         $blocks[++$block] = $current;
                         continue;
                     }
-                    if ($current[3] > $prev[3]) {
-                        $blocks[$block][1] .= "\n" . $current[1];
+                    if ($current[3] > $prev[3] || "" === $current[1] && isset($prev[4])) {
+                        $row = \substr($row, $current[3] > 4 ? $current[3] - 4 : $current[3]);
+                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
                         continue;
                     }
+                    $blocks[$block][1] .= "\n" . $current[1];
+                    continue;
                 }
                 if ('table' === $prev[0]) {
+                    // Continue table block
                     if ('table' === $current[0] && "\n" !== \substr($prev[1], -1)) {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
                     // Exit table block
-                    if (isset($prev[4]) && null === $current[0]) {
-                        $block += 1;
-                        continue;
-                    }
-                    if ('p' !== $current[0] && null !== $current[0]) {
+                    if (null !== $current[0] && $current[3] <= $prev[3]) {
                         $blocks[++$block] = $current;
                         continue;
                     }
-                    if ($current[3] > $prev[3]) {
-                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $current[1] : $current[1];
+                    if ($current[3] > $prev[3] || "" === $current[1] && isset($prev[4])) {
+                        $row = \substr($row, $current[3] > 4 ? $current[3] - 4 : $current[3]);
+                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
                         continue;
                     }
+                    $blocks[$block][1] .= "\n" . $current[1];
+                    continue;
                 }
                 // Indented code block
                 if ('pre' === $current[0] && $current[3] >= 4) {
@@ -1330,7 +1399,7 @@ namespace x\markdown\from {
             // A blank line
             if (null === $current[0]) {
                 if ($prev) {
-                    if (false !== \strpos(',figure,pre,table,', ',' . $prev[0] . ',')) {
+                    if ('pre' === $prev[0]) {
                         $blocks[$block][1] .= "\n";
                         continue;
                     }
@@ -1470,23 +1539,25 @@ namespace x\markdown\from {
                 continue;
             }
             if ('figure' === $v[0]) {
-                if (false === \strpos($v[1] = \trim($v[1], "\n"), "\n")) {
-                    $v[1] = $row = row($v[1], $lot)[0];
-                    // The image syntax doesn’t seem to appear alone on a single line
-                    if (\count($row) > 1) {
-                        $v[0] = 'p';
-                    }
-                    continue;
-                }
-                [$a, $b] = \explode("\n", $v[1], 2);
-                $row = row($a, $lot)[0];
+                $row = row(\trim($v[1], "\n"), $lot)[0];
                 // The image syntax doesn’t seem to appear alone on a single line
                 if (\count($row) > 1) {
-                    $v[0] = false;
-                    $v[1] = \array_merge([['p', $row, [], 0]], rows($b, $lot)[0]);
+                    if (!empty($v[4])) {
+                        [$a, $b] = \explode("\n\n", $v[4] . "\n\n", 2);
+                        $v = [false, \array_merge([['p', row(\trim($v[1] . "\n" . $a, "\n"), $lot)[0], [], 0]], rows(\trim($b, "\n"), $lot)[0]), [], $v[3]];
+                        continue;
+                    }
+                    $v = ['p', $row, [], $v[3]];
                     continue;
                 }
-                $row[] = ['figcaption', false === \strpos($b = \trim($b, "\n"), "\n\n") ? row($b, $lot)[0] : rows($b, $lot)[0], [], 0];
+                if (!empty($v[4])) {
+                    $b = \trim($v[4], "\n");
+                    $caption = rows($b, $lot)[0];
+                    if (false === \strpos($b, "\n\n") && \is_array($test = \reset($caption)) && 'p' === $test[0]) {
+                        $caption = $test[1];
+                    }
+                    $row[] = ['figcaption', $caption, [], 0];
+                }
                 $v[1] = $row;
                 continue;
             }
@@ -1681,7 +1752,12 @@ namespace x\markdown\from {
                     unset($table[1]);
                 }
                 if (!empty($v[4])) {
-                    \array_unshift($table, ['caption', row($v[4], $lot)[0], [], 0]);
+                    $b = \trim($v[4], "\n");
+                    $caption = rows($b, $lot)[0];
+                    if (false === \strpos($b, "\n\n") && \is_array($test = \reset($caption)) && 'p' === $test[0]) {
+                        $caption = $test[1];
+                    }
+                    \array_unshift($table, ['caption', $caption, [], 0]);
                 }
                 $v[1] = $table;
                 continue;

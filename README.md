@@ -546,7 +546,7 @@ less than 4.
   </tbody>
 </table>
 
-FYI, this format should also be valid for average Markdown files. And so it will be gracefully degraded when parsed by
+FYI, this pattern should also be valid for average Markdown files. And so it will be gracefully degraded when parsed by
 other Markdown converters.
 
 ### List Block
@@ -767,7 +767,7 @@ echo $content;
 ### Idea: Embed Syntax
 
 The [CommonMark specification for automatic links](https://spec.commonmark.org/0.30#autolinks) doesn’t limit specific
-types of URL protocols. It just specifies the format so we can take advantage of the automatic link syntax to render it
+types of URL protocols. It just specifies the pattern so we can take advantage of the automatic link syntax to render it
 as a kind of “embed syntax”, which you can then turn it into a chunk of HTML elements.
 
 I’m sure this idea has never been done before and that’s why I want to be the first to mention it. But I’m not going to
