@@ -1121,6 +1121,17 @@ namespace x\markdown\from {
                         continue;
                     }
                 }
+                // Indented code block
+                if ('pre' === $prev[0] && $prev[3] >= 4) {
+                    // Exit indented code block
+                    if (null !== $current[0] && $current[3] < 4) {
+                        $blocks[++$block] = $current;
+                        continue;
+                    }
+                    // Continue indented code block
+                    $blocks[$block][1] .= "\n" . \substr($row, 4);
+                    continue;
+                }
                 // Reference, abbreviation, or note
                 if (\is_int($prev[0])) {
                     if (\is_int($current[0])) {
@@ -1289,7 +1300,7 @@ namespace x\markdown\from {
                         $blocks[++$block] = $current;
                         continue;
                     }
-                    if ($current[3] > $prev[3] || "" === $current[1] && isset($prev[4])) {
+                    if ($current[3] > $prev[3] || "" === $current[1]) {
                         $row = \substr($row, $current[3] > 4 ? $current[3] - 4 : $current[3]);
                         $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
                         continue;
@@ -1298,29 +1309,22 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ('table' === $prev[0]) {
-                    // Continue table block
+                    // Continue table block if the previous table block does not end with a blank line
                     if ('table' === $current[0] && "\n" !== \substr($prev[1], -1)) {
-                        $blocks[$block][1] .= "\n" . $row;
+                        $blocks[$block][1] .= "\n" . $current[1];
                         continue;
                     }
-                    // Exit table block
-                    if (null !== $current[0] && $current[3] <= $prev[3]) {
-                        $blocks[++$block] = $current;
-                        continue;
+                    if (null === $current[0]) {
+                        $blocks[$block][1] .= "\n"; // End of the table block, prepare to exit the table block
+                        $blocks[$block][4] = "\n"; // Initialize the caption with a blank line
                     }
-                    if ($current[3] > $prev[3] || "" === $current[1] && isset($prev[4])) {
+                    if ($current[3] > $prev[3] || "" === $current[1]) {
                         $row = \substr($row, $current[3] > 4 ? $current[3] - 4 : $current[3]);
                         $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
                         continue;
                     }
-                    $blocks[$block][1] .= "\n" . $current[1];
-                    continue;
-                }
-                // Indented code block
-                if ('pre' === $current[0] && $current[3] >= 4) {
-                    $row = \substr($row, 4);
-                    // Continue indented code block
-                    $blocks[$block][1] .= "\n" . $row;
+                    // Exit table block
+                    $blocks[++$block] = $current;
                     continue;
                 }
                 // Found Setext-header marker level 1 right below a paragraph or quote block
@@ -1361,23 +1365,6 @@ namespace x\markdown\from {
             }
             // Any other named block(s) will be processed from here
             if (\is_string($current[0])) {
-                // Enter fenced code block
-                if ('pre' === $current[0] && isset($current[4])) {
-                    $blocks[++$block] = $current;
-                    continue;
-                }
-                // Enter quote block
-                if ('blockquote' === $current[0]) {
-                    // Start a new quote block
-                    $blocks[++$block] = $current;
-                    continue;
-                }
-                // Enter image block
-                if ('figure' === $current[0]) {
-                    // Start a new image block
-                    $blocks[++$block] = $current;
-                    continue;
-                }
                 // Look like a Setext-header level 1, but preceded by a blank line, treat it as a paragraph block
                 // <https://spec.commonmark.org/0.30#example-97>
                 if ('h1' === $current[0] && '=' === $current[4][1] && (!$prev || null === $prev[0])) {
@@ -1399,10 +1386,6 @@ namespace x\markdown\from {
             // A blank line
             if (null === $current[0]) {
                 if ($prev) {
-                    if ('pre' === $prev[0]) {
-                        $blocks[$block][1] .= "\n";
-                        continue;
-                    }
                     // <https://spec.commonmark.org/0.30#example-197>
                     if (\is_int($prev[0]) && false === \strpos($prev[1], ']:')) {
                         $blocks[$block++][0] = 'p';
@@ -1551,9 +1534,9 @@ namespace x\markdown\from {
                     continue;
                 }
                 if (!empty($v[4])) {
-                    $b = \trim($v[4], "\n");
+                    $b = \rtrim($v[4], "\n");
                     $caption = rows($b, $lot)[0];
-                    if (false === \strpos($b, "\n\n") && \is_array($test = \reset($caption)) && 'p' === $test[0]) {
+                    if (0 !== \strpos($b, "\n") && false === \strpos($b, "\n\n") && \is_array($test = \reset($caption)) && 'p' === $test[0]) {
                         $caption = $test[1];
                     }
                     $row[] = ['figcaption', $caption, [], 0];
@@ -1611,7 +1594,8 @@ namespace x\markdown\from {
             if ('pre' === $v[0]) {
                 $v[1] = e($v[1]);
                 if (isset($v[4])) {
-                    $v[1] = [['code', \substr(\strstr($v[1], "\n"), 1, -(\strlen($v[4]) + 1)), $v[2]]];
+                    $v[1] = \substr(\strstr($v[1], "\n"), 1, -\strlen($v[4]));
+                    $v[1] = [['code', "" === \trim($v[1], "\n") ? $v[1] : \substr($v[1], 0, -1), $v[2]]];
                     $v[2] = [];
                     continue;
                 }
@@ -1752,9 +1736,9 @@ namespace x\markdown\from {
                     unset($table[1]);
                 }
                 if (!empty($v[4])) {
-                    $b = \trim($v[4], "\n");
+                    $b = \rtrim($v[4], "\n");
                     $caption = rows($b, $lot)[0];
-                    if (false === \strpos($b, "\n\n") && \is_array($test = \reset($caption)) && 'p' === $test[0]) {
+                    if (0 !== \strpos($b, "\n") && false === \strpos($b, "\n\n") && \is_array($test = \reset($caption)) && 'p' === $test[0]) {
                         $caption = $test[1];
                     }
                     \array_unshift($table, ['caption', $caption, [], 0]);
