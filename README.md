@@ -82,22 +82,26 @@ Options
 -------
 
 ~~~ php
+/**
+ * Convert Markdown string to HTML string.
+ *
+ * @param null|string $content Your Markdown string.
+ * @param bool $block If this option is set to `false`, Markdown block syntax will be ignored.
+ * @return null|string
+ */
 from(?string $content, bool $block = true): ?string;
 ~~~
 
-Parameter  | Description
----------- | -----------
-`$content` | Your Markdown content.
-`$block`   | If this option is set to `false`, Markdown blocks will be ignored.
-
 ~~~ php
+/**
+ * Convert HTML string to Markdown string.
+ *
+ * @param null|string $content Your HTML string.
+ * @param bool $block If this option is set to `false`, HTML block syntax will be stripped off.
+ * @return null|string
+ */
 to(?string $content, bool $block = true): ?string;
 ~~~
-
-Parameter  | Description
----------- | -----------
-`$content` | Your HTML content.
-`$block`   | If this option is set to `false`, HTML blocks will be ignored.
 
 Dialect
 -------
