@@ -612,14 +612,14 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $n = \strspn($chop, $c);
-                $pattern = '/' .
+                $pattern = '*' === $c ? '/' .
                     // `<em>…`
                     '(?>' .
                         '(?<![' . $c . '])[' . $c . '](?![\p{P}\s])' .
                     '|' .
                         '(?<=^|[\p{P}\s])[' . $c . '](?=[\p{P}])' .
                     ')' .
-                    '(' .
+                    '(?>' .
                         // <https://spec.commonmark.org/0.30#example-341>
                         '`[^`]+`' .
                     '|' .
@@ -632,7 +632,7 @@ namespace x\markdown\from {
                         '|' .
                             '(?<=[\p{P}\s])[' . $c . ']{2}(?=[\p{P}])' .
                         ')' .
-                        '(' .
+                        '(?>' .
                             // <https://spec.commonmark.org/0.30#example-341>
                             '`[^`]+`' .
                         '|' .
@@ -654,6 +654,25 @@ namespace x\markdown\from {
                     '|' .
                         '(?<=[\p{P}])[' . $c . '](?=[\p{P}\s]|$)' .
                     ')' .
+                '/u' : '/' .
+                    // `<em>…`
+                    '(?>' .
+                        '(?<=^|[\p{P}\s])[' . $c . '](?![\p{P}\s])' .
+                    ')' .
+                    '(?>' .
+                        // <https://spec.commonmark.org/0.30#example-341>
+                        '`[^`]+`' .
+                    '|' .
+                        '[^' . $c . '\\\\]|\\\\.' .
+                    '|' .
+                        '(?<![\p{P}\s])[' . $c . '](?![\p{P}\s])' .
+                    '|' .
+                        '(?R)' .
+                    ')+?' .
+                    // `…</em>`
+                    '(?>' .
+                        '(?<![\p{P}\s])[' . $c . '](?=[\p{P}\s]|$)' .
+                    ')' .
                 '/u';
                 if ((1 === $n || $n > 2) && \preg_match($pattern, $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
@@ -664,14 +683,14 @@ namespace x\markdown\from {
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
                 }
-                $pattern = '/' .
+                $pattern = '*' === $c ? '/' .
                     // `<strong>…`
                     '(?>' .
                         '(?<![' . $c . '])[' . $c . ']{2}(?![\p{P}\s])' .
                     '|' .
                         '(?<=^|[\p{P}\s])[' . $c . ']{2}(?=[\p{P}])' .
                     ')' .
-                    '(' .
+                    '(?>' .
                         // <https://spec.commonmark.org/0.30#example-341>
                         '`[^`]+`' .
                     '|' .
@@ -684,7 +703,7 @@ namespace x\markdown\from {
                         '|' .
                             '(?<=[\p{P}\s])[' . $c . '](?=[\p{P}])' .
                         ')' .
-                        '(' .
+                        '(?>' .
                             // <https://spec.commonmark.org/0.30#example-341>
                             '`[^`]+`' .
                         '|' .
@@ -705,6 +724,25 @@ namespace x\markdown\from {
                         '(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])' .
                     '|' .
                         '(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s]|$)' .
+                    ')' .
+                '/u' : '/' .
+                    // `<strong>…`
+                    '(?>' .
+                        '(?<=^|[\p{P}\s])[' . $c . ']{2}(?![\p{P}\s])' .
+                    ')' .
+                    '(?>' .
+                        // <https://spec.commonmark.org/0.30#example-341>
+                        '`[^`]+`' .
+                    '|' .
+                        '[^' . $c . '\\\\]|\\\\.' .
+                    '|' .
+                        '(?<![\p{P}\s])[' . $c . ']{2}(?![\p{P}\s])' .
+                    '|' .
+                        '(?R)' .
+                    ')+?' .
+                    // `…</strong>`
+                    '(?>' .
+                        '(?<![\p{P}\s])[' . $c . ']{2}(?=[\p{P}\s]|$)' .
                     ')' .
                 '/u';
                 if (\preg_match($pattern, $chop, $m, \PREG_OFFSET_CAPTURE)) {
