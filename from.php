@@ -674,8 +674,8 @@ namespace x\markdown\from {
                         '(?<![\p{P}\s])[' . $c . '](?=[\p{P}\s]|$)' .
                     ')' .
                 '/u';
-                if ((1 === $n || $n > 2) && \preg_match($pattern, $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    if ($m[0][1] > 0) {
+                if ((1 === $n || $n > 2) && \preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                    if ($m[0][1] > 1) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
@@ -745,8 +745,8 @@ namespace x\markdown\from {
                         '(?<![\p{P}\s])[' . $c . ']{2}(?=[\p{P}\s]|$)' .
                     ')' .
                 '/u';
-                if (\preg_match($pattern, $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    if ($m[0][1] > 0) {
+                if (\preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                    if ($m[0][1] > 1) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
