@@ -843,7 +843,7 @@ namespace x\markdown\from {
             if (0 === \strpos($chop, '[')) {
                 $data = $key = $link = $title = null;
                 // <https://spec.commonmark.org/0.30#example-342>
-                $contains = '`[`^]+`';
+                $contains = '`[^`]+`';
                 // `[asdf]…`
                 if (\preg_match('/' . r('[]', true, $contains, $is_table ? '|' : "") . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     $prev = $m[0][0];
@@ -1210,6 +1210,11 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.30#example-304>
                     if ('ol' === $current[0] && ("" === $current[1] || 1 !== $current[4][1])) {
                         $blocks[$block][1] .= "\n" . $row;
+                        continue;
+                    }
+                    // <https://spec.commonmark.org/0.30#example-113>
+                    if ('pre' === $current[0] && $current[3] >= 4) {
+                        $blocks[$block][1] .= ' ' . $current[1];
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-285>
