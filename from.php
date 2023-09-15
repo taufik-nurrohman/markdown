@@ -652,7 +652,7 @@ namespace x\markdown\from {
                     '(?>' .
                         '(?<![\p{P}\s])[' . $c . '](?![' . $c . '])' .
                     '|' .
-                        '(?<=[\p{P}])[' . $c . '](?=[\p{P}\s]|$)' .
+                        '(?<=[\p{P}])[' . $c . '](?![' . $c . '])(?=[\p{P}\s]|$)' .
                     ')' .
                 '/u' : '/' .
                     // `<em>…`
@@ -666,15 +666,13 @@ namespace x\markdown\from {
                         '[^' . $c . '\\\\]|\\\\.' .
                     '|' .
                         '(?<![\p{P}\s])[' . $c . '](?![\p{P}\s])' .
-                    '|' .
-                        '(?R)' .
                     ')+?' .
                     // `…</em>`
                     '(?>' .
-                        '(?<![\p{P}\s])[' . $c . '](?=[\p{P}\s]|$)' .
+                        '(?<![\p{P}\s])[' . $c . '](?![' . $c . '])(?=[\p{P}\s]|$)' .
                     ')' .
                 '/u';
-                if ((1 === $n || $n > 2) && \preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if ((1 === $n || 3 === $n) && \preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 1) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
@@ -723,7 +721,7 @@ namespace x\markdown\from {
                     '(?>' .
                         '(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])' .
                     '|' .
-                        '(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s]|$)' .
+                        '(?<=[\p{P}])[' . $c . ']{2}(?![' . $c . '])(?=[\p{P}\s]|$)' .
                     ')' .
                 '/u' : '/' .
                     // `<strong>…`
@@ -737,12 +735,10 @@ namespace x\markdown\from {
                         '[^' . $c . '\\\\]|\\\\.' .
                     '|' .
                         '(?<![\p{P}\s])[' . $c . ']{2}(?![\p{P}\s])' .
-                    '|' .
-                        '(?R)' .
                     ')+?' .
                     // `…</strong>`
                     '(?>' .
-                        '(?<![\p{P}\s])[' . $c . ']{2}(?=[\p{P}\s]|$)' .
+                        '(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])(?=[\p{P}\s]|$)' .
                     ')' .
                 '/u';
                 if (\preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
