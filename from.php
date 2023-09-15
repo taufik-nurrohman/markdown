@@ -677,6 +677,12 @@ namespace x\markdown\from {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
+                    // <https://spec.commonmark.org/0.30#example-520>
+                    if (false !== ($n = \strpos($m[0][0], '[')) && (false === \strpos($m[0][0], ']') || !\preg_match('/' . r('[]') . '/', $m[0][0]))) {
+                        $chops[] = e(\substr($chop, 0, $n));
+                        $content = $chop = \substr($chop, $n);
+                        continue;
+                    }
                     $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
@@ -745,6 +751,12 @@ namespace x\markdown\from {
                     if ($m[0][1] > 1) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
+                    }
+                    // <https://spec.commonmark.org/0.30#example-520>
+                    if (false !== ($n = \strpos($m[0][0], '[')) && (false === \strpos($m[0][0], ']') || !\preg_match('/' . r('[]') . '/', $m[0][0]))) {
+                        $chops[] = e(\substr($chop, 0, $n));
+                        $content = $chop = \substr($chop, $n);
+                        continue;
                     }
                     $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
