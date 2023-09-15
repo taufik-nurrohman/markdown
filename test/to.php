@@ -25,18 +25,12 @@ if ('POST' === $_SERVER['REQUEST_METHOD']) {
 $test = $_GET['test'] ?? 'p';
 $view = $_GET['view'] ?? 'source';
 
-if ('LICENSE' === $test || 'TEST' === $test) {
-    $files = [__DIR__ . D . '..' . D . 'LICENSE'];
-} else if ('README' === $test) {
-    $files = [__DIR__ . D . '..' . D . 'README.md'];
-} else {
-    $files = glob(__DIR__ . D . 'to' . D . $test . D . '*.md', GLOB_NOSORT);
-    usort($files, static function ($a, $b) {
-        $a = dirname($a) . D . basename($a, '.md');
-        $b = dirname($b) . D . basename($b, '.md');
-        return strnatcmp($a, $b);
-    });
-}
+$files = glob(__DIR__ . D . 'to' . D . $test . D . '*.html', GLOB_NOSORT);
+usort($files, static function ($a, $b) {
+    $a = dirname($a) . D . basename($a, '.html');
+    $b = dirname($b) . D . basename($b, '.html');
+    return strnatcmp($a, $b);
+});
 
 $out = '<!DOCTYPE html>';
 $out .= '<html dir="ltr">';
@@ -170,14 +164,6 @@ foreach (glob(__DIR__ . D . 'to' . D . '*', GLOB_ONLYDIR) as $v) {
 }
 
 $out .= ' ';
-$out .= '<button' . ('LICENSE' === $test ? ' disabled' : "") . ' name="test" type="submit" value="LICENSE">';
-$out .= 'LICENSE';
-$out .= '</button>';
-$out .= ' ';
-$out .= '<button' . ('README' === $test ? ' disabled' : "") . ' name="test" type="submit" value="README">';
-$out .= 'README';
-$out .= '</button>';
-$out .= ' ';
 $out .= '<button' . ('TEST' === $test ? ' disabled' : "") . ' name="test" type="submit" value="TEST">';
 $out .= 'TEST';
 $out .= '</button>';
@@ -253,12 +239,12 @@ foreach ($files as $v) {
         // $out .= x\markdown\from($raw);
         // $out .= '</div>';
     } else if ('source' === $view) {
-        // $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
-        // $out .= strtr(htmlspecialchars(x\markdown\from($raw) ?? ""), [
-        //     "\t" => '<span class="char-tab">' . "\t" . '</span>',
-        //     ' ' => '<span class="char-space"> </span>'
-        // ]);
-        // $out .= '</pre>';
+        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+        $out .= strtr(htmlspecialchars(x\markdown\to($raw) ?? ""), [
+            "\t" => '<span class="char-tab">' . "\t" . '</span>',
+            ' ' => '<span class="char-space"> </span>'
+        ]);
+        $out .= '</pre>';
     }
     $end = microtime(true);
     $out .= '</div>';
