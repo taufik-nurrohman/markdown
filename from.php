@@ -531,9 +531,9 @@ namespace x\markdown\from {
         }
         $chops = [];
         $prev = ""; // Capture the previous chunk
-        $is_image = isset($lot['is_image']);
-        $is_table = isset($lot['is_table']);
-        $note_count = $lot['note_count'] ?? [];
+        $is_image = isset($lot['is']['image']);
+        $is_table = isset($lot['is']['table']);
+        $notes = $lot['notes'] ?? [];
         while (false !== ($chop = \strpbrk($content, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
             if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($chop)))) {
                 $chops[] = e($prev);
@@ -552,9 +552,9 @@ namespace x\markdown\from {
             }
             if (0 === \strpos($chop, '!')) {
                 if (1 === \strpos($chop, '[')) {
-                    $lot['is_image'] = 1;
+                    $lot['is']['image'] = 1;
                     $row = row(\substr($chop, 1), $lot)[0][0];
-                    unset($lot['is_image']);
+                    unset($lot['is']['image']);
                     if (\is_array($row) && 'a' === $row[0]) {
                         $row[0] = 'img';
                         if (\is_array($row[1])) {
@@ -613,64 +613,61 @@ namespace x\markdown\from {
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $n = \strspn($chop, $c);
                 $pattern = '*' === $c ? '/' .
-                    // `<em>…`
                     '(?>' .
-                        '(?<![' . $c . '])[' . $c . '](?![\p{P}\s])' .
+                        // A `*` token that is not followed by a punctuation or a white-space.
+                        '(?<![*])[*](?![\p{P}\s])' .
                     '|' .
-                        '(?<=^|[\p{P}\s])[' . $c . '](?=[\p{P}])' .
+                        // A `*` token that is followed by a punctuation or a white-space at the start of the block, or
+                        // preceded by a punctuation or a white-space.
+                        '(?<=^|[\p{P}\s])[*](?=[\p{P}])' .
                     ')' .
                     '(?>' .
+                        // Code span in this syntax has a higher priority so that if there is a literal `*` character
+                        // written in the code span, then that character will not be considered as part of the closing
+                        // emphasis.
+                        //
                         // <https://spec.commonmark.org/0.30#example-341>
                         '`[^`]+`' .
                     '|' .
-                        // `…`
-                        '[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
+                        // All character(s) other than literal `*` and all escaped character(s). If this emphasis syntax
+                        // is present in a table block, then literal `|` character(s) cannot be present in this syntax
+                        // unless it is escaped.
+                        '[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
                     '|' .
-                        // `<strong>…`
-                        '(?>' .
-                            '[' . $c . ']{2}(?![\p{P}\s])' .
-                        '|' .
-                            '(?<=[\p{P}\s])[' . $c . ']{2}(?=[\p{P}])' .
-                        ')' .
-                        '(?>' .
-                            // <https://spec.commonmark.org/0.30#example-341>
-                            '`[^`]+`' .
-                        '|' .
-                            // `…`
-                            '[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
-                        ')+?' .
-                        // `…</strong>`
-                        '(?>' .
-                            '(?<![\p{P}\s])[' . $c . ']{2}' .
-                        '|' .
-                            '(?<=[\p{P}])[' . $c . ']{2}(?=[\p{P}\s])' .
-                        ')' .
+                        // Loose emphasis syntax…
+                        '(?>[*](?![*])(?![\p{P}\s])|(?<=[\p{P}\s])[*](?![*])(?=[\p{P}]))(?>`[^`]+`|[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.)+?(?>(?<![\p{P}\s])[*](?![*])|(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]))' .
                     '|' .
-                        '(?R)' .
+                        // Loose strong syntax…
+                        '(?>[*]{2}(?![\p{P}\s])|(?<=[\p{P}\s])[*]{2}(?=[\p{P}]))(?>`[^`]+`|[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.)+?(?>(?<![\p{P}\s])[*]{2}|(?<=[\p{P}])[*]{2}(?=[\p{P}\s]))' .
                     ')+?' .
-                    // `…</em>`
                     '(?>' .
-                        '(?<![\p{P}\s])[' . $c . '](?![' . $c . '])' .
+                        // A `*` token that is not preceded by a punctuation or a white-space.
+                        '(?<![\p{P}\s])[*](?![*])' .
                     '|' .
-                        '(?<=[\p{P}])[' . $c . '](?![' . $c . '])(?=[\p{P}\s]|$)' .
+                        // A `*` token that is preceded by a punctuation or a white-space at the end of the block, or
+                        // followed by a punctuation or a white-space.
+                        '(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]|$)' .
                     ')' .
                 '/u' : '/' .
-                    // `<em>…`
-                    '(?>' .
-                        '(?<=^|[\p{P}\s])[' . $c . '](?![\p{P}\s])' .
-                    ')' .
+                    // A `_` token that is not followed by a punctuation or a white-space at the beginning of the block,
+                    // or preceded by a punctuation or a white-space.
+                    '(?<=^|[\p{P}\s])[_](?![\p{P}\s])' .
                     '(?>' .
                         // <https://spec.commonmark.org/0.30#example-341>
                         '`[^`]+`' .
                     '|' .
-                        '[^' . $c . '\\\\]|\\\\.' .
+                        // All character(s) other than literal `_` and all escaped character(s). If this emphasis syntax
+                        // is present in a table block, then literal `|` character(s) cannot be present in this syntax
+                        // unless it is escaped.
+                        '[^_' . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
                     '|' .
-                        '(?<![\p{P}\s])[' . $c . '](?![\p{P}\s])' .
+                        // A `_` token that is not followed by a punctuation or a white-space and is not preceded by a
+                        // punctuation or a white-space.
+                        '(?<![\p{P}\s])[_](?![\p{P}\s])' .
                     ')+?' .
-                    // `…</em>`
-                    '(?>' .
-                        '(?<![\p{P}\s])[' . $c . '](?![' . $c . '])(?=[\p{P}\s]|$)' .
-                    ')' .
+                    // A `_` token that is not preceded by a punctuation or a white-space at the end of the block, or
+                    // followed by a punctuation or a white-space.
+                    '(?<![\p{P}\s])[_](?![_])(?=[\p{P}\s]|$)' .
                 '/u';
                 if ((1 === $n || 3 === $n) && \preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 1) {
@@ -688,64 +685,54 @@ namespace x\markdown\from {
                     continue;
                 }
                 $pattern = '*' === $c ? '/' .
-                    // `<strong>…`
                     '(?>' .
-                        '(?<![' . $c . '])[' . $c . ']{2}(?![\p{P}\s])' .
+                        // A `**` token that is not followed by a punctuation or a white-space.
+                        '(?<![*])[*]{2}(?![\p{P}\s])' .
                     '|' .
-                        '(?<=^|[\p{P}\s])[' . $c . ']{2}(?=[\p{P}])' .
+                        // A `**` token that is preceded by a punctuation or a white-space at the end of the block, or
+                        // followed by a punctuation or a white-space.
+                        '(?<=^|[\p{P}\s])[*]{2}(?=[\p{P}])' .
                     ')' .
                     '(?>' .
                         // <https://spec.commonmark.org/0.30#example-341>
                         '`[^`]+`' .
                     '|' .
-                        // `…`
-                        '[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
+                        '[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
                     '|' .
-                        // `<em>…`
-                        '(?>' .
-                            '[' . $c . '](?![\p{P}\s])' .
-                        '|' .
-                            '(?<=[\p{P}\s])[' . $c . '](?=[\p{P}])' .
-                        ')' .
-                        '(?>' .
-                            // <https://spec.commonmark.org/0.30#example-341>
-                            '`[^`]+`' .
-                        '|' .
-                            // `…`
-                            '[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
-                        ')+?' .
-                        // `…</em>`
-                        '(?>' .
-                            '(?<![\p{P}\s])[' . $c . ']' .
-                        '|' .
-                            '(?<=[\p{P}])[' . $c . '](?=[\p{P}\s])' .
-                        ')' .
+                        // Loose strong syntax…
+                        '(?>[*]{2}(?![\p{P}\s])|(?<=[\p{P}\s])[*]{2}(?=[\p{P}]))(?>`[^`]+`|[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.)+?(?>(?<![\p{P}\s])[*]{2}|(?<=[\p{P}])[*]{2}(?=[\p{P}\s]))' .
                     '|' .
-                        '(?R)' .
+                        // Loose emphasis syntax…
+                        '(?>[*](?![*])(?![\p{P}\s])|(?<=[\p{P}\s])[*](?![*])(?=[\p{P}]))(?>`[^`]+`|[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.)+?(?>(?<![\p{P}\s])[*](?![*])|(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]))' .
                     ')+?' .
-                    // `…</strong>`
                     '(?>' .
-                        '(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])' .
+                        // A `**` token that is not preceded by a punctuation or a white-space.
+                        '(?<![\p{P}\s])[*]{2}(?![*])' .
                     '|' .
-                        '(?<=[\p{P}])[' . $c . ']{2}(?![' . $c . '])(?=[\p{P}\s]|$)' .
+                        // A `**` token that is preceded by a punctuation or a white-space at the end of the block, or
+                        // followed by a punctuation or a white-space.
+                        '(?<=[\p{P}])[*]{2}(?![*])(?=[\p{P}\s]|$)' .
                     ')' .
                 '/u' : '/' .
-                    // `<strong>…`
-                    '(?>' .
-                        '(?<=^|[\p{P}\s])[' . $c . ']{2}(?![\p{P}\s])' .
-                    ')' .
+                    // A `__` token that is not followed by a punctuation or a white-space at the beginning of the
+                    // block, or preceded by a punctuation or a white-space.
+                    '(?<=^|[\p{P}\s])[_]{2}(?![\p{P}\s])' .
                     '(?>' .
                         // <https://spec.commonmark.org/0.30#example-341>
                         '`[^`]+`' .
                     '|' .
-                        '[^' . $c . '\\\\]|\\\\.' .
+                        // All character(s) other than literal `_` and all escaped character(s). If this strong syntax
+                        // is present in a table block, then literal `|` character(s) cannot be present in this syntax
+                        // unless it is escaped.
+                        '[^_' . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
                     '|' .
-                        '(?<![\p{P}\s])[' . $c . ']{2}(?![\p{P}\s])' .
+                        // A `__` token that is not followed by a punctuation or a white-space and is not preceded by a
+                        // punctuation or a white-space.
+                        '(?<![\p{P}\s])[_]{2}(?![\p{P}\s])' .
                     ')+?' .
-                    // `…</strong>`
-                    '(?>' .
-                        '(?<![\p{P}\s])[' . $c . ']{2}(?![' . $c . '])(?=[\p{P}\s]|$)' .
-                    ')' .
+                    // A `__` token that is not preceded by a punctuation or a white-space at the end of the block, or
+                    // followed by a punctuation or a white-space.
+                    '(?<![\p{P}\s])[_]{2}(?![_])(?=[\p{P}\s]|$)' .
                 '/u';
                 if (\preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 1) {
@@ -855,14 +842,14 @@ namespace x\markdown\from {
                     // `[^asdf]`
                     if (0 === \strpos($m[1][0], '^')) {
                         $key = \trim(\substr($m[1][0], 1));
-                        $note_count[$key] = ($note_count[$key] ?? 0) + 1;
-                        $chops[] = ['sup', [['a', (string) \count($note_count), [
+                        $notes[$key] = ($notes[$key] ?? 0) + 1;
+                        $chops[] = ['sup', [['a', (string) \count($notes), [
                             'href' => '#to:' . $key,
                             'role' => 'doc-noteref'
                         ], -1, [false, "", true]]], [
-                            'id' => 'from:' . $key . ($note_count[$key] > 1 ? '.' . $note_count[$key] : "")
+                            'id' => 'from:' . $key . ($notes[$key] > 1 ? '.' . $notes[$key] : "")
                         ], -1, [$key, $prev, false]];
-                        $lot['note_count'] = $note_count;
+                        $lot['notes'] = $notes;
                         continue;
                     }
                     $row = row($m[1][0], $lot)[0];
@@ -1700,7 +1687,7 @@ namespace x\markdown\from {
                     $vv = null;
                 }
                 unset($vv);
-                $lot['is_table'] = 1;
+                $lot['is']['table'] = 1;
                 if ("" !== $headers) {
                     $th = [];
                     if (\is_array($headers = row($headers, $lot)[0])) {
@@ -1777,7 +1764,7 @@ namespace x\markdown\from {
                     }
                     $table[1][1][] = ['tr', \array_pad(\array_slice($td, 0, $styles_count), $styles_count, ['td', "", [], 0]), [], 0];
                 }
-                unset($lot['is_table']);
+                unset($lot['is']['table']);
                 // Remove empty `<thead>`
                 if (empty($table[0][1][0][1])) {
                     unset($table[0]);
@@ -1861,13 +1848,13 @@ namespace x\markdown\from {
                 'role' => 'doc-endnotes'
             ], 0];
             foreach ($lot[2] as $k => $v) {
-                if (!isset($lot['note_count'][$k])) {
+                if (!isset($lot['notes'][$k])) {
                     continue;
                 }
                 if (\is_array($v) && \is_array($last = \array_pop($v))) {
                     if ('p' === $last[0]) {
                         $last[1] = (array) $last[1];
-                        for ($i = 0, $j = $lot['note_count'][$k]; $i < $j; ++$i) {
+                        for ($i = 0, $j = $lot['notes'][$k]; $i < $j; ++$i) {
                             $last[1][] = ['&', '&#160;', [], -1];
                             $last[1][] = ['a', [['&', '&#8617;', [], -1]], [
                                 'href' => '#from:' . $k . ($i > 0 ? '.' . ($i + 1) : ""),
@@ -1878,7 +1865,7 @@ namespace x\markdown\from {
                     } else {
                         $v[] = $last;
                         $p = ['p', [], [], 0];
-                        for ($i = 0, $j = $lot['note_count'][$k]; $i < $j; ++$i) {
+                        for ($i = 0, $j = $lot['notes'][$k]; $i < $j; ++$i) {
                             if ($i > 0) {
                                 $p[1][] = ['&', '&#160;', [], -1];
                             }
@@ -1897,8 +1884,9 @@ namespace x\markdown\from {
             if ($notes[1][1][1]) {
                 $blocks['notes'] = $notes;
             }
-            unset($lot['note_count']);
+            unset($lot['notes']);
         }
+        unset($lot['is']);
         return [$blocks, $lot];
     }
     function s(array $data): ?string {

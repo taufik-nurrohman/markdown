@@ -232,7 +232,7 @@ foreach ($files as $v) {
         // [$blocks, $lot] = x\markdown\from\raw($raw);
         // $out .= htmlspecialchars('$blocks = ' . var_export($blocks, true) . ';');
         // $out .= "\n\n";
-        // $out .= htmlspecialchars('$lot = ' . var_export($lot, true) . ';');
+        // $out .= htmlspecialchars('$data = ' . var_export($lot, true) . ';');
         // $out .= '</pre>';
     } else if ('result' === $view) {
         // $out .= '<div style="border:2px solid #000;color:#000;flex:1;padding:1em;">';
