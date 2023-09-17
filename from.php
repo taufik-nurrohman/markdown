@@ -284,7 +284,7 @@ namespace x\markdown\from {
                     if ('/' === $t[0] && '<' . $t . '>' === $test) {
                         return [false, $row, [], $dent, $t];
                     }
-                    if (\preg_match('/^<' . \preg_quote(\trim($t, '/'), '/') . '(\s[^>]*)?>$/', $test)) {
+                    if (\preg_match('/^<' . \preg_quote(\trim($t, '/'), '/') . '(\s(?>"[^"]*"|\'[^\']\'|[^>])*)?>$/', $test)) {
                         return [false, $row, [], $dent, $t];
                     }
                 }
@@ -923,19 +923,19 @@ namespace x\markdown\from {
                 // Raw HTML
                 if (false === $prev[0]) {
                     if ('!--' === $prev[4]) {
+                        if (false !== \strpos(\substr($prev[1], 4), '--')) {
+                            [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
+                            $blocks[$block] = ['p', $a, [], $prev[3]];
+                            if ("" !== $b && \is_array($b = rows($b, $lot)[0])) {
+                                foreach ($b as $bb) {
+                                    $blocks[++$block] = $bb;
+                                }
+                            }
+                            continue;
+                        }
                         if (false !== ($n = \strpos($prev[1], '-->'))) {
                             if ($n < 4) {
                                 $blocks[$block++] = ['p', $prev[1], [], $prev[3]];
-                                continue;
-                            }
-                            if (false !== \strpos(\substr($prev[1], 4, $n - 4), '--')) {
-                                [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
-                                $blocks[$block] = ['p', $a, [], $prev[3]];
-                                if ("" !== $b && \is_array($b = rows($b, $lot)[0])) {
-                                    foreach ($b as $bb) {
-                                        $blocks[++$block] = $bb;
-                                    }
-                                }
                                 continue;
                             }
                             if (null === $current[0]) {
