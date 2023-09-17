@@ -750,25 +750,6 @@ namespace x\markdown\from {
                         continue;
                     }
                     $row = row($m[1][0], $lot)[0];
-                    if (!$is_image && $row && \is_array($row) && false !== \strpos($m[1][0], '[')) {
-                        $deep = false;
-                        foreach ($row as $v) {
-                            if (\is_array($v) && 'a' === $v[0]) {
-                                // Found recursive link syntax!
-                                $deep = true;
-                                break;
-                            }
-                        }
-                        // <https://spec.commonmark.org/0.30#example-517>
-                        if ($deep) {
-                            $chops[] = '[';
-                            foreach ($row as $v) {
-                                $chops[] = $v;
-                            }
-                            $chops[] = ']';
-                            continue;
-                        }
-                    }
                     // `…(asdf)`
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>'), $is_table ? '|' : "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $prev = $n[0][0];

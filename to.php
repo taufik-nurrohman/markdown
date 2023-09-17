@@ -49,9 +49,10 @@ namespace x\markdown\to {
         }
         $pattern_1 = p(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'p', 'pre', 'script', 'style', 'textarea']);
         $pattern_2 = p(['blockquote', 'dl', 'figure', 'ol', 'table', 'ul'], true);
-        $pattern_3 = p(['br', 'img'], false);
+        $pattern_3 = p(['hr'], false);
+        $pattern_4 = '<(?>"[^"]*"|\'[^\']\'|[^>])+>';
         $blocks = [];
-        foreach (\preg_split('/(' . $pattern_1 . '|' . $pattern_2 . '|' . $pattern_3 . '|\s+)/', $content, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
+        foreach (\preg_split('/(' . $pattern_1 . '|' . $pattern_2 . '|' . $pattern_3 . '|' . $pattern_4 . '|\s+)/', $content, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
             if ("" === \trim($v)) {
                 continue;
             }
