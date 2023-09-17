@@ -178,8 +178,7 @@ treated as external links and will automatically get `rel="nofollow"` and `targe
 
 Notes follow the [Markdown Extra’s notes syntax](https://michelf.ca/projects/php-markdown/extra#footnotes) but with
 slightly different HTML output to match [Mecha](https://github.com/mecha-cms)’s common naming style. Multi-line notes
-also don’t have to be indented by four spaces as required by Markdown Extra. A space or tab is enough to continue the
-note.
+don’t have to be indented by four spaces as required by Markdown Extra. A space or tab is enough to continue the note.
 
 <table>
   <thead>
