@@ -6,6 +6,8 @@ With 90% compliance to [CommonMark 0.30](https://spec.commonmark.org/0.30) speci
 Motivation
 ----------
 
+![Why?](https://github.com/taufik-nurrohman/markdown/assets/1669261/c72049c9-68d5-4fb5-afbc-e5b23aa38218)
+
 I appreciate the [Parsedown](https://github.com/erusev/parsedown) project for its simplicity and speed. It uses only a
 single class file to convert Markdown syntax to HTML. However, given the decrease in Parsedown project activity over
 time, I assume that it is now in the state of “feature complete”. It still has some bugs to fix, and with
