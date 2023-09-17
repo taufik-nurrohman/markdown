@@ -1,7 +1,7 @@
 Markdown Parser
 ===============
 
-With 90% compliance to [CommonMark 0.30](https://spec.commonmark.org/0.30) specifications.
+With 90% compliance to [CommonMark 0.30](https://spec.commonmark.org/0.30) specifications. One file.
 
 Motivation
 ----------
@@ -22,8 +22,7 @@ if I want to update, it might be more optimal to just switch to CommonMark.
 I’m not into things like that. As someone who needs a function to convert Markdown syntax to HTML, that kind of
 flexibility is completely unnecessary to me. I just want to convert Markdown syntax to HTML for once and then move on.
 It was fulfilled by [Parsedown version 1.8](https://github.com/erusev/parsedown/tree/1.8.x-beta), but it seems that it
-is no longer being actively maintained. Maybe because the era has changed, where things like this are no longer a
-priority.
+is no longer being actively maintained.
 
 The goal of this project is to use it in my [Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown) in
 the future. Previously, I wanted to develop this converter directly into the extension, but my friend advised me to
