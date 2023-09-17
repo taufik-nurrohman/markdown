@@ -624,11 +624,11 @@ namespace x\markdown\from {
                     $b1 = '(?<=^|[\p{P}\s])[_]{2}(?![\s])(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<![\s])[_]{2}(?![_])(?=[\p{P}\s]|$)';
                     $i1 = '(?<=^|[\p{P}\s])[_](?![\s])(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<![\s])[_](?![_])(?=[\p{P}\s]|$)';
                 }
-                if (\preg_match('/(?>' . $b1 . '|' . $i1 . ')/u', \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    if ($m[0][1] > 1) {
-                        $chops[] = e(\substr($chop, 0, $m[0][1]));
-                        $content = $chop = \substr($chop, $m[0][1]);
-                        continue;
+                $before = \substr($prev, -1);
+                if (\preg_match('/(?>' . $b1 . '|' . $i1 . ')/u', $before . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                    if ($m[0][1] > ($n = \strlen($before))) {
+                        $chops[] = e(\substr($chop, 0, $m[0][1] - $n));
+                        $content = $chop = \substr($chop, $m[0][1] - $n);
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
                     if (false !== ($n = \strpos($m[0][0], '[')) && (false === \strpos($m[0][0], ']') || !\preg_match('/' . r('[]') . '/', $m[0][0]))) {
