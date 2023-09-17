@@ -393,7 +393,7 @@ namespace x\markdown\from {
         return false;
     }
     // Apply reference(s), abbreviation(s), and note(s) data to the row(s)
-    function lot($row, array &$lot = [], $lazy = true) {
+    function lot($row, array &$lot = []) {
         if (!$row) {
             // Keep the `false` value because it is used to mark void element(s)
             return false === $row ? false : null;
@@ -430,48 +430,25 @@ namespace x\markdown\from {
             return $row;
         }
         foreach ($row as &$v) {
+            if (\is_string($v)) {
+                if (\is_string($vv = lot($v, $lot))) {
+                    $v = $vv;
+                    continue;
+                }
+                if (1 === \count($vv) && 'abbr' === $vv[0][0]) {
+                    $v = $vv[0];
+                    continue;
+                }
+                // TODO: Make this concise!
+                $v = [false, $vv, [], -1];
+                continue;
+            }
             if (\is_array($v) && isset($v[0])) {
-                if (false === $v[0] || 'abbr' === $v[0] || 'code' === $v[0]) {
+                if (false === $v[0] || 'code' === $v[0]) {
                     continue;
                 }
                 $v[1] = lot($v[1], $lot);
-                if ('a' === $v[0] || 'img' === $v[0]) {
-                    if (!empty($v[4][2]) || false === $v[4][0]) {
-                        continue; // Skip!
-                    }
-                    if (!isset($lot[0][$v[4][0]]) && $lazy) {
-                        // Restore the original syntax
-                        $v = $v[4][1];
-                        continue;
-                    }
-                    $data = $v[2];
-                    if (!isset($data[$k = 'a' === $v[0] ? 'href' : 'src'])) {
-                        unset($data[$k]);
-                    }
-                    if (!isset($data['title'])) {
-                        unset($data['title']);
-                    }
-                    $v[2][$k] = $lot[0][$v[4][0]][0] ?? null;
-                    $v[2]['title'] = $lot[0][$v[4][0]][1] ?? null;
-                    $v[2] = \array_replace($v[2], $lot[0][$v[4][0]][2] ?? [], $data);
-                    if ($lazy) {
-                        $v[4][2] = true; // Done!
-                    }
-                    continue;
-                }
-                if ('sup' === $v[0]) {
-                    if (!empty($v[4][2]) || false === $v[4][0]) {
-                        continue; // Skip!
-                    }
-                    if (!isset($lot[2][$v[4][0]]) && $lazy) {
-                        // Restore the original syntax
-                        $v = $v[4][1];
-                        continue;
-                    }
-                    if ($lazy) {
-                        $v[4][0][2] = true;
-                    }
-                }
+                continue;
             }
         }
         unset($v);
@@ -621,32 +598,33 @@ namespace x\markdown\from {
                     $i1 = '(?>[*](?![\p{P}\s])|(?<=^|[\p{P}\s])[*](?=[\p{P}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![\p{P}\s])[*](?![*])|(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]|$))';
                 } else {
                     // Outer strong and emphasis (strict)
-                    $b1 = '(?<=^|[\p{P}\s])[_]{2}(?![\s])(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<![\s])[_]{2}(?![_])(?=[\p{P}\s]|$)';
-                    $i1 = '(?<=^|[\p{P}\s])[_](?![\s])(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<![\s])[_](?![_])(?=[\p{P}\s]|$)';
+                    $b1 = '(?<=^|[\p{P}\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<!\s)[_]{2}(?![_])(?=[\p{P}\s]|$)';
+                    $i1 = '(?<=^|[\p{P}\s])[_](?!\s)(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<!\s)[_](?![_])(?=[\p{P}\s]|$)';
                 }
                 $before = \substr($prev, -1);
                 if (\preg_match('/(?>' . $b1 . '|' . $i1 . ')/u', $before . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                    $prev = $m[0][0];
                     if ($m[0][1] > ($n = \strlen($before))) {
                         $chops[] = e(\substr($chop, 0, $m[0][1] - $n));
                         $content = $chop = \substr($chop, $m[0][1] - $n);
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
-                    if (false !== ($n = \strpos($m[0][0], '[')) && (false === \strpos($m[0][0], ']') || !\preg_match('/' . r('[]') . '/', $m[0][0]))) {
+                    if (false !== ($n = \strpos($prev, '[')) && (false === \strpos($prev, ']') || !\preg_match('/' . r('[]') . '/', $prev))) {
                         $chops[] = e(\substr($chop, 0, $n));
                         $content = $chop = \substr($chop, $n);
                         continue;
                     }
-                    $x = \min(\strspn($m[0][0], $c), \strspn(\strrev($m[0][0]), $c));
+                    $x = \min(\strspn($prev, $c), \strspn(\strrev($prev), $c));
                     if (0 === $x % 2) {
-                        $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
-                        $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
+                        $chops[] = ['strong', row(\substr($prev, 2, -2), $lot)[0], [], -1, $c . $c];
+                        $content = $chop = \substr($chop, \strlen($prev));
                         continue;
                     }
-                    $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c];
-                    $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
+                    $chops[] = ['em', row(\substr($prev, 1, -1), $lot)[0], [], -1, $c];
+                    $content = $chop = \substr($chop, \strlen($prev));
                     continue;
                 }
-                $chops[] = $c;
+                $chops[] = $prev = $c;
                 $content = $chop = \substr($chop, 1);
                 continue;
             }
@@ -735,10 +713,21 @@ namespace x\markdown\from {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
                     }
+                    // <https://spec.commonmark.org/0.30#example-517>
+                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains, $is_table ? '|' : "") . '/', $prev, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
+                        if (false !== \strpos($prev, '](') || false !== \strpos($prev, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
+                            $chops[] = e($prev = \substr($prev, 0, $n[0][1]));
+                            $content = $chop = \substr($chop, \strlen($prev));
+                            continue;
+                        }
+                    }
                     $content = $chop = \substr($chop, \strlen($prev));
                     // `[^asdf]`
                     if (0 === \strpos($m[1][0], '^')) {
-                        $key = \trim(\substr($m[1][0], 1));
+                        if (!isset($lot[2][$key = \trim(\substr($m[1][0], 1))])) {
+                            $chops[] = e($prev);
+                            continue;
+                        }
                         $notes[$key] = ($notes[$key] ?? 0) + 1;
                         $chops[] = ['sup', [['a', (string) \count($notes), [
                             'href' => '#to:' . $key,
@@ -805,18 +794,17 @@ namespace x\markdown\from {
                         $content = $chop = \substr($chop, \strlen($n[0][0]));
                     // `…[]` or `…[asdf]`
                     } else if (0 === \strpos($chop, '[') && \preg_match('/' . r('[]', true, "", $is_table ? '|' : "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
-                        $prev = $n[0][0];
-                        // `[asdf][]`
-                        if ("" === $n[1][0]) {
-                            $of = $lot[0][$key = \trim(\strtolower($m[1][0]))] ?? [];
-                        // `[asdf][asdf]`
-                        } else {
-                            $of = $lot[0][$key = \trim(\strtolower($n[1][0]))] ?? [];
+                        $content = $chop = \substr($chop, \strlen($prev = $n[0][0]));
+                        $key = \trim(\strtolower("" === $n[1][0] ? $m[1][0] : $n[1][0]));
+                        if (!isset($lot[0][$key])) {
+                            $chops[] = e($prev = $m[0][0] . $n[0][0]);
+                            continue;
                         }
-                        $data = $of[2] ?? [];
-                        $link = $of[0] ?? null;
-                        $title = $of[1] ?? null;
-                        $content = $chop = \substr($chop, \strlen($n[0][0]));
+                    }
+                    $key = $key ?? \trim(\strtolower($m[1][0]));
+                    if (\is_string($key) && !isset($lot[0][$key])) {
+                        $chops[] = e($prev);
+                        continue;
                     }
                     // …{asdf}
                     if (0 === \strpos(\trim($chop), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'"), $is_table ? '|' : "") . ')/', $chop, $o)) {
@@ -825,15 +813,19 @@ namespace x\markdown\from {
                             $content = $chop = \substr($chop, \strlen($o[0]));
                         }
                     }
+                    if (false !== $key) {
+                        $data = $lot[0][$key][2] ?? [];
+                        $link = $lot[0][$key][0] ?? null;
+                        $title = $lot[0][$key][1] ?? null;
+                    }
                     if (!l($link)) {
                         $data['rel'] = $data['rel'] ?? 'nofollow';
                         $data['target'] = $data['target'] ?? '_blank';
                     }
                     $chops[] = ['a', $row, \array_replace([
-                        // Need to retain the `null` value, otherwise the reference link style feature won’t work
-                        'href' => null !== $link ? u(v($link)) : null,
+                        'href' => u(v($link)),
                         'title' => $title
-                    ], $data ?? []), -1, [$key ?? \trim(\strtolower($m[1][0])), $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? ""), false]];
+                    ], $data ?? []), -1, [$key, $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                     continue;
                 }
                 $chops[] = $prev = '[';
@@ -892,7 +884,7 @@ namespace x\markdown\from {
             $chops[] = e($prev = $content);
             $content = $chop = "";
         }
-        if (\is_string($chops = lot($chops, $lot, false))) {
+        if (\is_string($chops = m($chops))) {
             return [$chops, $lot];
         }
         return [m($chops), $lot];
@@ -1314,6 +1306,108 @@ namespace x\markdown\from {
             }
             $blocks[++$block] = $current;
         }
+        foreach ($blocks as $k => &$v) {
+            if (!\is_int($v[0]) && \strpos($v[1], ']:') < 2) {
+                continue;
+            }
+            // `*[asdf]:`
+            if (0 === \strpos($v[1], '*[') && \preg_match('/' . r('[]', true) . '/', \substr($v[1], 1), $m) && ':' === \substr($v[1], \strlen($m[0]) + 1, 1)) {
+                // Remove abbreviation block from the structure
+                unset($blocks[$k]);
+                // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave
+                // similar to the reference specification.
+                $key = \trim(\preg_replace('/\s+/', ' ', $m[1]));
+                // Queue the abbreviation data to be used later
+                $title = \trim(\substr($v[1], \strlen($m[0]) + 2));
+                if (isset($lot[$v[0]][$key])) {
+                    continue;
+                }
+                $lot[$v[0]][$key] = $title;
+                continue;
+            }
+            // `[asdf]:` or `[^asdf]:`
+            if (0 === \strpos($v[1], '[') && \preg_match('/' . r('[]', true) . '/', $v[1], $m) && ':' === \substr($v[1], \strlen($m[0]), 1)) {
+                // `[^asdf]:`
+                if (0 === \strpos($m[1], '^')) {
+                    // Remove note block from the structure
+                    unset($blocks[$k]);
+                    $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', \substr($m[1], 1))));
+                    $note = \substr($v[1], \strlen($m[0]) + 1);
+                    $d = \str_repeat(' ', \strlen($m[0]) + 1 + \strspn($note, ' '));
+                    if (isset($lot[$v[0]][$key])) {
+                        continue;
+                    }
+                    if ("" === \trim($note)) {
+                        $v = ['p', row($v[1], $lot)[0], [], $v[3]];
+                        continue;
+                    }
+                    if (false !== \strpos(" \n", $note[0])) {
+                        $note = \substr($note, 1);
+                    } else if ("\t" === $note[0]) {
+                        $note = '   ' . \substr($note[0]);
+                    }
+                    // Remove indent(s)
+                    [$a, $b] = \explode("\n", $note . "\n", 2);
+                    $note = \trim(\strtr("\n" . $a . "\n" . $b, [
+                        "\n" . \str_repeat(' ', \strspn(\trim($b, "\n"), ' ')) => "\n"
+                    ]), "\n");
+                    // Queue the note data to be used later
+                    $lot_of_note = [$lot[0], $lot[1]];
+                    $lot[$v[0]][$key] = rows($note, $lot_of_note)[0];
+                    continue;
+                }
+                $data = $key = $link = $title = null;
+                if (\preg_match('/^\s*(' . q('<>') . '|\S+?)(?>\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?(?>\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?\s*$/', \substr($v[1], \strlen($m[0]) + 1), $n)) {
+                    // Remove reference block from the structure
+                    unset($blocks[$k]);
+                    // <https://spec.commonmark.org/0.30#matches>
+                    $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', $m[1])));
+                    // <https://spec.commonmark.org/0.30#example-204>
+                    if (isset($lot[$v[0]][$key])) {
+                        continue;
+                    }
+                    if ($link = $n[1] ?? "") {
+                        if ('<' === $link[0] && '>' === \substr($link, -1)) {
+                            $link = \substr($link, 1, -1);
+                            // <https://spec.commonmark.org/0.30#example-490>
+                            // <https://spec.commonmark.org/0.30#example-492>
+                            // <https://spec.commonmark.org/0.30#example-493>
+                            if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
+                                $v[0] = 'p';
+                                $v[1] = row($v[1], $lot)[0];
+                                continue;
+                            }
+                        }
+                    }
+                    if ("" !== ($title = $n[2] ?? "")) {
+                        $a = $title[0];
+                        $b = \substr($title, -1);
+                        if (('"' === $a && '"' === $b || "'" === $a && "'" === $b || '(' === $a && ')' === $b) && \preg_match('/^' . q($a . $b) . '$/', $title)) {
+                            $title = v(d(\substr($title, 1, -1)));
+                        } else {
+                            $v[0] = 'p';
+                            $v[1] = row($v[1], $lot)[0];
+                            continue;
+                        }
+                    } else {
+                        $title = null;
+                    }
+                    if ($data = $n[3] ?? []) {
+                        $data = a($n[3], true);
+                    }
+                    if (!l($link)) {
+                        $data['rel'] = $data['rel'] ?? 'nofollow';
+                        $data['target'] = $data['target'] ?? '_blank';
+                    }
+                    // Queue the reference data to be used later
+                    $lot[$v[0]][$key] = [u(v($link)), $title, $data];
+                    continue;
+                }
+                $v[0] = 'p';
+                $v[1] = row($v[1], $lot)[0];
+                continue;
+            }
+        }
         $blocks = \array_values($blocks);
         foreach ($blocks as $k => &$v) {
             if (false === $v[0]) {
@@ -1334,102 +1428,6 @@ namespace x\markdown\from {
                 }
                 // Parse the definition list later
                 continue;
-            }
-            if (\is_int($v[0]) && \strpos($v[1], ']:') > 1) {
-                // Match an abbreviation
-                if (0 === \strpos($v[1], '*[') && \preg_match('/' . r('[]', true) . '/', \substr($v[1], 1), $m) && ':' === \substr($v[1], \strlen($m[0]) + 1, 1)) {
-                    // Remove abbreviation block from the structure
-                    unset($blocks[$k]);
-                    // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave
-                    // similar to the reference specification.
-                    $key = \trim(\preg_replace('/\s+/', ' ', $m[1]));
-                    // Queue the abbreviation data to be used later
-                    $title = \trim(\substr($v[1], \strlen($m[0]) + 2));
-                    if (isset($lot[$v[0]][$key])) {
-                        continue;
-                    }
-                    $lot[$v[0]][$key] = $title;
-                    continue;
-                }
-                // Match a note or a reference
-                if (0 === \strpos($v[1], '[') && \preg_match('/' . r('[]', true) . '/', $v[1], $m) && ':' === \substr($v[1], \strlen($m[0]), 1)) {
-                    if (0 === \strpos($m[1], '^')) {
-                        $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', \substr($m[1], 1))));
-                        $note = \substr($v[1], \strlen($m[0]) + 1);
-                        $d = \str_repeat(' ', \strlen($m[0]) + 1 + \strspn($note, ' '));
-                        if (isset($lot[$v[0]][$key])) {
-                            continue;
-                        }
-                        if ("" === \trim($note)) {
-                            $v = ['p', row($v[1], $lot)[0], [], $v[3]];
-                            continue;
-                        }
-                        if (false !== \strpos(" \n", $note[0])) {
-                            $note = \substr($note, 1);
-                        } else if ("\t" === $note[0]) {
-                            $note = '   ' . \substr($note[0]);
-                        }
-                        // Remove indent(s)
-                        [$a, $b] = \explode("\n", $note . "\n", 2);
-                        $note = \trim(\strtr("\n" . $a . "\n" . $b, [
-                            "\n" . \str_repeat(' ', \strspn(\trim($b, "\n"), ' ')) => "\n"
-                        ]), "\n");
-                        // Queue the note data to be used later
-                        $lot_of_note = [$lot[0], $lot[1]];
-                        $lot[$v[0]][$key] = rows($note, $lot_of_note)[0];
-                        continue;
-                    }
-                    $data = $key = $link = $title = null;
-                    if (\preg_match('/^\s*(' . q('<>') . '|\S+?)(?>\s+(' . q('"') . '|' . q("'") . '|' . q('()') . '))?(?>\s*(' . q('{}', false, q('"') . '|' . q("'")) . '))?\s*$/', \substr($v[1], \strlen($m[0]) + 1), $n)) {
-                        // Remove reference block from the structure
-                        unset($blocks[$k]);
-                        // <https://spec.commonmark.org/0.30#matches>
-                        $key = \trim(\strtolower(\preg_replace('/\s+/', ' ', $m[1])));
-                        // <https://spec.commonmark.org/0.30#example-204>
-                        if (isset($lot[$v[0]][$key])) {
-                            continue;
-                        }
-                        if ($link = $n[1] ?? "") {
-                            if ('<' === $link[0] && '>' === \substr($link, -1)) {
-                                $link = \substr($link, 1, -1);
-                                // <https://spec.commonmark.org/0.30#example-490>
-                                // <https://spec.commonmark.org/0.30#example-492>
-                                // <https://spec.commonmark.org/0.30#example-493>
-                                if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
-                                    $v[0] = 'p';
-                                    $v[1] = row($v[1], $lot)[0];
-                                    continue;
-                                }
-                            }
-                        }
-                        if ("" !== ($title = $n[2] ?? "")) {
-                            $a = $title[0];
-                            $b = \substr($title, -1);
-                            if (('"' === $a && '"' === $b || "'" === $a && "'" === $b || '(' === $a && ')' === $b) && \preg_match('/^' . q($a . $b) . '$/', $title)) {
-                                $title = v(d(\substr($title, 1, -1)));
-                            } else {
-                                $v[0] = 'p';
-                                $v[1] = row($v[1], $lot)[0];
-                                continue;
-                            }
-                        } else {
-                            $title = null;
-                        }
-                        if ($data = $n[3] ?? []) {
-                            $data = a($n[3], true);
-                        }
-                        if (!l($link)) {
-                            $data['rel'] = $data['rel'] ?? 'nofollow';
-                            $data['target'] = $data['target'] ?? '_blank';
-                        }
-                        // Queue the reference data to be used later
-                        $lot[$v[0]][$key] = [u(v($link)), $title, $data];
-                        continue;
-                    }
-                    $v[0] = 'p';
-                    $v[1] = row($v[1], $lot)[0];
-                    continue;
-                }
             }
             if ('blockquote' === $v[0]) {
                 $v[1] = \substr(\strtr($v[1], ["\n>" => "\n"]), 1);
