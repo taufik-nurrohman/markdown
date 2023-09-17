@@ -931,7 +931,7 @@ namespace x\markdown\from {
         $blocks = [];
         $rows = \explode("\n", $content);
         foreach ($rows as $row) {
-            // TODO: Keep tab character(s)
+            // TODO: Keep the tab character(s) as-is!
             while (false !== ($before = \strstr($row, "\t", true))) {
                 $v = \strlen($before);
                 $row = $before . \str_repeat(' ', 4 - $v % 4) . \substr($row, $v + 1);

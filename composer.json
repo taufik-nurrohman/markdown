@@ -1,6 +1,11 @@
 {
   "archive": {
-    "exclude": ["/.git", "/test"]
+    "exclude": [
+      "/.git",
+      "/.gitattributes",
+      "/.gitignore",
+      "/test"
+    ]
   },
   "authors": [
     {
@@ -10,7 +15,10 @@
     }
   ],
   "autoload": {
-    "files": ["from.php", "to.php"]
+    "files": [
+      "from.php",
+      "to.php"
+    ]
   },
   "description": "Obviously, a Markdown parser.",
   "funding": [
@@ -22,11 +30,16 @@
   "homepage": "https://github.com/taufik-nurrohman/markdown",
   "keywords": [
     "commonmark",
+    "converter",
     "extra",
-    "markdown"
+    "markdown",
+    "parser"
   ],
   "license": "MIT",
   "name": "taufik-nurrohman/markdown",
+  "require": {
+    "php": ">=7.1"
+  },
   "support": {
     "docs": "https://github.com/taufik-nurrohman/markdown#readme",
     "issues": "https://github.com/taufik-nurrohman/markdown/issues"
