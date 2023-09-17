@@ -611,141 +611,38 @@ namespace x\markdown\from {
             //
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
-                $n = \strspn($chop, $c);
-                $pattern = '*' === $c ? '/' .
-                    '(?>' .
-                        // A `*` token that is not followed by a punctuation or a white-space.
-                        '(?<![*])[*](?![\p{P}\s])' .
-                    '|' .
-                        // A `*` token that is followed by a punctuation or a white-space at the start of the block, or
-                        // preceded by a punctuation or a white-space.
-                        '(?<=^|[\p{P}\s])[*](?=[\p{P}])' .
-                    ')' .
-                    '(?>' .
-                        // Code span in this syntax has a higher priority so that if there is a literal `*` character
-                        // written in the code span, then that character will not be considered as part of the closing
-                        // emphasis.
-                        //
-                        // <https://spec.commonmark.org/0.30#example-341>
-                        '`[^`]+`' .
-                    '|' .
-                        // All character(s) other than literal `*` and all escaped character(s). If this emphasis syntax
-                        // is present in a table block, then literal `|` character(s) cannot be present in this syntax
-                        // unless it is escaped.
-                        '[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
-                    '|' .
-                        // Loose emphasis syntax…
-                        '(?>[*](?![*])(?![\p{P}\s])|(?<=[\p{P}\s])[*](?![*])(?=[\p{P}]))(?>`[^`]+`|[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.)+?(?>(?<![\p{P}\s])[*](?![*])|(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]))' .
-                    '|' .
-                        // Loose strong syntax…
-                        '(?>[*]{2}(?![\p{P}\s])|(?<=[\p{P}\s])[*]{2}(?=[\p{P}]))(?>`[^`]+`|[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.)+?(?>(?<![\p{P}\s])[*]{2}|(?<=[\p{P}])[*]{2}(?=[\p{P}\s]))' .
-                    ')+?' .
-                    '(?>' .
-                        // A `*` token that is not preceded by a punctuation or a white-space.
-                        '(?<![\p{P}\s])[*](?![*])' .
-                    '|' .
-                        // A `*` token that is preceded by a punctuation or a white-space at the end of the block, or
-                        // followed by a punctuation or a white-space.
-                        '(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]|$)' .
-                    ')' .
-                '/u' : '/' .
-                    // A `_` token that is not followed by a punctuation or a white-space at the beginning of the block,
-                    // or preceded by a punctuation or a white-space.
-                    '(?<=^|[\p{P}\s])[_](?![\p{P}\s])' .
-                    '(?>' .
-                        // <https://spec.commonmark.org/0.30#example-341>
-                        '`[^`]+`' .
-                    '|' .
-                        // All character(s) other than literal `_` and all escaped character(s). If this emphasis syntax
-                        // is present in a table block, then literal `|` character(s) cannot be present in this syntax
-                        // unless it is escaped.
-                        '[^_' . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
-                    '|' .
-                        // A `_` token that is not followed by a punctuation or a white-space and is not preceded by a
-                        // punctuation or a white-space.
-                        '(?<![\p{P}\s])[_](?![\p{P}\s])' .
-                    ')+?' .
-                    // A `_` token that is not preceded by a punctuation or a white-space at the end of the block, or
-                    // followed by a punctuation or a white-space.
-                    '(?<![\p{P}\s])[_](?![_])(?=[\p{P}\s]|$)' .
-                '/u';
-                if ((1 === $n || 3 === $n) && \preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
+                if ('*' === $c) {
+                    // Inner strong and emphasis
+                    $b0 = '(?>[*]{2}(?![\p{P}\s])|(?<=[\p{P}\s])[*]{2}(?=[\p{P}]))(?>' . $contains . ')+?(?>(?<![\p{P}\s])[*]{2}|(?<=[\p{P}])[*]{2}(?=[\p{P}\s]))';
+                    $i0 = '(?>[*](?![\p{P}\s])|(?<=[\p{P}\s])[*](?=[\p{P}]))(?>' . $contains . ')+?(?>(?<![\p{P}\s])[*]|(?<=[\p{P}])[*](?=[\p{P}\s]))';
+                    // Outer strong and emphasis (strict)
+                    $b1 = '(?>[*]{2}(?![\p{P}\s])|(?<=^|[\p{P}\s])[*]{2}(?=[\p{P}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![\p{P}\s])[*]{2}(?![*])|(?<=[\p{P}])[*]{2}(?![*])(?=[\p{P}\s]|$))';
+                    $i1 = '(?>[*](?![\p{P}\s])|(?<=^|[\p{P}\s])[*](?=[\p{P}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![\p{P}\s])[*](?![*])|(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]|$))';
+                } else {
+                    // Outer strong and emphasis (strict)
+                    $b1 = '(?<=^|[\p{P}\s])[_]{2}(?![\s])(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<![\s])[_]{2}(?![_])(?=[\p{P}\s]|$)';
+                    $i1 = '(?<=^|[\p{P}\s])[_](?![\s])(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<![\s])[_](?![_])(?=[\p{P}\s]|$)';
+                }
+                if (\preg_match('/(?>' . $b1 . '|' . $i1 . ')/u', \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 1) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $content = $chop = \substr($chop, $m[0][1]);
+                        continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
                     if (false !== ($n = \strpos($m[0][0], '[')) && (false === \strpos($m[0][0], ']') || !\preg_match('/' . r('[]') . '/', $m[0][0]))) {
                         $chops[] = e(\substr($chop, 0, $n));
                         $content = $chop = \substr($chop, $n);
+                        continue;
+                    }
+                    $x = \min(\strspn($m[0][0], $c), \strspn(\strrev($m[0][0]), $c));
+                    if (0 === $x % 2) {
+                        $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
+                        $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                         continue;
                     }
                     $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, $c];
-                    $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
-                    continue;
-                }
-                $pattern = '*' === $c ? '/' .
-                    '(?>' .
-                        // A `**` token that is not followed by a punctuation or a white-space.
-                        '(?<![*])[*]{2}(?![\p{P}\s])' .
-                    '|' .
-                        // A `**` token that is preceded by a punctuation or a white-space at the end of the block, or
-                        // followed by a punctuation or a white-space.
-                        '(?<=^|[\p{P}\s])[*]{2}(?=[\p{P}])' .
-                    ')' .
-                    '(?>' .
-                        // <https://spec.commonmark.org/0.30#example-341>
-                        '`[^`]+`' .
-                    '|' .
-                        '[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
-                    '|' .
-                        // Loose strong syntax…
-                        '(?>[*]{2}(?![\p{P}\s])|(?<=[\p{P}\s])[*]{2}(?=[\p{P}]))(?>`[^`]+`|[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.)+?(?>(?<![\p{P}\s])[*]{2}|(?<=[\p{P}])[*]{2}(?=[\p{P}\s]))' .
-                    '|' .
-                        // Loose emphasis syntax…
-                        '(?>[*](?![*])(?![\p{P}\s])|(?<=[\p{P}\s])[*](?![*])(?=[\p{P}]))(?>`[^`]+`|[^*' . ($is_table ? '|' : "") . '\\\\]|\\\\.)+?(?>(?<![\p{P}\s])[*](?![*])|(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]))' .
-                    ')+?' .
-                    '(?>' .
-                        // A `**` token that is not preceded by a punctuation or a white-space.
-                        '(?<![\p{P}\s])[*]{2}(?![*])' .
-                    '|' .
-                        // A `**` token that is preceded by a punctuation or a white-space at the end of the block, or
-                        // followed by a punctuation or a white-space.
-                        '(?<=[\p{P}])[*]{2}(?![*])(?=[\p{P}\s]|$)' .
-                    ')' .
-                '/u' : '/' .
-                    // A `__` token that is not followed by a punctuation or a white-space at the beginning of the
-                    // block, or preceded by a punctuation or a white-space.
-                    '(?<=^|[\p{P}\s])[_]{2}(?![\p{P}\s])' .
-                    '(?>' .
-                        // <https://spec.commonmark.org/0.30#example-341>
-                        '`[^`]+`' .
-                    '|' .
-                        // All character(s) other than literal `_` and all escaped character(s). If this strong syntax
-                        // is present in a table block, then literal `|` character(s) cannot be present in this syntax
-                        // unless it is escaped.
-                        '[^_' . ($is_table ? '|' : "") . '\\\\]|\\\\.' .
-                    '|' .
-                        // A `__` token that is not followed by a punctuation or a white-space and is not preceded by a
-                        // punctuation or a white-space.
-                        '(?<![\p{P}\s])[_]{2}(?![\p{P}\s])' .
-                    ')+?' .
-                    // A `__` token that is not preceded by a punctuation or a white-space at the end of the block, or
-                    // followed by a punctuation or a white-space.
-                    '(?<![\p{P}\s])[_]{2}(?![_])(?=[\p{P}\s]|$)' .
-                '/u';
-                if (\preg_match($pattern, \substr($prev, -1) . $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    if ($m[0][1] > 1) {
-                        $chops[] = e(\substr($chop, 0, $m[0][1]));
-                        $content = $chop = \substr($chop, $m[0][1]);
-                    }
-                    // <https://spec.commonmark.org/0.30#example-520>
-                    if (false !== ($n = \strpos($m[0][0], '[')) && (false === \strpos($m[0][0], ']') || !\preg_match('/' . r('[]') . '/', $m[0][0]))) {
-                        $chops[] = e(\substr($chop, 0, $n));
-                        $content = $chop = \substr($chop, $n);
-                        continue;
-                    }
-                    $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, $c . $c];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0][0]));
                     continue;
                 }
