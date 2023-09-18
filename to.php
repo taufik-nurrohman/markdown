@@ -30,6 +30,32 @@ namespace x\markdown {
 }
 
 namespace x\markdown\to {
+    function a(?string $info) {
+        if ("" === ($info = \trim($info ?? ""))) {
+            return [];
+        }
+        $out = [];
+        if (!\preg_match_all('/(^|\s)([^"\'\/<=>\s]+)(?>=("[^"]*"|\'[^\']*\'|[^\/<>\s]+)?)?/', $info, $m)) {
+            return $out;
+        }
+        foreach ($m[2] as $k => $v) {
+            if (!isset($m[3][$k])) {
+                $out[$v] = true;
+                continue;
+            }
+            if ("" === $m[3][$k]) {
+                $out[$v] = "";
+                continue;
+            }
+            if ('"' === $m[3][$k][0] && '"' === \substr($m[3][$k], -1)) {
+                $m[3][$k] = \substr($m[3][$k], 1, -1);
+            } else if ("'" === $m[3][$k] && "'" === \substr($m[3][$k], -1)) {
+                $m[3][$k] = \substr($m[3][$k], 1, -1);
+            }
+            $out[$v] = \htmlspecialchars_decode($m[3][$k]);
+        }
+        return $out;
+    }
     function e(string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
         return \htmlspecialchars($v, $as, 'UTF-8');
     }
@@ -56,18 +82,26 @@ namespace x\markdown\to {
             if ("" === \trim($v)) {
                 continue;
             }
-            if (0 === \strpos($v, '<h') && \is_numeric($v[2]) && '</h' === \substr($v, -5, 3)) {
-                $n = (int) $v[2];
-                if ('>' === $v[3]) {
-                    $blocks[] = ['h' . $n, \substr($v, 4, -5), [], 0, [$n, 1 === $n ? '=' : (2 === $n ? '-' : '#')]];
-                    continue;
-                }
-                // TODO: Preserve `class` and `id` attribute
-                $blocks[] = ['h' . $n, \substr($v, \strpos($v, '>') + 1, -5), [], 0, [$n, 1 === $n ? '=' : (2 === $n ? '-' : '#')]];
+            if ('<' !== $v[0] || '>' !== \substr($v, -1)) {
+                $blocks[] = [false, $v, [], 0];
                 continue;
             }
-            if (0 === \strpos($v, '<p>') && '</p>' === \substr($v, -4)) {
-                $blocks[] = ['p', \substr($v, 3, -4), [], 0];
+            if (!\preg_match('/^<([^\'\/<=>\s]+)(\s(?>"[^"]*"|\'[^\']\'|[^\/>])+)?(?>>\s*([\s\S]*?)\s*<\/\1>|\/?>)$/', $v, $m)) {
+                $blocks[] = [false, $v, [], 0];
+                continue;
+            }
+            $t = $m[1];
+            if ('hr' === $t) {
+                $blocks[] = [$t, false, [], 0, '-'];
+                continue;
+            }
+            if ('h' === $t[0] && false !== \strpos('123456', $t[1])) {
+                $n = (int) $t[1];
+                $blocks[] = [$t, $m[3], a($m[2]), 0, [$n, 1 === $n ? '=' : (2 === $n ? '-' : '#')]];
+                continue;
+            }
+            if ('p' === $t) {
+                $blocks[] = [$t, $m[3], [], 0];
                 continue;
             }
             $blocks[] = [false, $v, [], 0];
@@ -76,9 +110,21 @@ namespace x\markdown\to {
     }
     function s(array $data): ?string {
         if (false === $data[0]) {
-            return $data[1];
+            return $data[1] . "\n";
+        }
+        if ('hr' === $data[0]) {
+            return \str_repeat($data[4], 3) . "\n";
         }
         if ('h' === $data[0][0] && isset($data[4][1])) {
+            if ($class = $data[2]['class'] ?? "") {
+                $class = '.' . \preg_replace('/\s+/', '.', \trim($class));
+            }
+            if ($id = $data[2]['id'] ?? "") {
+                $id = '#' . $id;
+            }
+            if ($class || $id) {
+                $data[1] .= ' {' . $id . $class . '}';
+            }
             if (false !== \strpos('-=', $data[4][1])) {
                 return $data[1] . "\n" . \str_repeat($data[4][1], \strlen($data[1])) . "\n";
             }
