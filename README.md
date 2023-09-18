@@ -903,4 +903,3 @@ Links
 
  - Autumn image sample by [@blmiers2](https://www.flickr.com/photos/41304517@N00/6250498399) 
  - Emoticon image sample by [@emoticons4u](https://web.archive.org/web/20090117060451/http://emoticons4u.com) (web archive)
- - Why image by [@imgflip](https://imgflip.com/memetemplate/122714174/why-you-no)
