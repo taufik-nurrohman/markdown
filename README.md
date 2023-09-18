@@ -6,7 +6,11 @@ With 90% compliance to [CommonMark 0.30](https://spec.commonmark.org/0.30) speci
 Motivation
 ----------
 
-![Why?](https://github.com/taufik-nurrohman/markdown/assets/1669261/c72049c9-68d5-4fb5-afbc-e5b23aa38218)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/taufik-nurrohman/markdown/assets/1669261/0a488f4a-0450-4e0a-8137-196a4b0657b0">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/taufik-nurrohman/markdown/assets/1669261/164b592d-e8db-4e28-be5d-467522f65f0d">
+  <img alt="Why?" src="https://github.com/taufik-nurrohman/markdown/assets/1669261/164b592d-e8db-4e28-be5d-467522f65f0d">
+</picture>
 
 I appreciate the [Parsedown](https://github.com/erusev/parsedown) project for its simplicity and speed. It uses only a
 single class file to convert Markdown syntax to HTML. However, given the decrease in Parsedown project activity over
