@@ -861,10 +861,7 @@ namespace x\markdown\from {
             }
             $content = $chop = "";
         }
-        if (\is_string($chops = m($chops))) {
-            return [$chops, $lot];
-        }
-        return [$chops, $lot];
+        return [m($chops), $lot];
     }
     function rows(?string $content, array &$lot = []): array {
         // List of reference(s), abbreviation(s), and note(s)
