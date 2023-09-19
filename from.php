@@ -137,6 +137,33 @@ namespace x\markdown\from {
         }
         return null;
     }
+    function abbr(string $row, array &$lot = []) {
+        // Optimize if current row is an abbreviation
+        if (isset($lot[1][$row])) {
+            $title = $lot[1][$row];
+            return [['abbr', e($row), ['title' => "" !== $title ? $title : null], -1]];
+        }
+        // Else, chunk current row by abbreviation
+        $abbr = [];
+        if (!empty($lot[1])) {
+            foreach ($lot[1] as $k => $v) {
+                $abbr[] = \preg_quote($k, '/');
+            }
+        }
+        if ($abbr) {
+            $chops = [];
+            foreach (\preg_split('/\b(' . \implode('|', $abbr) . ')\b/', $row, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
+                if (isset($lot[1][$v])) {
+                    $title = $lot[1][$v];
+                    $chops[] = ['abbr', e($v), ['title' => "" !== $title ? $title : null], -1];
+                    continue;
+                }
+                $chops[] = e($v);
+            }
+            return $chops;
+        }
+        return $row;
+    }
     function d(?string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
         return \html_entity_decode($v ?? "", $as, 'UTF-8');
     }
@@ -392,68 +419,6 @@ namespace x\markdown\from {
         }
         return false;
     }
-    // Apply reference(s), abbreviation(s), and note(s) data to the row(s)
-    function lot($row, array &$lot = []) {
-        if (!$row) {
-            // Keep the `false` value because it is used to mark void element(s)
-            return false === $row ? false : null;
-        }
-        if (\is_string($row = m($row))) {
-            // Optimize if current chunk is a complete word boundary
-            if (isset($lot[1][$row])) {
-                $title = $lot[1][$row];
-                return [['abbr', $row, ['title' => "" !== $title ? $title : null], -1]];
-            }
-            // Else, chunk by word boundary
-            $pattern = [];
-            if (!empty($lot[1])) {
-                foreach ($lot[1] as $k => $v) {
-                    $pattern[] = \preg_quote($k, '/');
-                }
-            }
-            $pattern = $pattern ? '/\b(' . \implode('|', $pattern) . ')\b/' : 0;
-            if ($pattern) {
-                $chops = [];
-                foreach (\preg_split($pattern, $row, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
-                    if (isset($lot[1][$v])) {
-                        $title = $lot[1][$v];
-                        $chops[] = ['abbr', $v, ['title' => "" !== $title ? $title : null], -1];
-                        continue;
-                    }
-                    $chops[] = $v;
-                }
-                if (1 === \count($chops) && \is_string($chop = \reset($chops))) {
-                    return $chop;
-                }
-                return $chops;
-            }
-            return $row;
-        }
-        foreach ($row as &$v) {
-            if (\is_string($v)) {
-                if (\is_string($vv = lot($v, $lot))) {
-                    $v = $vv;
-                    continue;
-                }
-                if (1 === \count($vv) && 'abbr' === $vv[0][0]) {
-                    $v = $vv[0];
-                    continue;
-                }
-                // TODO: Make this concise!
-                $v = [false, $vv, [], -1];
-                continue;
-            }
-            if (\is_array($v) && isset($v[0])) {
-                if (false === $v[0] || 'code' === $v[0]) {
-                    continue;
-                }
-                $v[1] = lot($v[1], $lot);
-                continue;
-            }
-        }
-        unset($v);
-        return $row;
-    }
     function m($row) {
         if (!$row || !\is_array($row)) {
             return $row;
@@ -513,7 +478,11 @@ namespace x\markdown\from {
         $notes = $lot['notes'] ?? [];
         while (false !== ($chop = \strpbrk($content, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
             if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($chop)))) {
-                $chops[] = e($prev);
+                if (\is_array($abbr = abbr($prev, $lot))) {
+                    $chops = \array_merge($chops, $abbr);
+                } else {
+                    $chops[] = e($prev);
+                }
             }
             if (0 === \strpos($chop, "\n")) {
                 $prev = $chops[$last = \count($chops) - 1] ?? [];
@@ -835,7 +804,7 @@ namespace x\markdown\from {
             if ('\\' === $chop) {
                 $chops[] = $prev = $chop;
                 $content = $chop = "";
-                break;
+                continue;
             }
             if (0 === \strpos($chop, '\\') && isset($chop[1])) {
                 // <https://spec.commonmark.org/0.30#example-644>
@@ -877,17 +846,25 @@ namespace x\markdown\from {
                 $content = $chop = \substr($chop, 1);
                 continue;
             }
-            $chops[] = e($prev = $chop);
+            if (\is_array($abbr = abbr($prev = $chop, $lot))) {
+                $chops = \array_merge($chops, $abbr);
+            } else {
+                $chops[] = e($prev);
+            }
             $content = $chop = "";
         }
         if ("" !== $content) {
-            $chops[] = e($prev = $content);
+            if (\is_array($abbr = abbr($prev = $content, $lot))) {
+                $chops = \array_merge($chops, $abbr);
+            } else {
+                $chops[] = e($prev);
+            }
             $content = $chop = "";
         }
         if (\is_string($chops = m($chops))) {
             return [$chops, $lot];
         }
-        return [m($chops), $lot];
+        return [$chops, $lot];
     }
     function rows(?string $content, array &$lot = []): array {
         // List of reference(s), abbreviation(s), and note(s)
@@ -1307,7 +1284,7 @@ namespace x\markdown\from {
             $blocks[++$block] = $current;
         }
         foreach ($blocks as $k => &$v) {
-            if (!\is_int($v[0]) && \strpos($v[1], ']:') < 2) {
+            if (!\is_int($v[0])) {
                 continue;
             }
             // `*[asdf]:`
@@ -1712,7 +1689,6 @@ namespace x\markdown\from {
                 $v[1] = $list;
                 $v[4][] = !$list_is_tight;
             }
-            $v[1] = lot($v[1], $lot);
         }
         unset($v);
         $blocks = \array_values($blocks);
