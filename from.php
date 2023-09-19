@@ -401,8 +401,8 @@ namespace x\markdown\from {
         }
         return ['p', $row, [], $dent];
     }
-    function e(string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
-        return \htmlspecialchars($v, $as, 'UTF-8');
+    function e(?string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
+        return \htmlspecialchars($v ?? "", $as, 'UTF-8');
     }
     function l(?string $link) {
         // ``
