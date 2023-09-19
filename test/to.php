@@ -149,9 +149,14 @@ $out .= '</head>';
 $out .= '<body>';
 
 $out .= '<form method="get">';
+$out .= '<p>';
+$out .= '<b>Tests:</b>';
+$out .= ' <a href="from.php">from()</a>';
+$out .= ' <a aria-current="page">to()</a>';
+$out .= '</p>';
 $out .= '<fieldset>';
 $out .= '<legend>';
-$out .= 'Tests';
+$out .= 'Filter';
 $out .= '</legend>';
 $out .= '<button' . ('*' === $test ? ' disabled' : "") . ' name="test" type="submit" value="*">';
 $out .= '*';
