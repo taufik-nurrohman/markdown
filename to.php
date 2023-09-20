@@ -115,7 +115,7 @@ namespace x\markdown\to {
             return [[], $lot];
         }
         $chops = [];
-        $pattern_1 = p(['a', 'abbr', 'b', 'em', 'i', 'strong']);
+        $pattern_1 = p(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'img', 'strong']);
         $pattern_2 = p(['img'], false);
         $pattern_3 = '<(?>"[^"]*"|\'[^\']\'|[^>])+>';
         foreach (\preg_split('/(' . $pattern_1 . '|' . $pattern_2 . '|' . $pattern_3 . '|\s+)/', $content, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
