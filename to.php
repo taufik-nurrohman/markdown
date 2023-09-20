@@ -17,7 +17,7 @@ namespace x\markdown {
             $content = \trim(\preg_replace('/\s+/', ' ', \implode("", $row)));
             return "" !== $content ? $content : null;
         }
-        [$rows] = to\rows($content);
+        [$rows, $lot] = to\rows($content);
         if (!$rows) {
             return null;
         }
@@ -25,6 +25,11 @@ namespace x\markdown {
             $row = \is_array($row) ? to\s($row) : $row;
         }
         $content = \implode("\n", $rows);
+        if (!empty($lot[1])) {
+            foreach ($lot[1] as $k => $v) {
+                $content .= "\n*[" . $k . ']:' . ("" !== $v ? ' ' . $v : "");
+            }
+        }
         return $content;
     }
 }
@@ -131,6 +136,11 @@ namespace x\markdown\to {
                 $chops[] = ['a', row($m[3], $lot)[0], a($m[2]), -1];
                 continue;
             }
+            if ('abbr' === $t) {
+                $chops[] = ['abbr', $key = d($m[3]), $a = a($m[2]), -1];
+                $lot[1][$key] = \trim(\preg_replace('/\s+/', ' ', $a['title'] ?? ""));
+                continue;
+            }
             if ('b' === $t || 'strong' === $t) {
                 $chops[] = ['strong', row(\strtr($m[3], ['*' => '\*']), $lot)[0], a($m[2]), -1, '**'];
                 continue;
@@ -142,7 +152,7 @@ namespace x\markdown\to {
         }
         return [m($chops), $lot];
     }
-    function rows(?string $content, array $lot = []): array {
+    function rows(?string $content, array &$lot = []): array {
         if (!$content || false === \strpos($content, '<')) {
             return [];
         }
@@ -179,7 +189,7 @@ namespace x\markdown\to {
             }
             $blocks[] = [false, $v, [], 0];
         }
-        return [$blocks, []];
+        return [$blocks, $lot];
     }
     function s(array $data): ?string {
         if (\is_array($data[1])) {
@@ -218,6 +228,10 @@ namespace x\markdown\to {
                     }
                     // TODO: Attribute
                     $v = '[' . $content . '](' . $link . $title . ')';
+                    continue;
+                }
+                if ('abbr' === $v[0]) {
+                    $v = $v[1];
                     continue;
                 }
                 if ('em' === $v[0]) {
