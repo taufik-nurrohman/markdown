@@ -635,7 +635,7 @@ namespace x\markdown\from {
                         $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                         continue;
                     }
-                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $m[0]]];
+                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false]];
                     $content = $chop = \substr($chop, \strlen($m[0]));
                     continue;
                 }
@@ -651,7 +651,7 @@ namespace x\markdown\from {
                         'href' => u($m[1]),
                         'rel' => $rel,
                         'target' => $target
-                    ], -1, [false, $m[0]]];
+                    ], -1, [false]];
                     $content = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
@@ -701,7 +701,7 @@ namespace x\markdown\from {
                         $chops[] = ['sup', [['a', (string) \count($notes), [
                             'href' => '#to:' . $key,
                             'role' => 'doc-noteref'
-                        ], -1, [false, "", true]]], [
+                        ], -1, [false]]], [
                             'id' => 'from:' . $key . ($notes[$key] > 1 ? '.' . $notes[$key] : "")
                         ], -1, [$key, $prev, false]];
                         $lot['notes'] = $notes;
@@ -713,7 +713,7 @@ namespace x\markdown\from {
                         $prev = $n[0][0];
                         // `[asdf]()`
                         if ("" === ($n[1][0] = \trim($n[1][0] ?? ""))) {
-                            $chops[] = ['a', $row, ['href' => ""], -1, [false, $m[0][0] . $n[0][0]]];
+                            $chops[] = ['a', $row, ['href' => ""], -1, [false]];
                             $content = $chop = \substr($chop, \strlen($n[0][0]));
                             continue;
                         }
@@ -794,7 +794,8 @@ namespace x\markdown\from {
                     $chops[] = ['a', $row, \array_replace([
                         'href' => u(v($link)),
                         'title' => $title
-                    ], $data ?? []), -1, [$key, $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
+                    ], $data ?? []), -1, [$key]];
+                    $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "");
                     continue;
                 }
                 $chops[] = $prev = '[';
@@ -1708,7 +1709,7 @@ namespace x\markdown\from {
                             $last[1][] = ['a', [['&', '&#8617;', [], -1]], [
                                 'href' => '#from:' . $k . ($i > 0 ? '.' . ($i + 1) : ""),
                                 'role' => 'doc-backlink'
-                            ], -1];
+                            ], -1, [false]];
                         }
                         $v[] = $last;
                     } else {
@@ -1721,7 +1722,7 @@ namespace x\markdown\from {
                             $p[1][] = ['a', [['&', '&#8617;', [], -1]], [
                                 'href' => '#from:' . $k . ($i > 0 ? '.' . ($i + 1) : ""),
                                 'role' => 'doc-backlink'
-                            ], -1];
+                            ], -1, [false]];
                         }
                         $v[] = $p;
                     }

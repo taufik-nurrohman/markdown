@@ -30,7 +30,8 @@ namespace x\markdown {
                 $content .= "\n*[" . $k . ']:' . ("" !== $v ? ' ' . $v : "");
             }
         }
-        return $content;
+        $content = \strtr($content, ["\0" => ""]);
+        return "" !== $content ? $content : null;
     }
 }
 
@@ -59,7 +60,36 @@ namespace x\markdown\to {
             }
             $out[$v] = d($m[3][$k]);
         }
+        $out && \ksort($out);
         return $out;
+    }
+    function attr(array $data): ?string {
+        if (!$data) {
+            return null;
+        }
+        foreach ($data as $k => &$v) {
+            if ('class' === $k) {
+                $v = '.' . \trim(\preg_replace('/\s+/', '.', $v));
+                continue;
+            }
+            if ('id' === $k) {
+                $v = '#' . $v;
+                continue;
+            }
+            if (true === $v) {
+                $v = $k;
+                continue;
+            } else {
+                $v = $k . "='" . \strtr($v, ["'" => "\\'"]) . "'";
+                continue;
+            }
+        }
+        unset($v);
+        \sort($data);
+        return '{' . \strtr(\trim(\implode(' ', $data)), [
+            ' #' => '#',
+            ' .' => '.'
+        ]) . '}';
     }
     function d(?string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
         return \htmlspecialchars_decode($v ?? "", $as);
@@ -103,10 +133,10 @@ namespace x\markdown\to {
     function p(array $tags, $deep = null): string {
         foreach ($tags as &$tag) {
             if (false === $deep) {
-                $tag = '<' . $tag . '(?>\s(?>"[^"]*"|\'[^\']*\'|[^\/>])+)?\/?>';
+                $tag = '<' . $tag . '(?>\s+(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?\/?>';
                 continue;
             }
-            $tag = '<' . $tag . '(?>\s(?>"[^"]*"|\'[^\']*\'|[^\/>])+)?>' . ($deep ? '(?>(?R)|[\s\S]*?)' : '[\s\S]*?') . '<\/' . $tag . '>';
+            $tag = '<' . $tag . '(?>\s+(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?>' . ($deep ? '(?>(?R)|[\s\S])*?' : '[\s\S]*?') . '<\/' . $tag . '>';
         }
         return \implode('|', $tags);
     }
@@ -117,7 +147,7 @@ namespace x\markdown\to {
         $chops = [];
         $pattern_1 = p(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'img', 'strong']);
         $pattern_2 = p(['img'], false);
-        $pattern_3 = '<(?>"[^"]*"|\'[^\']\'|[^>])+>';
+        $pattern_3 = '<(?>"[^"]*"|\'[^\']*\'|[^>])+>';
         foreach (\preg_split('/(' . $pattern_1 . '|' . $pattern_2 . '|' . $pattern_3 . '|\s+)/', $content, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
             if ("" === \trim($v)) {
                 $chops[] = ' ';
@@ -127,7 +157,7 @@ namespace x\markdown\to {
                 $chops[] = $v;
                 continue;
             }
-            if (!\preg_match('/^<([^\'\/<=>\s]+)(\s(?>"[^"]*"|\'[^\']*\'|[^\/>])+)?(?>>\s*([\s\S]*?)\s*<\/\1>|\/?>)$/', $v, $m)) {
+            if (!\preg_match('/^<([^\s"\'\/<=>]+)(\s+(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?(?:>\s*([\s\S]*?)\s*<\/\1>|\/?>)$/', $v, $m)) {
                 $chops[] = $v;
                 continue;
             }
@@ -145,8 +175,20 @@ namespace x\markdown\to {
                 $chops[] = ['strong', row(\strtr($m[3], ['*' => '\*']), $lot)[0], a($m[2]), -1, '**'];
                 continue;
             }
+            if ('br' === $t) {
+                $chops[] = ['br', false, a($m[2]), -1];
+                continue;
+            }
+            if ('code' === $t) {
+                $chops[] = ['code', $m[3], a($m[2]), -1];
+                continue;
+            }
             if ('em' === $t || 'i' === $t) {
                 $chops[] = ['em', row(\strtr($m[3], ['*' => '\*']), $lot)[0], a($m[2]), -1, '*'];
+                continue;
+            }
+            if ('img' === $t) {
+                $chops[] = ['img', false, a($m[2]), -1];
                 continue;
             }
         }
@@ -159,7 +201,7 @@ namespace x\markdown\to {
         $pattern_1 = p(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'p', 'pre', 'script', 'style', 'textarea']);
         $pattern_2 = p(['blockquote', 'dl', 'figure', 'ol', 'table', 'ul'], true);
         $pattern_3 = p(['hr'], false);
-        $pattern_4 = '<(?>"[^"]*"|\'[^\']\'|[^>])+>';
+        $pattern_4 = '<(?>"[^"]*"|\'[^\']*\'|[^>])+>';
         $blocks = [];
         foreach (\preg_split('/(' . $pattern_1 . '|' . $pattern_2 . '|' . $pattern_3 . '|' . $pattern_4 . '|\s+)/', $content, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
             if ("" === \trim($v)) {
@@ -169,7 +211,7 @@ namespace x\markdown\to {
                 $blocks[] = [false, $v, [], 0];
                 continue;
             }
-            if (!\preg_match('/^<([^\'\/<=>\s]+)(\s(?>"[^"]*"|\'[^\']*\'|[^\/>])+)?(?>>[ \t]*([\s\S]*?)[ \t]*<\/\1>|\/?>)$/', $v, $m)) {
+            if (!\preg_match('/^<([^\s"\'\/<=>]+)(\s(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?(?:>[ \t]*([\s\S]*?)[ \t]*<\/\1>|\/?>)$/', $v, $m)) {
                 $blocks[] = [false, $v, [], 0];
                 continue;
             }
@@ -199,15 +241,24 @@ namespace x\markdown\to {
                     continue;
                 }
                 if (false === $v[0]) {
-                    $v = d($v[1]);
+                    $v = "\0" . d($v[1]);
                     continue;
                 }
                 if ('a' === $v[0]) {
+                    $attr = (array) ($v[2] ?? []);
                     $content = \is_array($v[1]) ? s($v[1]) : d($v[1]);
-                    $link = $v[2]['href'] ?? "";
-                    $title = $v[2]['title'] ?? null;
+                    $link = $attr['href'] ?? "";
+                    $title = $attr['title'] ?? null;
+                    unset($attr['href'], $attr['title']);
+                    if (isset($attr['rel']) && 'nofollow' === $attr['rel']) {
+                        unset($attr['rel']);
+                    }
+                    if (isset($attr['target']) && '_blank' === $attr['target']) {
+                        unset($attr['target']);
+                    }
+                    $attr = attr($attr);
                     if (false !== \strpos($link, '://') && $content === $link) {
-                        $v = '<' . $link . '>';
+                        $v = "\0<" . $link . '>';
                         continue;
                     }
                     if ("" === $link || false !== \strpos($link, ' ')) {
@@ -223,23 +274,34 @@ namespace x\markdown\to {
                         } else if (false !== \strpos($title, '"') && false !== \strpos($title, "'")) {
                             $title = ' (' . $title . ')';
                         } else {
-                            $title = " '" . \strtr($title, ['"' => '\"', "'" => '\'']) . "'";
+                            $title = " '" . $title . "'";
                         }
                     }
-                    // TODO: Attribute
-                    $v = '[' . $content . '](' . $link . $title . ')';
+                    $v = "\0[" . $content . '](' . $link . $title . ')' . (null !== $attr ? ' ' . $attr : "");
                     continue;
                 }
                 if ('abbr' === $v[0]) {
                     $v = $v[1];
                     continue;
                 }
+                if ('code' === $v[0]) {
+                    if (false !== \strpos($v[1], '`')) {
+                        if (false === \strpos($v[1], '``')) {
+                            $v = "\0`` " . $v[1] . ' ``';
+                            continue;
+                        }
+                        $v = "\0` " . $v[1] . ' `';
+                        continue;
+                    }
+                    $v = "\0`" . $v[1] . '`';
+                    continue;
+                }
                 if ('em' === $v[0]) {
-                    $v = '*' . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '*';
+                    $v = "\0*" . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '*';
                     continue;
                 }
                 if ('strong' === $v[0]) {
-                    $v = '**' . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '**';
+                    $v = "\0**" . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '**';
                     continue;
                 }
             }
@@ -252,14 +314,8 @@ namespace x\markdown\to {
             return \str_repeat($data[4], 3) . "\n";
         }
         if ('h' === $data[0][0] && isset($data[4][1])) {
-            if ($class = $data[2]['class'] ?? "") {
-                $class = '.' . \preg_replace('/\s+/', '.', \trim($class));
-            }
-            if ($id = $data[2]['id'] ?? "") {
-                $id = '#' . $id;
-            }
-            if ($class || $id) {
-                $data[1] .= ' {' . $id . $class . '}';
+            if ($attr = attr($data[2])) {
+                $data[1] .= ' ' . $attr;
             }
             if ("" === \trim($data[1])) {
                 return \str_repeat('#', $data[4][0]) . "\n";
@@ -270,7 +326,15 @@ namespace x\markdown\to {
             return \str_repeat($data[4][1], $data[4][0]) . ' ' . $data[1] . "\n";
         }
         if ('p' === $data[0]) {
-            return $data[1] . "\n";
+            $v = $data[1];
+            if ($v && false !== \strpos('#*+-:>`~', $v[0])) {
+                return "\\" . $v . "\n";
+            }
+            $n = \strspn($v, '0123456789');
+            if (false !== \strpos(').', \substr($v, $n, 1))) {
+                return \substr($v, 0, $n) . "\\" . \substr($v, $n) . "\n";
+            }
+            return $v . "\n";
         }
         return e($data[1]) . "\n";
     }
