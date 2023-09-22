@@ -18,11 +18,11 @@ require __DIR__ . D . '..' . D . 'to.php';
 
 if ('POST' === $_SERVER['REQUEST_METHOD']) {
     $_SESSION['test'] = $_POST['value'] ?? "";
-    header('location: ?test=' . urlencode(strip_tags($_POST['test'] ?? 'p')) . '&view=' . urlencode(strip_tags($_POST['view'] ?? 'source')));
+    header('location: ?test=' . urlencode(basename(strip_tags($_POST['test'] ?? 'p'))) . '&view=' . urlencode(strip_tags($_POST['view'] ?? 'source')));
     exit;
 }
 
-$test = $_GET['test'] ?? 'p';
+$test = basename($_GET['test'] ?? 'p');
 $view = $_GET['view'] ?? 'source';
 
 $files = glob(__DIR__ . D . 'to' . D . $test . D . '*.html', GLOB_NOSORT);
