@@ -1,32 +1,32 @@
 <?php
 
 namespace x\markdown {
-    function from(?string $content, $block = true): ?string {
+    function from(?string $value, $block = true): ?string {
         if (!$block) {
-            [$row] = from\row($content);
+            [$row] = from\row($value);
             if (!$row) {
                 return null;
             }
             if (\is_string($row)) {
-                $content = \trim(\preg_replace('/\s+/', ' ', $row));
-                return "" !== $content ? $content : null;
+                $value = \trim(\preg_replace('/\s+/', ' ', $row));
+                return "" !== $value ? $value : null;
             }
             foreach ($row as &$v) {
                 $v = \is_array($v) ? from\s($v) : $v;
             }
-            $content = \trim(\preg_replace('/\s+/', ' ', \implode("", $row)));
-            return "" !== $content ? $content : null;
+            $value = \trim(\preg_replace('/\s+/', ' ', \implode("", $row)));
+            return "" !== $value ? $value : null;
         }
-        [$rows] = from\rows($content);
+        [$rows] = from\rows($value);
         if (!$rows) {
             return null;
         }
         foreach ($rows as &$row) {
             $row = \is_array($row) ? from\s($row) : $row;
         }
-        $content = \implode("", $rows);
-        $content = \strtr($content, ['</dl><dl>' => ""]);
-        return $content;
+        $value = \implode("", $rows);
+        $value = \strtr($value, ['</dl><dl>' => ""]);
+        return $value;
     }
 }
 
@@ -463,11 +463,11 @@ namespace x\markdown\from {
         $c = $a . ($b === $a ? "" : $b);
         return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.|(?R))*' . ($capture ? ')' : "") . $b . ')';
     }
-    function raw(?string $content, $block = true): array {
-        return $block ? rows($content) : row($content);
+    function raw(?string $value, $block = true): array {
+        return $block ? rows($value) : row($value);
     }
-    function row(?string $content, array &$lot = []) {
-        if ("" === \trim($content ?? "")) {
+    function row(?string $value, array &$lot = []) {
+        if ("" === \trim($value ?? "")) {
             return [[], $lot];
         }
         $chops = [];
@@ -475,8 +475,8 @@ namespace x\markdown\from {
         $is_image = isset($lot['is']['image']);
         $is_table = isset($lot['is']['table']);
         $notes = $lot['notes'] ?? [];
-        while (false !== ($chop = \strpbrk($content, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
-            if ("" !== ($prev = \substr($content, 0, \strlen($content) - \strlen($chop)))) {
+        while (false !== ($chop = \strpbrk($value, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
+            if ("" !== ($prev = \substr($value, 0, \strlen($value) - \strlen($chop)))) {
                 if (\is_array($abbr = abbr($prev, $lot))) {
                     $chops = \array_merge($chops, $abbr);
                 } else {
@@ -488,11 +488,11 @@ namespace x\markdown\from {
                 if (\is_string($prev) && ('  ' === \substr(\strtr($prev, ["\t" => '  ']), -2))) {
                     $chops[$last] = $prev = \rtrim($prev);
                     $chops[] = ['br', false, [], -1];
-                    $content = $chop = \ltrim(\substr($chop, 1));
+                    $value = $chop = \ltrim(\substr($chop, 1));
                     continue;
                 }
                 $chops[] = ' ';
-                $content = $chop = \substr($chop, 1);
+                $value = $chop = \substr($chop, 1);
                 continue;
             }
             if (0 === \strpos($chop, '!')) {
@@ -522,18 +522,18 @@ namespace x\markdown\from {
                         $row[4][1] = '!' . $row[4][1];
                         unset($row[2]['href'], $row[2]['rel'], $row[2]['target']);
                         $chops[] = $row;
-                        $content = $chop = \substr($chop, \strlen($prev = $row[4][1]));
+                        $value = $chop = \substr($chop, \strlen($prev = $row[4][1]));
                         continue;
                     }
                 }
                 $chops[] = $prev = '!';
-                $content = $chop = \substr($chop, 1);
+                $value = $chop = \substr($chop, 1);
                 continue;
             }
             if (0 === \strpos($chop, '&')) {
                 if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?>#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
                     $chops[] = e($prev = '&');
-                    $content = $chop = \substr($chop, 1);
+                    $value = $chop = \substr($chop, 1);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#example-26>
@@ -541,7 +541,7 @@ namespace x\markdown\from {
                     $m[0] = '&#xfffd;';
                 }
                 $chops[] = ['&', $m[0], [], -1];
-                $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                $value = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
             // A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode white-space, and
@@ -574,26 +574,26 @@ namespace x\markdown\from {
                     $prev = $m[0][0];
                     if ($m[0][1] > ($n = \strlen($before))) {
                         $chops[] = e(\substr($chop, 0, $m[0][1] - $n));
-                        $content = $chop = \substr($chop, $m[0][1] - $n);
+                        $value = $chop = \substr($chop, $m[0][1] - $n);
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
                     if (false !== ($n = \strpos($prev, '[')) && (false === \strpos($prev, ']') || !\preg_match('/' . r('[]') . '/', $prev))) {
                         $chops[] = e(\substr($chop, 0, $n));
-                        $content = $chop = \substr($chop, $n);
+                        $value = $chop = \substr($chop, $n);
                         continue;
                     }
                     $x = \min(\strspn($prev, $c), \strspn(\strrev($prev), $c));
                     if (0 === $x % 2) {
                         $chops[] = ['strong', row(\substr($prev, 2, -2), $lot)[0], [], -1, $c . $c];
-                        $content = $chop = \substr($chop, \strlen($prev));
+                        $value = $chop = \substr($chop, \strlen($prev));
                         continue;
                     }
                     $chops[] = ['em', row(\substr($prev, 1, -1), $lot)[0], [], -1, $c];
-                    $content = $chop = \substr($chop, \strlen($prev));
+                    $value = $chop = \substr($chop, \strlen($prev));
                     continue;
                 }
                 $chops[] = $prev = $c;
-                $content = $chop = \substr($chop, 1);
+                $value = $chop = \substr($chop, 1);
                 continue;
             }
             if (0 === \strpos($chop, '<')) {
@@ -603,26 +603,26 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.30#example-626>
                     if ($n < 4 || false !== \strpos(\substr($v, 4, -3), '--') || ('-' === \substr($v, -4, 1) && '<!---->' !== $v)) {
                         $chops[] = e($prev = '<');
-                        $content = $chop = \substr($chop, 1);
+                        $value = $chop = \substr($chop, 1);
                         continue;
                     }
                     $chops[] = [false, \strtr($v, "\n", ' '), [], -1, '!--'];
-                    $content = $chop = \substr($chop, \strlen($prev = $v));
+                    $value = $chop = \substr($chop, \strlen($prev = $v));
                     continue;
                 }
                 if (0 === \strpos($chop, '<![CDATA[') && ($n = \strpos($chop, ']]>')) > 8) {
                     $chops[] = [false, \strtr($v = \substr($chop, 0, $n + 3), "\n", ' '), [], -1, '![CDATA['];
-                    $content = $chop = \substr($chop, \strlen($prev = $v));
+                    $value = $chop = \substr($chop, \strlen($prev = $v));
                     continue;
                 }
                 if (0 === \strpos($chop, '<!') && \preg_match('/^<![a-z](?>' . q('"') . '|' . q("'") . '|[^>])+>/i', $chop, $m)) {
                     $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \rtrim(\strtok(\substr($m[0], 1), " \n\t>"), '/')];
-                    $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                    $value = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
                 if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<\?(?>' . q('"') . '|' . q("'") . '|[^>])+\?>/', $chop, $m)) {
                     $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \strtok(\substr($m[0], 1), " \n\t>")];
-                    $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                    $value = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
                 $test = (string) \strstr($chop, '>', true);
@@ -632,11 +632,11 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.30#example-605>
                     if (false !== \strpos($email = $m[1], '\\')) {
                         $chops[] = e($prev);
-                        $content = $chop = \substr($chop, \strlen($prev));
+                        $value = $chop = \substr($chop, \strlen($prev));
                         continue;
                     }
                     $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $prev]];
-                    $content = $chop = \substr($chop, \strlen($prev));
+                    $value = $chop = \substr($chop, \strlen($prev));
                     continue;
                 }
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
@@ -652,23 +652,23 @@ namespace x\markdown\from {
                         'rel' => $rel,
                         'target' => $target
                     ], -1, [false, $prev = $m[0]]];
-                    $content = $chop = \substr($chop, \strlen($prev));
+                    $value = $chop = \substr($chop, \strlen($prev));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#raw-html>
                 if (\preg_match('/^<(\/[a-z][a-z\d-]*)\s*>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, $m[1]];
-                    $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                    $value = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#raw-html>
                 if (\preg_match('/^<([a-z][a-z\d-]*)(\s[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, $m[1]];
-                    $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                    $value = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
                 $chops[] = e($prev = '<');
-                $content = $chop = \substr($chop, 1);
+                $value = $chop = \substr($chop, 1);
                 continue;
             }
             if (0 === \strpos($chop, '[')) {
@@ -680,17 +680,17 @@ namespace x\markdown\from {
                     $prev = $m[0][0];
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
-                        $content = $chop = \substr($chop, $m[0][1]);
+                        $value = $chop = \substr($chop, $m[0][1]);
                     }
                     // <https://spec.commonmark.org/0.30#example-517>
                     if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains, $is_table ? '|' : "") . '/', $prev, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
                         if (false !== \strpos($prev, '](') || false !== \strpos($prev, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
                             $chops[] = e($prev = \substr($prev, 0, $n[0][1]));
-                            $content = $chop = \substr($chop, \strlen($prev));
+                            $value = $chop = \substr($chop, \strlen($prev));
                             continue;
                         }
                     }
-                    $content = $chop = \substr($chop, \strlen($prev));
+                    $value = $chop = \substr($chop, \strlen($prev));
                     // `[^asdf]`
                     if (0 === \strpos($m[1][0], '^')) {
                         if (!isset($lot[2][$key = \trim(\substr($m[1][0], 1))])) {
@@ -739,7 +739,7 @@ namespace x\markdown\from {
                         // <https://spec.commonmark.org/0.30#example-493>
                         if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
                             $chops[] = e(v(\strtr($m[0][0] . $n[0][0], "\n", ' ')));
-                            $content = $chop = \substr($chop, \strlen($n[0][0]));
+                            $value = $chop = \substr($chop, \strlen($n[0][0]));
                             continue;
                         }
                         if (\is_string($title) && "" !== $title) {
@@ -752,15 +752,15 @@ namespace x\markdown\from {
                             // <https://spec.commonmark.org/0.30#example-487>
                             } else {
                                 $chops[] = e(v(\strtr($m[0][0] . $n[0][0], "\n", ' ')));
-                                $content = $chop = \substr($chop, \strlen($n[0][0]));
+                                $value = $chop = \substr($chop, \strlen($n[0][0]));
                                 continue;
                             }
                         }
                         $key = false;
-                        $content = $chop = \substr($chop, \strlen($n[0][0]));
+                        $value = $chop = \substr($chop, \strlen($n[0][0]));
                     // `…[]` or `…[asdf]`
                     } else if (0 === \strpos($chop, '[') && \preg_match('/' . r('[]', true, "", $is_table ? '|' : "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
-                        $content = $chop = \substr($chop, \strlen($prev = $n[0][0]));
+                        $value = $chop = \substr($chop, \strlen($prev = $n[0][0]));
                         $key = \trim(\strtolower("" === $n[1][0] ? $m[1][0] : $n[1][0]));
                         if (!isset($lot[0][$key])) {
                             $chops[] = e($prev = $m[0][0] . $n[0][0]);
@@ -776,7 +776,7 @@ namespace x\markdown\from {
                     if (0 === \strpos(\trim($chop), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'"), $is_table ? '|' : "") . ')/', $chop, $o)) {
                         if ("" !== \trim(\substr($o[1], 1, -1))) {
                             $data = \array_replace($data ?? [], a($o[1], true));
-                            $content = $chop = \substr($chop, \strlen($o[0]));
+                            $value = $chop = \substr($chop, \strlen($o[0]));
                         }
                     }
                     if (false !== $key) {
@@ -795,24 +795,24 @@ namespace x\markdown\from {
                     continue;
                 }
                 $chops[] = $prev = '[';
-                $content = $chop = \substr($chop, 1);
+                $value = $chop = \substr($chop, 1);
                 continue;
             }
             if ('\\' === $chop) {
                 $chops[] = $prev = $chop;
-                $content = $chop = "";
+                $value = $chop = "";
                 continue;
             }
             if (0 === \strpos($chop, '\\') && isset($chop[1])) {
                 // <https://spec.commonmark.org/0.30#example-644>
                 if ("\n" === $chop[1]) {
                     $chops[] = ['br', false, [], -1, '\\'];
-                    $content = \ltrim(\substr($chop, 2));
+                    $value = \ltrim(\substr($chop, 2));
                     $prev = '\\';
                     continue;
                 }
                 $chops[] = e($prev = \substr($chop, 1, 1));
-                $content = $chop = \substr($chop, 2);
+                $value = $chop = \substr($chop, 2);
                 continue;
             }
             if (0 === \strpos($chop, $c = '`')) {
@@ -831,16 +831,16 @@ namespace x\markdown\from {
                         $raw = \substr($raw, 1, -1);
                     }
                     $chops[] = ['code', e($raw), [], -1, $v];
-                    $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                    $value = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
                 $chops[] = $prev = $v;
-                $content = $chop = \substr($chop, $n);
+                $value = $chop = \substr($chop, $n);
                 continue;
             }
             if ($is_table && 0 === \strpos($chop, '|')) {
                 $chops[] = [false, '|', [], -1];
-                $content = $chop = \substr($chop, 1);
+                $value = $chop = \substr($chop, 1);
                 continue;
             }
             if (\is_array($abbr = abbr($prev = $chop, $lot))) {
@@ -848,32 +848,32 @@ namespace x\markdown\from {
             } else {
                 $chops[] = e($prev);
             }
-            $content = $chop = "";
+            $value = $chop = "";
         }
-        if ("" !== $content) {
-            if (\is_array($abbr = abbr($prev = $content, $lot))) {
+        if ("" !== $value) {
+            if (\is_array($abbr = abbr($prev = $value, $lot))) {
                 $chops = \array_merge($chops, $abbr);
             } else {
                 $chops[] = e($prev);
             }
-            $content = $chop = "";
+            $value = $chop = "";
         }
         return [m($chops), $lot];
     }
-    function rows(?string $content, array &$lot = []): array {
+    function rows(?string $value, array &$lot = []): array {
         // List of reference(s), abbreviation(s), and note(s)
         $lot = \array_replace([[], [], []], $lot);
-        if ("" === \trim($content ?? "")) {
+        if ("" === \trim($value ?? "")) {
             return [[], $lot];
         }
         // Normalize line break(s)
-        $content = \trim(\strtr($content, [
+        $value = \trim(\strtr($value, [
             "\r\n" => "\n",
             "\r" => "\n"
         ]), "\n");
         $block = 0;
         $blocks = [];
-        $rows = \explode("\n", $content);
+        $rows = \explode("\n", $value);
         foreach ($rows as $row) {
             // TODO: Keep the tab character(s) as-is!
             while (false !== ($before = \strstr($row, "\t", true))) {
@@ -1800,8 +1800,8 @@ namespace x\markdown\from {
         ]) : "");
     }
     // <https://spec.commonmark.org/0.30#example-12>
-    function v(?string $content): string {
-        return null !== $content ? \strtr($content, [
+    function v(?string $value): string {
+        return null !== $value ? \strtr($value, [
             "\\'" => "'",
             "\\\\" => "\\",
             '\!' => '!',

@@ -92,22 +92,22 @@ Options
 /**
  * Convert Markdown string to HTML string.
  *
- * @param null|string $content Your Markdown string.
+ * @param null|string $value Your Markdown string.
  * @param bool $block If this option is set to `false`, Markdown block syntax will be ignored.
  * @return null|string
  */
-from(?string $content, bool $block = true): ?string;
+from(?string $value, bool $block = true): ?string;
 ~~~
 
 ~~~ php
 /**
  * Convert HTML string to Markdown string.
  *
- * @param null|string $content Your HTML string.
+ * @param null|string $value Your HTML string.
  * @param bool $block If this option is set to `false`, HTML block syntax will be stripped off.
  * @return null|string
  */
-to(?string $content, bool $block = true): ?string;
+to(?string $value, bool $block = true): ?string;
 ~~~
 
 Dialect
@@ -667,7 +667,7 @@ Tweaks
 Not all Markdown dialects are supported for various reasons. Some of the modification methods below can be implemented
 to add features that you might find in other Markdown converters.
 
-Your Markdown content is represented as variable `$content`. If you modify the content before the function
+Your Markdown content is represented as variable `$value`. If you modify the content before the function
 `from_markdown()` is called, it means that you modify the Markdown content before it is converted. If you modify the
 content after the function `from_markdown()` is called, it means that you modify the results of the Markdown conversion.
 
@@ -677,11 +677,11 @@ This converter escapes invalid HTML elements and takes care of HTML special char
 attribute syntax, so it is safe to replace `' />'` with `'>'` directly from the results of the Markdown conversion:
 
 ~~~ php
-$content = from_markdown($content);
+$value = from_markdown($value);
 
-$content = strtr($content, [' />' => '>']);
+$value = strtr($value, [' />' => '>']);
 
-echo $content;
+echo $value;
 ~~~
 
 ### Strike
@@ -690,11 +690,11 @@ This method allows you to add strike-through syntax, as you may have already not
 [GFM specification](https://github.github.com/gfm):
 
 ~~~ php
-$content = from_markdown($content);
+$value = from_markdown($value);
 
-$content = preg_replace('/((?<![~])[~]{1,2}(?![~]))([^~]+)\1/', '<del>$2</del>', $content);
+$value = preg_replace('/((?<![~])[~]{1,2}(?![~]))([^~]+)\1/', '<del>$2</del>', $value);
 
-echo $content;
+echo $value;
 ~~~
 
 ### Task List
@@ -714,16 +714,16 @@ feature:
 In case you need it, or don’t want to update your existing task list syntax in your Markdown files, here’s the hack:
 
 ~~~ php
-$content = from_markdown($content);
+$value = from_markdown($value);
 
-$content = strtr($content, [
+$value = strtr($value, [
     '<li><p>[ ] ' => '<li><p>&#x2610; ',
     '<li><p>[x] ' => '<li><p>&#x2612; ',
     '<li>[ ] ' => '<li>&#x2610; ',
     '<li>[x] ' => '<li>&#x2612; '
 ]);
 
-echo $content;
+echo $value;
 ~~~
 
 ### Pre-Defined Abbreviations, Notes, and References
@@ -749,29 +749,69 @@ $suffix = "";
 
 if (!empty($abbreviations)) {
     foreach ($abbreviations as $k => $v) {
-        $suffix .= "\n*[" . $k . ']: ' . $v; 
+        $k = strtr($k, [
+            '[' => '\[',
+            ']' => '\]'
+        ]);
+        $v = trim(preg_replace('/\s+/', ' ', $v));
+        $suffix .= "\n*[" . $k . ']: ' . $v;
     }
 }
 
 if (!empty($references)) {
     foreach ($references as $k => $v) {
         [$link, $title, $attributes] = $v;
+        $k = strtr($k, [
+            '[' => '\[',
+            ']' => '\]'
+        ]);
+        if ("" === $link || false !== strpos($link, ' ')) {
+            $link = '<' . $link . '>';
+        }
         $reference = '[' . $k . ']: ' . $link;
         if (!empty($title)) {
-            $reference .= ' "' . $title . '"';
+            $reference .= " '" . strtr($title, ["'" => "\\'"]) . "'";
         }
         if (!empty($attributes)) {
-            $reference .= ' {';
-            foreach ($attributes as $kk => $vv) { /* … */ }
-            $reference .= '}';
+            foreach ($attributes as $kk => &$vv) {
+                // `{.asdf}`
+                if ('class' === $kk) {
+                    $vv = '.' . trim(preg_replace('/\s+/', '.', $vv));
+                    continue;
+                }
+                // `{#asdf}`
+                if ('id' === $kk) {
+                    $vv = '#' . $vv;
+                    continue;
+                }
+                // `{asdf}`
+                if (true === $vv) {
+                    $vv = $kk;
+                    continue;
+                }
+                // `{asdf=""}`
+                if ("" === $vv) {
+                    $vv = $kk . '=""';
+                    continue;
+                }
+                // `{asdf='asdf'}`
+                $vv = $kk . "='" . strtr($vv, ["'" => "\\'"]) . "'";
+            }
+            unset($vv);
+            sort($attributes);
+            $attributes = trim(strtr(implode(' ', $attributes), [
+                ' #' => '#',
+                ' .' => '.'
+            ]));
+            $reference .= ' {' . $attributes . '}';
         }
         $suffix .= "\n" . $reference;
     }
 }
 
-$content = from_markdown($content . "\n" . $suffix);
+$value = from_markdown($value . "\n" . $suffix);
 
-echo $content;
+echo $value;
 ~~~
 
 ### Idea: Embed Syntax
@@ -792,11 +832,11 @@ An embed syntax to display a YouTube video by video ID.
 ~~~
 
 ~~~ php
-$content = preg_replace('/^[ ]{0,3}<youtube:([^>]+)>\s*$/m', '<iframe src="https://www.youtube.com/embed/$1"></iframe>', $content);
+$value = preg_replace('/^[ ]{0,3}<youtube:([^>]+)>\s*$/m', '<iframe src="https://www.youtube.com/embed/$1"></iframe>', $value);
 
-$content = from_markdown($content);
+$value = from_markdown($value);
 
-echo $content;
+echo $value;
 ~~~
 
 #### GitHub Gist Embed
@@ -808,11 +848,11 @@ An embed syntax to display a GitHub gist by gist ID.
 ~~~
 
 ~~~ php
-$content = preg_replace('/^[ ]{0,3}<gist:([^>]+)>\s*$/m', '<script src="https://gist.github.com/taufik-nurrohman/$1.js"></script>', $content);
+$value = preg_replace('/^[ ]{0,3}<gist:([^>]+)>\s*$/m', '<script src="https://gist.github.com/taufik-nurrohman/$1.js"></script>', $value);
 
-$content = from_markdown($content);
+$value = from_markdown($value);
 
-echo $content;
+echo $value;
 ~~~
 
 #### Form Embed
@@ -825,23 +865,23 @@ a `title` parameter to customize the HTML form title.
 ~~~
 
 ~~~ php
-$content = preg_replace_callback('/^[ ]{0,3}<form:([^#>?]+)([?][^#>]*)?([#][^>]*)?>\s*$/m', static function ($m) {
+$value = preg_replace_callback('/^[ ]{0,3}<form:([^#>?]+)([?][^#>]*)?([#][^>]*)?>\s*$/m', static function ($m) {
     $path = $m[1];
-    $content = "";
+    $value = "";
     parse_str(substr($m[2] ?? "", 1), $state);
-    $content .= '<form action="/form/' . $path . '" method="post">';
+    $value .= '<form action="/form/' . $path . '" method="post">';
     if (!empty($state['title'])) {
-        $content .= '<h1>' . $state['title'] . '</h1>';
+        $value .= '<h1>' . $state['title'] . '</h1>';
     }
     // … etc.
     // Be careful not to include blank line(s), or the raw HTML block state will end before the HTML form is complete!
-    $content .= '</form>';
-    return $content;
-}, $content);
+    $value .= '</form>';
+    return $value;
+}, $value);
 
-$content = from_markdown($content);
+$value = from_markdown($value);
 
-echo $content;
+echo $value;
 ~~~
 
 ### Idea: Note Block
@@ -885,13 +925,13 @@ block from its presentation, despite its broken semantic:
 With regular expressions, you can improve its [semantic](https://w3c.github.io/aria#note):
 
 ~~~ php
-$content = from_markdown($content);
+$value = from_markdown($value);
 
-$content = preg_replace_callback('/<hr\s*\/?>(<p><strong>NOTE:<\/strong>[\s\S]*?<\/p>)<hr\s*\/?>/', static function ($m) {
+$value = preg_replace_callback('/<hr\s*\/?>(<p><strong>NOTE:<\/strong>[\s\S]*?<\/p>)<hr\s*\/?>/', static function ($m) {
     return '<div role="note">' . $m[1] . '</div>';
-}, $content);
+}, $value);
 
-echo $content;
+echo $value;
 ~~~
 
 License
@@ -903,5 +943,5 @@ This library is licensed under the [MIT License](LICENSE). Please consider
 Links
 -----
 
- - Autumn image sample by [@blmiers2](https://www.flickr.com/photos/41304517@N00/6250498399) 
+ - Autumn image sample by [@blmiers2](https://www.flickr.com/photos/41304517@N00/6250498399)
  - Emoticon image sample by [@emoticons4u](https://web.archive.org/web/20090117060451/http://emoticons4u.com) (web archive)
