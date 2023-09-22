@@ -158,8 +158,8 @@ namespace x\markdown\to {
             return [[], $lot];
         }
         $chops = [];
-        $pattern_1 = p(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'img', 'strong']);
-        $pattern_2 = p(['img'], false);
+        $pattern_1 = p(['a', 'abbr', 'b', 'code', 'em', 'i', 'strong']);
+        $pattern_2 = p(['br', 'img'], false);
         $pattern_3 = '<(?>"[^"]*"|\'[^\']*\'|[^>])+>';
         foreach (\preg_split('/(' . $pattern_1 . '|' . $pattern_2 . '|' . $pattern_3 . '|\s+)/', $content, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
             if ("" === \trim($v)) {
@@ -215,7 +215,7 @@ namespace x\markdown\to {
         }
         $pattern_1 = p(['blockquote', 'dl', 'dd', 'figure', 'figcaption', 'ol', 'table', 'ul', 'li'], true);
         $pattern_2 = p(['dt', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'p', 'pre', 'script', 'style', 'textarea']);
-        $pattern_3 = p(['hr'], false);
+        $pattern_3 = p(['hr', 'img'], false);
         $pattern_4 = '<(?>"[^"]*"|\'[^\']*\'|[^>])+>';
         $blocks = [];
         foreach (\preg_split('/(' . $pattern_1 . '|' . $pattern_2 . '|' . $pattern_3 . '|' . $pattern_4 . '|\s+)/', $content, -1, \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_NO_EMPTY) as $v) {
@@ -231,32 +231,40 @@ namespace x\markdown\to {
                 continue;
             }
             $t = $m[1];
+            $c = $m[3] ?? false;
             $a = a($m[2] ?? "");
             if (false !== \strpos(',blockquote,dd,dl,dt,figure,figcaption,li,ol,ul,', ',' . $t . ',')) {
-                $m[3] = rows($m[3], $lot)[0] ?: $m[3];
-                // TODO
-                if ('figure' === $t) {
-                    if (\is_array($m[3])) {
-                        $first = \array_shift($m[3]);
-                        if (\is_array($first) && false === $first[0] && 0 === \strpos($first[1], '<img')) {
-                            $m[3] = row($first[1], $lot)[0];
-                        }
-                    }
+                $c = rows($c, $lot)[0] ?: $c;
+                if ('dd' === $t) {
+                    $blocks[] = [$t, $c, $a, 0, [2, ':', "", \is_array($c)]];
+                    continue;
                 }
-                $blocks[] = [$t, $m[3], $a, 0];
+                if ('ol' === $t) {
+                    $blocks[] = [$t, $c, $a, 1, [3, (int) ($a['start'] ?? 1), '.', \is_array($c)]];
+                    continue;
+                }
+                if ('ul' === $t) {
+                    $blocks[] = [$t, $c, $a, 1, [2, '-', "", \is_array($c)]];
+                    continue;
+                }
+                $blocks[] = [$t, $c, $a, 0];
                 continue;
             }
             if ('hr' === $t) {
-                $blocks[] = [$t, false, $a, 0, '-'];
+                $blocks[] = [$t, $c, $a, 0, '-'];
                 continue;
             }
             if ('h' === $t[0] && false !== \strpos('123456', $t[1])) {
                 $n = (int) $t[1];
-                $blocks[] = [$t, row($m[3], $lot)[0], $a, 0, [$n, 1 === $n ? '=' : (2 === $n ? '-' : '#')]];
+                $blocks[] = [$t, row($c, $lot)[0], $a, 0, [$n, 1 === $n ? '=' : (2 === $n ? '-' : '#')]];
+                continue;
+            }
+            if ('img' === $t) {
+                $blocks[] = [$t, $c, $a, 0];
                 continue;
             }
             if ('p' === $t) {
-                $blocks[] = [$t, row($m[3], $lot)[0], $a, 0];
+                $blocks[] = [$t, row($c, $lot)[0], $a, 0];
                 continue;
             }
             $blocks[] = [false, $v, [], 0];
@@ -264,25 +272,35 @@ namespace x\markdown\to {
         return [$blocks, $lot];
     }
     function s(array $data): ?string {
+        [$t, $c, $a] = $data;
         $out = "";
         $x = "\0";
-        if (\is_array($data[1])) {
-            foreach ($data[1] as &$v) {
+        if (\is_array($c)) {
+            foreach ($c as &$v) {
                 if (!\is_array($v)) {
                     $v = (string) $v;
                     continue;
                 }
-                $t = $v[0];
-                if (false === $t) {
-                    $v = $x . $v[1];
+                [$tt, $cc, $aa] = $v;
+                if (false === $tt) {
+                    $v = $x . $cc;
                     continue;
                 }
-                if ('a' === $t) {
-                    $attr = (array) ($v[2] ?? []);
-                    $content = \is_array($v[1]) ? s($v[1]) : d($v[1]);
-                    $link = $attr['href'] ?? "";
+                if ('a' === $tt || 'img' === $tt) {
+                    $attr = (array) ($aa ?? []);
+                    $content = 'a' === $tt ? (\is_array($cc) ? s($cc) : \strtr(d($cc), [
+                        '[' => '\[',
+                        ']' => '\]'
+                    ])) : \strtr($attr['alt'], [
+                        '[' => '\[',
+                        ']' => '\]'
+                    ]);
+                    $link = $attr['a' === $tt ? 'href' : 'src'] ?? "";
                     $title = $attr['title'] ?? null;
-                    unset($attr['href'], $attr['title']);
+                    unset($attr['a' === $tt ? 'href' : 'src'], $attr['title']);
+                    if ('a' !== $tt) {
+                        unset($attr['alt']);
+                    }
                     if (!l($link)) {
                         if (isset($attr['rel']) && 'nofollow' === $attr['rel']) {
                             unset($attr['rel']);
@@ -292,7 +310,7 @@ namespace x\markdown\to {
                         }
                     }
                     $attr = attr($attr);
-                    if (false !== \strpos($link, '://') && $content === $link && !$attr && !$title) {
+                    if ('a' === $tt && false !== \strpos($link, '://') && $content === $link && !$attr && !$title) {
                         $v = $x . '<' . $link . '>';
                         continue;
                     }
@@ -312,46 +330,45 @@ namespace x\markdown\to {
                             $title = " '" . $title . "'";
                         }
                     }
-                    $v = $x . '[' . $content . '](' . $link . $title . ')' . (null !== $attr ? ' ' . $attr : "");
+                    $v = ($v[3] < 0 ? $x : "") . ('a' === $tt ? "" : '!') . '[' . $content . '](' . $link . $title . ')' . (null !== $attr ? ' ' . $attr : "") . ($v[3] < 0 ? "" : "\n");
                     continue;
                 }
-                if ('abbr' === $t) {
-                    $v = $v[1];
+                if ('abbr' === $tt) {
+                    $v = $cc;
                     continue;
                 }
-                if ('br' === $t) {
+                if ('br' === $tt) {
                     $v = "  \n";
                     continue;
                 }
-                if ('code' === $t) {
-                    if (false !== \strpos($v[1], '`')) {
-                        if (false === \strpos($v[1], '``')) {
-                            $v = $x . '`` ' . d($v[1]) . ' ``';
+                if ('code' === $tt) {
+                    if (false !== \strpos($cc, '`')) {
+                        if (false === \strpos($cc, '``')) {
+                            $v = $x . '`` ' . d($cc) . ' ``';
                             continue;
                         }
-                        $v = $x . '` ' . d($v[1]) . ' `';
+                        $v = $x . '` ' . d($cc) . ' `';
                         continue;
                     }
-                    $v = $x . '`' . d($v[1]) . '`';
+                    $v = $x . '`' . d($cc) . '`';
                     continue;
                 }
-                if ('em' === $t) {
-                    $v = $x . '*' . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '*';
+                if ('em' === $tt) {
+                    $v = $x . '*' . (\is_array($cc) ? s($cc) : d($cc)) . '*';
                     continue;
                 }
-                if ('strong' === $t) {
-                    $v = $x . '**' . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '**';
+                if ('strong' === $tt) {
+                    $v = $x . '**' . (\is_array($cc) ? s($cc) : d($cc)) . '**';
                     continue;
                 }
                 // Must be recursive block(s) from here
                 $v = s($v) . "\n";
             }
             unset($v);
-            $out = \implode("", $data[1]);
+            $out = \implode("", $c);
         } else {
-            $out = (string) $data[1];
+            $out = (string) $c;
         }
-        $t = $data[0];
         if (false === $t) {
             $out .= "\n";
         } else if ('blockquote' === $t) {
@@ -363,14 +380,22 @@ namespace x\markdown\to {
             if ("\n\n" === \substr($test, -2)) {
                 $out = "\n" . $out;
             }
+        } else if ('dl' === $t) {
+            // No blank line
         } else if ('dt' === $t) {
             // No blank line
+        } else if ('figcaption' === $t) {
+            $out = ' ' . \strtr(\trim($test = $out, "\n"), ["\n" => "\n "]);
+            $out = \strtr($out, ["\n \n" => "\n\n"]);
+            if ("\n\n" === \substr($test, -2)) {
+                $out = "\n" . \rtrim($out, "\n");
+            }
         } else if ('figure' === $t) {
-            $out .= "\n";
+            // No blank line
         } else if ('hr' === $t) {
             $out = \str_repeat($data[4], 3) . "\n";
         } else if ('h' === $t[0] && isset($data[4][1])) {
-            if ($attr = attr($data[2])) {
+            if ($attr = attr($a)) {
                 $out .= ' ' . $attr;
             }
             if ("" === \trim($out)) {
@@ -380,6 +405,18 @@ namespace x\markdown\to {
             } else {
                 $out = \str_repeat($data[4][1], $data[4][0]) . ' ' . $out . "\n";
             }
+        } else if ('li' === $t) {
+            // No blank line
+        } else if ('ol' === $t) {
+            $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
+            $start = $data[4][1];
+            foreach ($list as &$v) {
+                $n = \str_repeat(' ', $data[3]) . $start++ . $data[4][2] . ' ';
+                $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
+                $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
+            }
+            unset($v);
+            $out = \implode($list_is_tight ? "\n" : "\n\n", $list) . "\n";
         } else if ('p' === $t) {
             if ($out && false !== \strpos('#*+-:>`~', $out[0])) {
                 $out = "\\" . $out . "\n";
@@ -391,6 +428,15 @@ namespace x\markdown\to {
                     $out .= "\n";
                 }
             }
+        } else if ('ul' === $t) {
+            $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
+            foreach ($list as &$v) {
+                $n = \str_repeat(' ', $data[3]) . $data[4][1] . $data[4][2] . ' ';
+                $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
+                $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
+            }
+            unset($v);
+            $out = \implode($list_is_tight ? "\n" : "\n\n", $list) . "\n";
         } else {
             $out = e($out) . "\n";
         }

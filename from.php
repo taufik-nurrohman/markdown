@@ -1426,6 +1426,9 @@ namespace x\markdown\from {
                     }
                     $row[] = ['figcaption', $caption, [], 0];
                 }
+                if (isset($row[0][0]) && 'img' === $row[0][0]) {
+                    $row[0][3] = 0; // Mark as block
+                }
                 $v[1] = $row;
                 continue;
             }
@@ -1469,7 +1472,7 @@ namespace x\markdown\from {
                         }
                         unset($vvv);
                     }
-                    $vv = ['li', $vv, [], 0];
+                    $vv = ['li', m($vv), [], 0];
                 }
                 unset($vv);
                 $v[1] = $list;
@@ -1645,7 +1648,7 @@ namespace x\markdown\from {
                         }
                         unset($vvv);
                     }
-                    $vv = ['li', $vv, [], 0];
+                    $vv = ['li', m($vv), [], 0];
                 }
                 unset($vv);
                 $v[1] = $list;
@@ -1674,7 +1677,7 @@ namespace x\markdown\from {
                             }
                             unset($vvv);
                         }
-                        $vv = ['dd', $vv, [], 0];
+                        $vv = ['dd', m($vv), [], 0];
                         continue;
                     }
                     $vv = ['dt', row($vv)[0], [], 0];
@@ -1736,42 +1739,43 @@ namespace x\markdown\from {
         return [$blocks, $lot];
     }
     function s(array $data): ?string {
-        if (false === $data[0]) {
-            if (\is_array($data[1])) {
+        [$t, $c, $a] = $data;
+        if (false === $t) {
+            if (\is_array($c)) {
                 $out = "";
-                foreach ($data[1] as $v) {
+                foreach ($c as $v) {
                     $out .= \is_array($v) ? s($v) : $v;
                 }
                 return $out;
             }
-            return $data[1];
+            return $c;
         }
-        if (\is_int($data[0])) {
+        if (\is_int($t)) {
             return "";
         }
-        if ('&' === $data[0]) {
-            return e(d($data[1]));
+        if ('&' === $t) {
+            return e(d($c));
         }
-        $out = '<' . $data[0];
-        if (!empty($data[2])) {
-            \ksort($data[2]);
-            foreach ($data[2] as $k => $v) {
+        $out = '<' . $t;
+        if (!empty($a) && \is_array($a)) {
+            \ksort($a);
+            foreach ($a as $k => $v) {
                 if (false === $v || null === $v) {
                     continue;
                 }
                 $out .= ' ' . $k . (true === $v ? "" : '="' . e($v) . '"');
             }
         }
-        if (false !== $data[1]) {
+        if (false !== $c) {
             $out .= '>';
-            if (\is_array($data[1])) {
-                foreach ($data[1] as $v) {
+            if (\is_array($c)) {
+                foreach ($c as $v) {
                     $out .= \is_array($v) ? s($v) : $v;
                 }
             } else {
-                $out .= $data[1];
+                $out .= $c;
             }
-            $out .= '</' . $data[0] . '>';
+            $out .= '</' . $t . '>';
         } else {
             $out .= ' />';
         }
