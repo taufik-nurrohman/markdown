@@ -81,7 +81,9 @@ echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 The `to.php` file is optional and is used to convert HTML to Markdown. If you just want to convert Markdown to HTML, you
-don’t need to include this file.
+don’t need to include this file. This feature is experimental and is provided as a complementary feature, as there is
+function `json_encode()` besides function `json_decode()`. The Markdown result may not satisfy everyone, but it can be
+discussed further.
 
 Options
 -------

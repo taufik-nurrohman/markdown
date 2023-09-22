@@ -432,16 +432,15 @@ namespace x\markdown\from {
                 return $v;
             }
         }
-        // Simplify an array of continuous string(s) into a single string
-        $row = \array_values($row);
-        foreach ($row as $k => $v) {
+        // Concatenate a series of string(s) into one string
+        foreach ($row = \array_values($row) as $k => $v) {
             if (\is_string($row[$k - 1] ?? 0) && \is_string($v)) {
                 $row[$k - 1] .= $v;
                 unset($row[$k]);
                 continue;
             }
         }
-        if (1 === \count($row)) {
+        if (1 === \count($row = \array_values($row))) {
             $v = \reset($row);
             if (\is_array($v) && false === $v[0] && \is_string($v[1])) {
                 return $v[1];
@@ -450,7 +449,7 @@ namespace x\markdown\from {
                 return $v;
             }
         }
-        return \array_values($row);
+        return $row;
     }
     function q(string $char = '"', $capture = false, string $before = "", string $x = ""): string {
         $a = \preg_quote($char[0], '/');
@@ -629,14 +628,15 @@ namespace x\markdown\from {
                 $test = (string) \strstr($chop, '>', true);
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
                 if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?(?>\.[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
+                    $prev = $m[0];
                     // <https://spec.commonmark.org/0.30#example-605>
                     if (false !== \strpos($email = $m[1], '\\')) {
-                        $chops[] = e($m[0]);
-                        $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                        $chops[] = e($prev);
+                        $content = $chop = \substr($chop, \strlen($prev));
                         continue;
                     }
-                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false]];
-                    $content = $chop = \substr($chop, \strlen($m[0]));
+                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $prev]];
+                    $content = $chop = \substr($chop, \strlen($prev));
                     continue;
                 }
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
@@ -651,8 +651,8 @@ namespace x\markdown\from {
                         'href' => u($m[1]),
                         'rel' => $rel,
                         'target' => $target
-                    ], -1, [false]];
-                    $content = $chop = \substr($chop, \strlen($prev = $m[0]));
+                    ], -1, [false, $prev = $m[0]]];
+                    $content = $chop = \substr($chop, \strlen($prev));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#raw-html>
@@ -701,9 +701,9 @@ namespace x\markdown\from {
                         $chops[] = ['sup', [['a', (string) \count($notes), [
                             'href' => '#to:' . $key,
                             'role' => 'doc-noteref'
-                        ], -1, [false]]], [
+                        ], -1, [false, $prev]]], [
                             'id' => 'from:' . $key . ($notes[$key] > 1 ? '.' . $notes[$key] : "")
-                        ], -1, [$key, $prev, false]];
+                        ], -1, [$key, $prev]];
                         $lot['notes'] = $notes;
                         continue;
                     }
@@ -713,12 +713,9 @@ namespace x\markdown\from {
                         $prev = $n[0][0];
                         // `[asdf]()`
                         if ("" === ($n[1][0] = \trim($n[1][0] ?? ""))) {
-                            $chops[] = ['a', $row, ['href' => ""], -1, [false]];
-                            $content = $chop = \substr($chop, \strlen($n[0][0]));
-                            continue;
-                        }
+                            $link = "";
                         // `[asdf](<>)`
-                        if ('<>' === $n[1][0]) {
+                        } else if ('<>' === $n[1][0]) {
                             $link = "";
                         // `[asdf](<asdf>)`
                         } else if ('<' === $n[1][0][0]) {
@@ -794,8 +791,7 @@ namespace x\markdown\from {
                     $chops[] = ['a', $row, \array_replace([
                         'href' => u(v($link)),
                         'title' => $title
-                    ], $data ?? []), -1, [$key]];
-                    $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "");
+                    ], $data ?? []), -1, [$key, $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                     continue;
                 }
                 $chops[] = $prev = '[';
@@ -1709,7 +1705,7 @@ namespace x\markdown\from {
                             $last[1][] = ['a', [['&', '&#8617;', [], -1]], [
                                 'href' => '#from:' . $k . ($i > 0 ? '.' . ($i + 1) : ""),
                                 'role' => 'doc-backlink'
-                            ], -1, [false]];
+                            ], -1, [false, ""]];
                         }
                         $v[] = $last;
                     } else {
@@ -1722,7 +1718,7 @@ namespace x\markdown\from {
                             $p[1][] = ['a', [['&', '&#8617;', [], -1]], [
                                 'href' => '#from:' . $k . ($i > 0 ? '.' . ($i + 1) : ""),
                                 'role' => 'doc-backlink'
-                            ], -1, [false]];
+                            ], -1, [false, ""]];
                         }
                         $v[] = $p;
                     }

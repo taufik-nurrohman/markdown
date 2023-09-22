@@ -30,7 +30,6 @@ namespace x\markdown {
                 $content .= "\n*[" . $k . ']:' . ("" !== $v ? ' ' . $v : "");
             }
         }
-        $content = \strtr($content, ["\0" => ""]);
         return "" !== $content ? $content : null;
     }
 }
@@ -97,6 +96,21 @@ namespace x\markdown\to {
     function e(?string $v, $as = \ENT_HTML5 | \ENT_QUOTES) {
         return \htmlspecialchars($v ?? "", $as, 'UTF-8');
     }
+    function l(?string $link) {
+        // ``
+        if (!$link) {
+            return true;
+        }
+        // `asdf` or `../asdf` or `/asdf` or `?asdf` or `#asdf`
+        if (0 !== \strpos($link, '//') && (false === \strpos($link, '://') || false !== \strpos('./?#', $link[0]))) {
+            return true;
+        }
+        // `//127.0.0.1` or `*://127.0.0.1`
+        if (\parse_url($link, \PHP_URL_HOST) === ($_SERVER['HTTP_HOST'] ?? 0)) {
+            return true;
+        }
+        return false;
+    }
     function m($row) {
         if (!$row || !\is_array($row)) {
             return $row;
@@ -110,16 +124,15 @@ namespace x\markdown\to {
                 return $v;
             }
         }
-        // Simplify an array of continuous string(s) into a single string
-        $row = \array_values($row);
-        foreach ($row as $k => $v) {
+        // Concatenate a series of string(s) into one string
+        foreach ($row = \array_values($row) as $k => $v) {
             if (\is_string($row[$k - 1] ?? 0) && \is_string($v)) {
                 $row[$k - 1] .= $v;
                 unset($row[$k]);
                 continue;
             }
         }
-        if (1 === \count($row)) {
+        if (1 === \count($row = \array_values($row))) {
             $v = \reset($row);
             if (\is_array($v) && false === $v[0] && \is_string($v[1])) {
                 return $v[1];
@@ -128,7 +141,7 @@ namespace x\markdown\to {
                 return $v;
             }
         }
-        return \array_values($row);
+        return $row;
     }
     function p(array $tags, $deep = null): string {
         foreach ($tags as &$tag) {
@@ -157,49 +170,51 @@ namespace x\markdown\to {
                 $chops[] = $v;
                 continue;
             }
-            if (!\preg_match('/^<([^\s"\'\/<=>]+)(\s+(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?(?:>\s*([\s\S]*?)\s*<\/\1>|\/?>)$/', $v, $m)) {
+            if (!\preg_match('/^<([^\s"\'\/<=>]+)(\s+(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?(?:>[ \t]*([\s\S]*?)[ \t]*<\/\1>|\/?>)$/', $v, $m)) {
                 $chops[] = $v;
                 continue;
             }
             $t = $m[1];
+            $a = a($m[2] ?? "");
             if ('a' === $t) {
-                $chops[] = ['a', row($m[3], $lot)[0], a($m[2]), -1];
+                $chops[] = ['a', row($m[3], $lot)[0], $a, -1];
                 continue;
             }
             if ('abbr' === $t) {
-                $chops[] = ['abbr', $key = d($m[3]), $a = a($m[2]), -1];
+                $chops[] = ['abbr', $key = d($m[3]), $a, -1];
                 $lot[1][$key] = \trim(\preg_replace('/\s+/', ' ', $a['title'] ?? ""));
                 continue;
             }
             if ('b' === $t || 'strong' === $t) {
-                $chops[] = ['strong', row(\strtr($m[3], ['*' => '\*']), $lot)[0], a($m[2]), -1, '**'];
+                $chops[] = ['strong', row(\strtr($m[3], ['*' => '\*']), $lot)[0], $a, -1, '**'];
                 continue;
             }
             if ('br' === $t) {
-                $chops[] = ['br', false, a($m[2]), -1];
+                $chops[] = ['br', false, $a, -1];
                 continue;
             }
             if ('code' === $t) {
-                $chops[] = ['code', $m[3], a($m[2]), -1];
+                $chops[] = ['code', $m[3], $a, -1];
                 continue;
             }
             if ('em' === $t || 'i' === $t) {
-                $chops[] = ['em', row(\strtr($m[3], ['*' => '\*']), $lot)[0], a($m[2]), -1, '*'];
+                $chops[] = ['em', row(\strtr($m[3], ['*' => '\*']), $lot)[0], $a, -1, '*'];
                 continue;
             }
             if ('img' === $t) {
-                $chops[] = ['img', false, a($m[2]), -1];
+                $chops[] = ['img', false, $a, -1];
                 continue;
             }
         }
         return [m($chops), $lot];
     }
     function rows(?string $content, array &$lot = []): array {
-        if (!$content || false === \strpos($content, '<')) {
-            return [];
+        $lot = \array_replace([[], [], []], $lot);
+        if ("" === \trim($content ?? "") || false === \strpos($content, '<')) {
+            return [[], $lot];
         }
-        $pattern_1 = p(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'p', 'pre', 'script', 'style', 'textarea']);
-        $pattern_2 = p(['blockquote', 'dl', 'figure', 'ol', 'table', 'ul'], true);
+        $pattern_1 = p(['blockquote', 'dl', 'figure', 'ol', 'table', 'ul'], true);
+        $pattern_2 = p(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'p', 'pre', 'script', 'style', 'textarea']);
         $pattern_3 = p(['hr'], false);
         $pattern_4 = '<(?>"[^"]*"|\'[^\']*\'|[^>])+>';
         $blocks = [];
@@ -211,22 +226,27 @@ namespace x\markdown\to {
                 $blocks[] = [false, $v, [], 0];
                 continue;
             }
-            if (!\preg_match('/^<([^\s"\'\/<=>]+)(\s(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?(?:>[ \t]*([\s\S]*?)[ \t]*<\/\1>|\/?>)$/', $v, $m)) {
+            if (!\preg_match('/^<([^\s"\'\/<=>]+)(\s+(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?(?:>[ \t]*([\s\S]*?)[ \t]*<\/\1>|\/?>)$/', $v, $m)) {
                 $blocks[] = [false, $v, [], 0];
                 continue;
             }
             $t = $m[1];
+            $a = a($m[2] ?? "");
+            if ('blockquote' === $t) {
+                $blocks[] = [$t, rows($m[3], $lot)[0], $a, 0];
+                continue;
+            }
             if ('hr' === $t) {
-                $blocks[] = [$t, false, [], 0, '-'];
+                $blocks[] = [$t, false, $a, 0, '-'];
                 continue;
             }
             if ('h' === $t[0] && false !== \strpos('123456', $t[1])) {
                 $n = (int) $t[1];
-                $blocks[] = [$t, row($m[3], $lot)[0], a($m[2]), 0, [$n, 1 === $n ? '=' : (2 === $n ? '-' : '#')]];
+                $blocks[] = [$t, row($m[3], $lot)[0], $a, 0, [$n, 1 === $n ? '=' : (2 === $n ? '-' : '#')]];
                 continue;
             }
             if ('p' === $t) {
-                $blocks[] = [$t, row($m[3], $lot)[0], [], 0];
+                $blocks[] = [$t, row($m[3], $lot)[0], $a, 0];
                 continue;
             }
             $blocks[] = [false, $v, [], 0];
@@ -234,31 +254,36 @@ namespace x\markdown\to {
         return [$blocks, $lot];
     }
     function s(array $data): ?string {
+        $out = "";
+        $x = "\0";
         if (\is_array($data[1])) {
             foreach ($data[1] as &$v) {
                 if (!\is_array($v)) {
                     $v = (string) $v;
                     continue;
                 }
-                if (false === $v[0]) {
-                    $v = "\0" . d($v[1]);
+                $t = $v[0];
+                if (false === $t) {
+                    $v = $x . $v[1];
                     continue;
                 }
-                if ('a' === $v[0]) {
+                if ('a' === $t) {
                     $attr = (array) ($v[2] ?? []);
                     $content = \is_array($v[1]) ? s($v[1]) : d($v[1]);
                     $link = $attr['href'] ?? "";
                     $title = $attr['title'] ?? null;
                     unset($attr['href'], $attr['title']);
-                    if (isset($attr['rel']) && 'nofollow' === $attr['rel']) {
-                        unset($attr['rel']);
-                    }
-                    if (isset($attr['target']) && '_blank' === $attr['target']) {
-                        unset($attr['target']);
+                    if (!l($link)) {
+                        if (isset($attr['rel']) && 'nofollow' === $attr['rel']) {
+                            unset($attr['rel']);
+                        }
+                        if (isset($attr['target']) && '_blank' === $attr['target']) {
+                            unset($attr['target']);
+                        }
                     }
                     $attr = attr($attr);
-                    if (false !== \strpos($link, '://') && $content === $link) {
-                        $v = "\0<" . $link . '>';
+                    if (false !== \strpos($link, '://') && $content === $link && !$attr && !$title) {
+                        $v = $x . '<' . $link . '>';
                         continue;
                     }
                     if ("" === $link || false !== \strpos($link, ' ')) {
@@ -277,66 +302,82 @@ namespace x\markdown\to {
                             $title = " '" . $title . "'";
                         }
                     }
-                    $v = "\0[" . $content . '](' . $link . $title . ')' . (null !== $attr ? ' ' . $attr : "");
+                    $v = $x . '[' . $content . '](' . $link . $title . ')' . (null !== $attr ? ' ' . $attr : "");
                     continue;
                 }
-                if ('abbr' === $v[0]) {
+                if ('abbr' === $t) {
                     $v = $v[1];
                     continue;
                 }
-                if ('code' === $v[0]) {
+                if ('br' === $t) {
+                    $v = "  \n";
+                    continue;
+                }
+                if ('code' === $t) {
                     if (false !== \strpos($v[1], '`')) {
                         if (false === \strpos($v[1], '``')) {
-                            $v = "\0`` " . $v[1] . ' ``';
+                            $v = $x . '`` ' . d($v[1]) . ' ``';
                             continue;
                         }
-                        $v = "\0` " . $v[1] . ' `';
+                        $v = $x . '` ' . d($v[1]) . ' `';
                         continue;
                     }
-                    $v = "\0`" . $v[1] . '`';
+                    $v = $x . '`' . d($v[1]) . '`';
                     continue;
                 }
-                if ('em' === $v[0]) {
-                    $v = "\0*" . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '*';
+                if ('em' === $t) {
+                    $v = $x . '*' . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '*';
                     continue;
                 }
-                if ('strong' === $v[0]) {
-                    $v = "\0**" . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '**';
+                if ('strong' === $t) {
+                    $v = $x . '**' . (\is_array($v[1]) ? s($v[1]) : d($v[1])) . '**';
                     continue;
                 }
+                // Must be recursive block(s) from here
+                $v = s($v) . "\n";
             }
-            $data[1] = \implode("", $data[1]);
+            unset($v);
+            $out = \implode("", $data[1]);
+        } else {
+            $out = (string) $data[1];
         }
-        if (false === $data[0]) {
-            return $data[1] . "\n";
-        }
-        if ('hr' === $data[0]) {
-            return \str_repeat($data[4], 3) . "\n";
-        }
-        if ('h' === $data[0][0] && isset($data[4][1])) {
+        $t = $data[0];
+        if (false === $t) {
+            $out .= "\n";
+        } else if ('blockquote' === $t) {
+            $out = '> ' . \strtr(\trim($out, "\n"), ["\n" => "\n> "]) . "\n";
+            $out = \strtr($out, ["> \n" => ">\n"]);
+        } else if ('hr' === $t) {
+            $out = \str_repeat($data[4], 3) . "\n";
+        } else if ('h' === $t[0] && isset($data[4][1])) {
             if ($attr = attr($data[2])) {
-                $data[1] .= ' ' . $attr;
+                $out .= ' ' . $attr;
             }
-            if ("" === \trim($data[1])) {
-                return \str_repeat('#', $data[4][0]) . "\n";
+            if ("" === \trim($out)) {
+                $out = \str_repeat('#', $data[4][0]) . "\n";
+            } else if (false !== \strpos('-=', $data[4][1])) {
+                $out .= "\n" . \str_repeat($data[4][1], \strlen($out)) . "\n";
+            } else {
+                $out = \str_repeat($data[4][1], $data[4][0]) . ' ' . $out . "\n";
             }
-            if (false !== \strpos('-=', $data[4][1])) {
-                return $data[1] . "\n" . \str_repeat($data[4][1], \strlen($data[1])) . "\n";
+        } else if ('p' === $t) {
+            if ($out && false !== \strpos('#*+-:>`~', $out[0])) {
+                $out = "\\" . $out . "\n";
+            } else {
+                $n = \strspn($out, '0123456789');
+                if (false !== \strpos(').', \substr($out, $n, 1))) {
+                    $out = \substr($out, 0, $n) . "\\" . \substr($out, $n) . "\n";
+                } else {
+                    $out .= "\n";
+                }
             }
-            return \str_repeat($data[4][1], $data[4][0]) . ' ' . $data[1] . "\n";
+        } else {
+            $out = e($out) . "\n";
         }
-        if ('p' === $data[0]) {
-            $v = $data[1];
-            if ($v && false !== \strpos('#*+-:>`~', $v[0])) {
-                return "\\" . $v . "\n";
-            }
-            $n = \strspn($v, '0123456789');
-            if (false !== \strpos(').', \substr($v, $n, 1))) {
-                return \substr($v, 0, $n) . "\\" . \substr($v, $n) . "\n";
-            }
-            return $v . "\n";
-        }
-        return e($data[1]) . "\n";
+        return \strtr($out, [
+            " \n " => "\n",
+            $x => ""
+        ]);
     }
     function x(?string $v): string {}
 }
