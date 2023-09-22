@@ -213,8 +213,8 @@ namespace x\markdown\to {
         if ("" === \trim($content ?? "") || false === \strpos($content, '<')) {
             return [[], $lot];
         }
-        $pattern_1 = p(['blockquote', 'dl', 'figure', 'ol', 'table', 'ul'], true);
-        $pattern_2 = p(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'p', 'pre', 'script', 'style', 'textarea']);
+        $pattern_1 = p(['blockquote', 'dl', 'dd', 'figure', 'figcaption', 'ol', 'table', 'ul', 'li'], true);
+        $pattern_2 = p(['dt', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'p', 'pre', 'script', 'style', 'textarea']);
         $pattern_3 = p(['hr'], false);
         $pattern_4 = '<(?>"[^"]*"|\'[^\']*\'|[^>])+>';
         $blocks = [];
@@ -232,8 +232,18 @@ namespace x\markdown\to {
             }
             $t = $m[1];
             $a = a($m[2] ?? "");
-            if ('blockquote' === $t) {
-                $blocks[] = [$t, rows($m[3], $lot)[0], $a, 0];
+            if (false !== \strpos(',blockquote,dd,dl,dt,figure,figcaption,li,ol,ul,', ',' . $t . ',')) {
+                $m[3] = rows($m[3], $lot)[0] ?: $m[3];
+                // TODO
+                if ('figure' === $t) {
+                    if (\is_array($m[3])) {
+                        $first = \array_shift($m[3]);
+                        if (\is_array($first) && false === $first[0] && 0 === \strpos($first[1], '<img')) {
+                            $m[3] = row($first[1], $lot)[0];
+                        }
+                    }
+                }
+                $blocks[] = [$t, $m[3], $a, 0];
                 continue;
             }
             if ('hr' === $t) {
@@ -347,6 +357,16 @@ namespace x\markdown\to {
         } else if ('blockquote' === $t) {
             $out = '> ' . \strtr(\trim($out, "\n"), ["\n" => "\n> "]) . "\n";
             $out = \strtr($out, ["> \n" => ">\n"]);
+        } else if ('dd' === $t) {
+            $out = ': ' . \strtr(\trim($test = $out, "\n"), ["\n" => "\n  "]);
+            $out = \strtr($out, ["\n  \n" => "\n\n"]);
+            if ("\n\n" === \substr($test, -2)) {
+                $out = "\n" . $out;
+            }
+        } else if ('dt' === $t) {
+            // No blank line
+        } else if ('figure' === $t) {
+            $out .= "\n";
         } else if ('hr' === $t) {
             $out = \str_repeat($data[4], 3) . "\n";
         } else if ('h' === $t[0] && isset($data[4][1])) {
