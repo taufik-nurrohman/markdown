@@ -1,5 +1,5 @@
-Markdown Parser
-===============
+PHP Markdown Parser
+===================
 
 With 90% compliance to [CommonMark 0.30](https://spec.commonmark.org/0.30) specifications.
 
