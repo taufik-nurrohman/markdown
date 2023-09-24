@@ -240,11 +240,11 @@ namespace x\markdown\to {
                     continue;
                 }
                 if ('ol' === $t) {
-                    $blocks[] = [$t, $c, $a, 1, [3, (int) ($a['start'] ?? 1), '.', \is_array($c)]];
+                    $blocks[] = [$t, $c, $a, 0, [3, (int) ($a['start'] ?? 1), '.', \is_array($c)]];
                     continue;
                 }
                 if ('ul' === $t) {
-                    $blocks[] = [$t, $c, $a, 1, [2, '-', "", \is_array($c)]];
+                    $blocks[] = [$t, $c, $a, 0, [2, '-', "", \is_array($c)]];
                     continue;
                 }
                 $blocks[] = [$t, $c, $a, 0];
@@ -411,7 +411,7 @@ namespace x\markdown\to {
             $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
             $start = $data[4][1];
             foreach ($list as &$v) {
-                $n = \str_repeat(' ', $data[3]) . $start++ . $data[4][2] . ' ';
+                $n = $start++ . $data[4][2] . ' ';
                 $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
                 $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
             }
@@ -431,7 +431,7 @@ namespace x\markdown\to {
         } else if ('ul' === $t) {
             $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
             foreach ($list as &$v) {
-                $n = \str_repeat(' ', $data[3]) . $data[4][1] . $data[4][2] . ' ';
+                $n = $data[4][1] . $data[4][2] . ' ';
                 $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
                 $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
             }

@@ -662,7 +662,7 @@ namespace x\markdown\from {
                     continue;
                 }
                 // <https://spec.commonmark.org/0.30#raw-html>
-                if (\preg_match('/^<([a-z][a-z\d-]*)(\s[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
+                if (\preg_match('/^<([a-z][a-z\d-]*)(\s+[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, $m[1]];
                     $value = $chop = \substr($chop, \strlen($prev = $m[0]));
                     continue;
@@ -1285,8 +1285,8 @@ namespace x\markdown\from {
             if (0 === \strpos($v[1], '*[') && \preg_match('/' . r('[]', true) . '/', \substr($v[1], 1), $m) && ':' === \substr($v[1], \strlen($m[0]) + 1, 1)) {
                 // Remove abbreviation block from the structure
                 unset($blocks[$k]);
-                // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave
-                // similar to the reference specification.
+                // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave similar
+                // to the reference specification.
                 $key = \trim(\preg_replace('/\s+/', ' ', $m[1]));
                 // Queue the abbreviation data to be used later
                 $title = \trim(\substr($v[1], \strlen($m[0]) + 2));
