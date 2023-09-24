@@ -149,11 +149,14 @@ $out .= '</head>';
 $out .= '<body>';
 
 $out .= '<form method="get">';
-$out .= '<p>';
-$out .= '<b>Tests:</b>';
-$out .= ' <a href="from.php">from()</a>';
-$out .= ' <a aria-current="page">to()</a>';
-$out .= '</p>';
+
+$out .= '<fieldset>';
+$out .= '<legend>';
+$out .= 'Navigation';
+$out .= '</legend>';
+$out .= '<a href="from.php">Markdown to HTML</a>';
+$out .= '</fieldset>';
+
 $out .= '<fieldset>';
 $out .= '<legend>';
 $out .= 'Filter';
@@ -167,12 +170,10 @@ foreach (glob(__DIR__ . D . 'to' . D . '*', GLOB_ONLYDIR) as $v) {
     $out .= htmlspecialchars($n);
     $out .= '</button>';
 }
-
 $out .= ' ';
 $out .= '<button' . ('TEST' === $test ? ' disabled' : "") . ' name="test" type="submit" value="TEST">';
 $out .= 'TEST';
 $out .= '</button>';
-
 $out .= '</fieldset>';
 
 if ('TEST' !== $test) {

@@ -871,7 +871,7 @@ namespace x\markdown\from {
             "\r\n" => "\n",
             "\r" => "\n"
         ]), "\n");
-        $block = 0;
+        $block = -1;
         $blocks = [];
         $rows = \explode("\n", $value);
         foreach ($rows as $row) {
