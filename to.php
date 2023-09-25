@@ -223,7 +223,7 @@ namespace x\markdown\to {
                 continue;
             }
             if ('<' !== $v[0] || '>' !== \substr($v, -1)) {
-                $blocks[] = [false, $v, [], 0];
+                $blocks[] = $v;
                 continue;
             }
             if (!\preg_match('/^<([^\s"\'\/<=>]+)(\s+(?>"[^"]*"|\'[^\']*\'|[^\/>])*)?(?:>[ \t]*([\s\S]*?)[ \t]*<\/\1>|\/?>)$/', $v, $m)) {
@@ -406,17 +406,18 @@ namespace x\markdown\to {
                 $out = \str_repeat($data[4][1], $data[4][0]) . ' ' . $out . "\n";
             }
         } else if ('li' === $t) {
-            // No blank line
+            $out = '- ' . \strtr($out, ["\n" => "\n  "]);
         } else if ('ol' === $t) {
-            $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
-            $start = $data[4][1];
-            foreach ($list as &$v) {
-                $n = $start++ . $data[4][2] . ' ';
-                $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
-                $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
-            }
-            unset($v);
-            $out = \implode($list_is_tight ? "\n" : "\n\n", $list) . "\n";
+            $out = "\n" . $out;
+            // $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
+            // $start = $data[4][1];
+            // foreach ($list as &$v) {
+            //     $n = $start++ . $data[4][2] . ' ';
+            //     $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
+            //     $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
+            // }
+            // unset($v);
+            // $out = \implode($list_is_tight ? "\n" : "\n\n", $list) . "\n";
         } else if ('p' === $t) {
             if ($out && false !== \strpos('#*+-:>`~', $out[0])) {
                 $out = "\\" . $out . "\n";
@@ -429,14 +430,15 @@ namespace x\markdown\to {
                 }
             }
         } else if ('ul' === $t) {
-            $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
-            foreach ($list as &$v) {
-                $n = $data[4][1] . $data[4][2] . ' ';
-                $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
-                $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
-            }
-            unset($v);
-            $out = \implode($list_is_tight ? "\n" : "\n\n", $list) . "\n";
+            $out = "\n" . $out;
+            // $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
+            // foreach ($list as &$v) {
+            //     $n = $data[4][1] . $data[4][2] . ' ';
+            //     $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
+            //     $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
+            // }
+            // unset($v);
+            // $out = \implode($list_is_tight ? "\n" : "\n\n", $list) . "\n";
         } else {
             $out = e($out) . "\n";
         }
