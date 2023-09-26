@@ -482,6 +482,7 @@ namespace x\markdown\from {
                 } else {
                     $chops[] = e($prev);
                 }
+                $value = $chop = \substr($value, \strlen($prev));
             }
             if (0 === \strpos($chop, "\n")) {
                 $prev = $chops[$last = \count($chops) - 1] ?? [];
