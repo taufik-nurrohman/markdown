@@ -35,13 +35,13 @@ the future. Previously, I wanted to develop this converter directly into the ext
 create this project separately as it might have potential to be used by other developers beyond the
 [Mecha CMS](https://github.com/mecha-cms) developers.
 
+Usage
+-----
+
 This converter can be installed using [Composer](https://packagist.org/packages/taufik-nurrohman/markdown), but it
 doesn’t need any other dependencies and just uses Composer’s ability to automatically include files. Those of you who
 don’t use Composer should be able to include the `from.php` and `to.php` files directly into your application without
 any problems.
-
-Usage
------
 
 ### Using Composer
 
