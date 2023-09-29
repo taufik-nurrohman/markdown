@@ -211,10 +211,10 @@ foreach ($files as $v) {
     $start = microtime(true);
     if ('raw' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
-        [$blocks, $lot] = x\markdown\from\raw($raw);
-        $out .= htmlspecialchars('$blocks = ' . var_export($blocks, true) . ';');
+        [$blocks, $data] = x\markdown\from\raw($raw);
+        $out .= htmlspecialchars('$blocks = ' . preg_replace(['/=>\s*\n\s*/', '/\barray\s+\(/'], ['=> ', 'array('], var_export($blocks, true)) . ';');
         $out .= "\n\n";
-        $out .= htmlspecialchars('$data = ' . var_export($lot, true) . ';');
+        $out .= htmlspecialchars('$data = ' . preg_replace(['/=>\s*\n\s*/', '/\barray\s+\(/'], ['=> ', 'array('], var_export($data, true)) . ';');
         $out .= '</pre>';
     } else if ('result' === $view) {
         $out .= '<div style="border:2px solid #000;color:#000;flex:1;padding:1em;">';
