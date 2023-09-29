@@ -24,7 +24,7 @@ namespace x\markdown {
         foreach ($rows as &$row) {
             $row = \is_array($row) ? to\s($row) : $row;
         }
-        $value = \implode("\n", $rows);
+        $value = \implode("\n\n", $rows);
         if (!empty($lot[1])) {
             foreach ($lot[1] as $k => $v) {
                 $value .= "\n*[" . $k . ']:' . ("" !== $v ? ' ' . $v : "");
@@ -276,6 +276,7 @@ namespace x\markdown\to {
         $out = "";
         $x = "\0";
         if (\is_array($c)) {
+            $block = false;
             foreach ($c as &$v) {
                 if (!\is_array($v)) {
                     $v = (string) $v;
@@ -330,7 +331,7 @@ namespace x\markdown\to {
                             $title = " '" . $title . "'";
                         }
                     }
-                    $v = ($v[3] < 0 ? $x : "") . ('a' === $tt ? "" : '!') . '[' . $value . '](' . $link . $title . ')' . (null !== $attr ? ' ' . $attr : "") . ($v[3] < 0 ? "" : "\n");
+                    $v = ($v[3] < 0 ? $x : "") . ('a' === $tt ? "" : '!') . '[' . $value . '](' . $link . $title . ')' . (null !== $attr ? ' ' . $attr : "");
                     continue;
                 }
                 if ('abbr' === $tt) {
@@ -361,91 +362,62 @@ namespace x\markdown\to {
                     $v = $x . '**' . (\is_array($cc) ? s($cc) : d($cc)) . '**';
                     continue;
                 }
-                // Must be recursive block(s) from here
-                $v = s($v) . "\n";
+                $block = true;
+                $v = s($v);
             }
-            unset($v);
-            $out = \implode("", $c);
+            $out = \implode($block ? "\n\n" : "", $c);
         } else {
             $out = (string) $c;
         }
         if (false === $t) {
-            $out .= "\n";
         } else if ('blockquote' === $t) {
-            $out = '> ' . \strtr(\trim($out, "\n"), ["\n" => "\n> "]) . "\n";
-            $out = \strtr($out, ["> \n" => ">\n"]);
+            $out = '> ' . \strtr(\trim($out, "\n"), [
+                "\n" => "\n> "
+            ]);
+            $out = \preg_replace('/^>[ ]$/m', '>', $out);
         } else if ('dd' === $t) {
             $out = ': ' . \strtr(\trim($test = $out, "\n"), ["\n" => "\n  "]);
-            $out = \strtr($out, ["\n  \n" => "\n\n"]);
-            if ("\n\n" === \substr($test, -2)) {
-                $out = "\n" . $out;
-            }
-        } else if ('dl' === $t) {
-            // No blank line
-        } else if ('dt' === $t) {
-            // No blank line
+            $out = \preg_replace('/^[ ]+$/m', "", $out);
         } else if ('figcaption' === $t) {
-            $out = ' ' . \strtr(\trim($test = $out, "\n"), ["\n" => "\n "]);
-            $out = \strtr($out, ["\n \n" => "\n\n"]);
-            if ("\n\n" === \substr($test, -2)) {
-                $out = "\n" . \rtrim($out, "\n");
-            }
+            $out = ' ' . \strtr(\trim($out, "\n"), ["\n" => "\n "]);
+            $out = \preg_replace('/^[ ]+$/m', "", $out);
         } else if ('figure' === $t) {
-            // No blank line
         } else if ('hr' === $t) {
-            $out = \str_repeat($data[4], 3) . "\n";
+            $out = \str_repeat($data[4], 3);
         } else if ('h' === $t[0] && isset($data[4][1])) {
             if ($attr = attr($a)) {
                 $out .= ' ' . $attr;
             }
             if ("" === \trim($out)) {
-                $out = \str_repeat('#', $data[4][0]) . "\n";
+                $out = \str_repeat('#', $data[4][0]);
             } else if (false !== \strpos('-=', $data[4][1])) {
-                $out .= "\n" . \str_repeat($data[4][1], \strlen($out)) . "\n";
+                $out .= "\n" . \str_repeat($data[4][1], \strlen($out));
             } else {
-                $out = \str_repeat($data[4][1], $data[4][0]) . ' ' . $out . "\n";
+                $out = \str_repeat($data[4][1], $data[4][0]) . ' ' . $out;
             }
-        } else if ('li' === $t) {
-            $out = '- ' . \strtr($out, ["\n" => "\n  "]);
         } else if ('ol' === $t) {
-            $out = "\n" . $out;
-            // $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
-            // $start = $data[4][1];
-            // foreach ($list as &$v) {
-            //     $n = $start++ . $data[4][2] . ' ';
-            //     $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
-            //     $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
-            // }
-            // unset($v);
-            // $out = \implode($list_is_tight ? "\n" : "\n\n", $list) . "\n";
+        } else if ('li' === $t) {
+            $out = '- ' . \strtr($out, [
+                "\n" => "\n  "
+            ]);
+            $out = \preg_replace('/^[ ]+$/m', "", $out);
         } else if ('p' === $t) {
             if ($out && false !== \strpos('#*+-:>`~', $out[0])) {
-                $out = "\\" . $out . "\n";
+                $out = "\\" . $out;
             } else {
                 $n = \strspn($out, '0123456789');
                 if (false !== \strpos(').', \substr($out, $n, 1))) {
-                    $out = \substr($out, 0, $n) . "\\" . \substr($out, $n) . "\n";
-                } else {
-                    $out .= "\n";
+                    $out = \substr($out, 0, $n) . "\\" . \substr($out, $n);
                 }
             }
         } else if ('ul' === $t) {
-            $out = "\n" . $out;
-            // $list = \explode(($list_is_tight = false === \strpos($out, "\n\n\n")) ? "\n" : "\n\n\n", \trim($out, "\n"));
-            // foreach ($list as &$v) {
-            //     $n = $data[4][1] . $data[4][2] . ' ';
-            //     $v = $n . \strtr($v, ["\n" => "\n" . \str_repeat(' ', \strlen($n))]);
-            //     $v = \strtr($v, ["\n" . \str_repeat(' ', \strlen($n)) . "\n" => "\n\n"]);
-            // }
-            // unset($v);
-            // $out = \implode($list_is_tight ? "\n" : "\n\n", $list) . "\n";
         } else {
-            $out = e($out) . "\n";
+            $out = e($out);
         }
-        return \strtr($out, [
-            " \n " => "\n",
+        $out = \strtr($out, [
             $x => ""
         ]);
+        return $out;
     }
     function x(?string $v): string {}
 }
