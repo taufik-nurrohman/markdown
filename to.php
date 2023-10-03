@@ -26,10 +26,15 @@ namespace x\markdown {
         }
         $value = \implode("\n\n", $rows);
         if (!empty($lot[1])) {
+            $value .= "\n";
             foreach ($lot[1] as $k => $v) {
                 $value .= "\n*[" . $k . ']:' . ("" !== $v ? ' ' . $v : "");
             }
         }
+        $value = \strtr($value, [
+            "\n\r" => "",
+            "\r" => ""
+        ]);
         return "" !== $value ? $value : null;
     }
 }
@@ -378,6 +383,11 @@ namespace x\markdown\to {
         } else if ('dd' === $t) {
             $out = ': ' . \strtr(\trim($test = $out, "\n"), ["\n" => "\n  "]);
             $out = \preg_replace('/^[ ]+$/m', "", $out);
+            if (empty($data[4][3])) {
+                $out = "\r" . $out;
+            }
+        } else if ('dt' === $t) {
+            $out = "\r" . $out;
         } else if ('figcaption' === $t) {
             $out = ' ' . \strtr(\trim($out, "\n"), ["\n" => "\n "]);
             $out = \preg_replace('/^[ ]+$/m', "", $out);
