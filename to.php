@@ -32,8 +32,8 @@ namespace x\markdown {
             }
         }
         $value = \strtr($value, [
-            "\n\r" => "",
-            "\r" => ""
+            "\0" => "",
+            "\1" => ""
         ]);
         return "" !== $value ? $value : null;
     }
@@ -280,6 +280,7 @@ namespace x\markdown\to {
         [$t, $c, $a] = $data;
         $out = "";
         $x = "\0";
+        $y = "\1";
         if (\is_array($c)) {
             $block = false;
             foreach ($c as &$v) {
@@ -383,14 +384,18 @@ namespace x\markdown\to {
         } else if ('dd' === $t) {
             $out = ': ' . \strtr(\trim($test = $out, "\n"), ["\n" => "\n  "]);
             $out = \preg_replace('/^[ ]+$/m', "", $out);
-            if (empty($data[4][3])) {
-                $out = "\r" . $out;
+            if (!\is_array($c)) {
+                $out = $out . $y;
             }
+        } else if ('dl' === $t) {
         } else if ('dt' === $t) {
-            $out = "\r" . $out;
+            $out = $y . $out;
         } else if ('figcaption' === $t) {
             $out = ' ' . \strtr(\trim($out, "\n"), ["\n" => "\n "]);
             $out = \preg_replace('/^[ ]+$/m', "", $out);
+            if (!\is_array($c)) {
+                $out = $y . $out;
+            }
         } else if ('figure' === $t) {
         } else if ('hr' === $t) {
             $out = \str_repeat($data[4], 3);
@@ -424,10 +429,7 @@ namespace x\markdown\to {
         } else {
             $out = e($out);
         }
-        $out = \strtr($out, [
-            $x => ""
-        ]);
-        return $out;
+        return \trim($out, "\n");
     }
     function x(?string $v): string {}
 }
