@@ -545,16 +545,6 @@ namespace x\markdown\from {
                 $value = $chop = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
-            // A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode white-space, and
-            // either (2a) not followed by a Unicode punctuation character, or (2b) followed by a Unicode punctuation
-            // character and preceded by Unicode white-space or a Unicode punctuation character. For purpose(s) of this
-            // definition, the beginning and the end of the line count as Unicode white-space.
-            //
-            // A right-flanking delimiter run is a delimiter run that is (1) not preceded by Unicode white-space, and
-            // either (2a) not preceded by a Unicode punctuation character, or (2b) preceded by a Unicode punctuation
-            // character and followed by Unicode white-space or a Unicode punctuation character. For purpose(s) of this
-            // definition, the beginning and the end of the line count as Unicode white-space.
-            //
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
