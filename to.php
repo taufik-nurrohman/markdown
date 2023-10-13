@@ -24,7 +24,7 @@ namespace x\markdown {
         foreach ($rows as &$row) {
             $row = \is_array($row) ? to\s($row) : $row;
         }
-        $value = \implode("\n\n", $rows);
+        $value = \rtrim(\implode("", $rows), "\n");
         if (!empty($lot[1])) {
             $value .= "\n";
             foreach ($lot[1] as $k => $v) {
@@ -280,7 +280,6 @@ namespace x\markdown\to {
         $out = "";
         $x = "\0";
         if (\is_array($c)) {
-            $block = false;
             foreach ($c as &$v) {
                 if (!\is_array($v)) {
                     $v = (string) $v;
@@ -366,10 +365,9 @@ namespace x\markdown\to {
                     $v = $x . '**' . (\is_array($cc) ? s($cc) : d($cc)) . '**';
                     continue;
                 }
-                $block = true;
                 $v = s($v);
             }
-            $out = \implode($block ? "\n\n" : "", $c);
+            $out = \implode("", $c);
         } else {
             $out = (string) $c;
         }
@@ -378,18 +376,20 @@ namespace x\markdown\to {
             $out = '> ' . \strtr(\trim($out, "\n"), [
                 "\n" => "\n> "
             ]);
-            $out = \preg_replace('/^>[ ]$/m', '>', $out);
+            $out = \preg_replace('/^>[ ]$/m', '>', $out) . "\n\n";
         } else if ('dd' === $t) {
             $out = ': ' . \strtr(\trim($test = $out, "\n"), ["\n" => "\n  "]);
-            $out = \preg_replace('/^[ ]+$/m', "", $out);
+            $out = \preg_replace('/^[ ]+$/m', "", $out) . "\n";
         } else if ('dl' === $t) {
+            $out .= "\n";
         } else if ('dt' === $t) {
+            $out .= "\n";
         } else if ('figcaption' === $t) {
             $out = ' ' . \strtr(\trim($out, "\n"), ["\n" => "\n "]);
             $out = \preg_replace('/^[ ]+$/m', "", $out);
         } else if ('figure' === $t) {
         } else if ('hr' === $t) {
-            $out = \str_repeat($data[4], 3);
+            $out = \str_repeat($data[4], 3) . "\n\n";
         } else if ('h' === $t[0] && isset($data[4][1])) {
             if ($attr = attr($a)) {
                 $out .= ' ' . $attr;
@@ -401,12 +401,14 @@ namespace x\markdown\to {
             } else {
                 $out = \str_repeat($data[4][1], $data[4][0]) . ' ' . $out;
             }
+            $out .= "\n\n";
         } else if ('ol' === $t) {
+            $out .= "\n\n";
         } else if ('li' === $t) {
             $out = '- ' . \strtr($out, [
                 "\n" => "\n  "
             ]);
-            $out = \preg_replace('/^[ ]+$/m', "", $out);
+            $out = \preg_replace('/^[ ]+$/m', "", $out) . "\n";
         } else if ('p' === $t) {
             if ($out && false !== \strpos('#*+-:>`~', $out[0])) {
                 $out = "\\" . $out;
@@ -416,11 +418,13 @@ namespace x\markdown\to {
                     $out = \substr($out, 0, $n) . "\\" . \substr($out, $n);
                 }
             }
+            $out .= "\n\n";
         } else if ('ul' === $t) {
+            $out .= "\n\n";
         } else {
             $out = e($out);
         }
-        return \trim($out, "\n");
+        return $out;
     }
     function x(?string $v): string {}
 }
