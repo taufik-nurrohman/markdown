@@ -380,14 +380,21 @@ namespace x\markdown\to {
         } else if ('dd' === $t) {
             $out = ': ' . \strtr(\trim($test = $out, "\n"), ["\n" => "\n  "]);
             $out = \preg_replace('/^[ ]+$/m', "", $out) . "\n";
+            if ("\n\n" === \substr($test, -2)) {
+                $out = "\n" . $out;
+            }
         } else if ('dl' === $t) {
             $out .= "\n";
         } else if ('dt' === $t) {
             $out .= "\n";
         } else if ('figcaption' === $t) {
-            $out = ' ' . \strtr(\trim($out, "\n"), ["\n" => "\n "]);
+            $out = "\n " . \strtr(\trim($test = $out, "\n"), ["\n" => "\n "]);
             $out = \preg_replace('/^[ ]+$/m', "", $out);
+            if ("\n\n" === \substr($test, -2)) {
+                $out = "\n" . $out;
+            }
         } else if ('figure' === $t) {
+            $out .= "\n\n";
         } else if ('hr' === $t) {
             $out = \str_repeat($data[4], 3) . "\n\n";
         } else if ('h' === $t[0] && isset($data[4][1])) {
@@ -403,12 +410,15 @@ namespace x\markdown\to {
             }
             $out .= "\n\n";
         } else if ('ol' === $t) {
-            $out .= "\n\n";
+            $out = "\n" . $out . "\n";
         } else if ('li' === $t) {
-            $out = '- ' . \strtr($out, [
+            $out = '- ' . \strtr(\trim($test = $out, "\n"), [
                 "\n" => "\n  "
             ]);
             $out = \preg_replace('/^[ ]+$/m', "", $out) . "\n";
+            if ("\n\n" === \substr($test, -2)) {
+                $out = "\n" . $out;
+            }
         } else if ('p' === $t) {
             if ($out && false !== \strpos('#*+-:>`~', $out[0])) {
                 $out = "\\" . $out;
