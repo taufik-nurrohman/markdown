@@ -410,13 +410,14 @@ namespace x\markdown\to {
             }
             $out .= "\n\n";
         } else if ('ol' === $t) {
-            $out = "\n" . $out . "\n";
+            $out = $x . $out . "\n";
         } else if ('li' === $t) {
             $out = '- ' . \strtr(\trim($test = $out, "\n"), [
-                "\n" => "\n  "
+                "\n" => "\n  ",
+                $x . '- ' => "\n  - "
             ]);
             $out = \preg_replace('/^[ ]+$/m', "", $out) . "\n";
-            if ("\n\n" === \substr($test, -2)) {
+            if ("\n\n" === \substr($test, -2) && false === \strpos($out, "\n  - ")) {
                 $out = "\n" . $out;
             }
         } else if ('p' === $t) {
