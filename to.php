@@ -34,6 +34,7 @@ namespace x\markdown {
         $value = \strtr($value, [
             "\0" => ""
         ]);
+        $value = \preg_replace('/[ ]{2,}\n[ ]*/', "  \n", $value);
         return "" !== $value ? $value : null;
     }
 }
@@ -329,6 +330,13 @@ namespace x\markdown\to {
                         } else if (false !== \strpos($title, "'") && false === \strpos($title, '"')) {
                             $title = ' "' . $title . '"';
                         } else if (false !== \strpos($title, '"') && false !== \strpos($title, "'")) {
+                            if (false !== \strpos($title, '(')) {
+                                // <https://stackoverflow.com/a/35271017/1163000>
+                                $test = \preg_replace('/\([^()]*+((?R)[^()]*)*+\)/', "", $title);
+                                if (false !== \strpos($test, '(') || false !== \strpos($test, ')')) {
+                                    $title = \strtr($title, ['(' => '\(', ')' => '\)']);
+                                }
+                            }
                             $title = ' (' . $title . ')';
                         } else {
                             $title = " '" . $title . "'";
@@ -431,7 +439,7 @@ namespace x\markdown\to {
             }
             $out .= "\n\n";
         } else if ('ul' === $t) {
-            $out .= "\n\n";
+            $out = $x . $out . "\n";
         } else {
             $out = e($out);
         }
