@@ -1400,7 +1400,7 @@ namespace x\markdown\from {
             if ('figure' === $v[0]) {
                 $row = row(\trim($v[1], "\n"), $lot)[0];
                 // The image syntax doesn’t seem to appear alone on a single line
-                if (\count($row) > 1) {
+                if (\is_array($row) && \count($row) > 1) {
                     if (!empty($v[4])) {
                         [$a, $b] = \explode("\n\n", $v[4] . "\n\n", 2);
                         $v = [false, \array_merge([['p', row(\trim($v[1] . "\n" . $a, "\n"), $lot)[0], [], 0]], rows(\trim($b, "\n"), $lot)[0]), [], $v[3]];
