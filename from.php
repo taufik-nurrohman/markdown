@@ -771,7 +771,7 @@ namespace x\markdown\from {
                         }
                     }
                     if (false !== $key) {
-                        $data = $lot[0][$key][2] ?? [];
+                        $data = \array_replace((array) ($lot[0][$key][2] ?? []), (array) ($data ?? []));
                         $link = $lot[0][$key][0] ?? null;
                         $title = $lot[0][$key][1] ?? null;
                     }
