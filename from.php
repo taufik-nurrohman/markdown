@@ -455,13 +455,13 @@ namespace x\markdown\from {
         $a = \preg_quote($char[0], '/');
         $b = \preg_quote($char[1] ?? $char[0], '/');
         $c = $a . ($b === $a ? "" : $b);
-        return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.)*' . ($capture ? ')' : "") . $b . ')';
+        return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.)*+' . ($capture ? ')' : "") . $b . ')';
     }
     function r(string $char = '[]', $capture = false, string $before = "", string $x = ""): string {
         $a = \preg_quote($char[0], '/');
         $b = \preg_quote($char[1] ?? $char[0], '/');
         $c = $a . ($b === $a ? "" : $b);
-        return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.|(?R))*' . ($capture ? ')' : "") . $b . ')';
+        return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.|(?R))*+' . ($capture ? ')' : "") . $b . ')';
     }
     function raw(?string $value, $block = true): array {
         return $block ? rows($value) : row($value);
