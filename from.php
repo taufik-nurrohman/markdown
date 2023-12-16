@@ -771,7 +771,7 @@ namespace x\markdown\from {
                         }
                     }
                     if (false !== $key) {
-                        $data = \array_replace((array) ($lot[0][$key][2] ?? []), (array) ($data ?? []));
+                        $data = \array_replace($lot[0][$key][2] ?? [], $data ?? []);
                         $link = $lot[0][$key][0] ?? null;
                         $title = $lot[0][$key][1] ?? null;
                     }
@@ -1772,23 +1772,32 @@ namespace x\markdown\from {
         }
         return "" !== $out ? $out : null;
     }
+    // <https://stackoverflow.com/a/6059053/1163000>
     function u(?string $v): string {
-        \preg_match('/^([^?#]*)?([?][^#]*)?([#].*)?$/', d($v), $m);
-        return \strtr(\rawurlencode($m[1]), [
-            '%25' => '%',
+        return \strtr(\rawurlencode(d($v)), [
+            '%21' => '!',
+            '%23' => '#',
+            '%24' => '$',
+            '%26' => '&',
+            '%27' => "'",
+            '%28' => '(',
+            '%29' => ')',
+            '%2A' => '*',
             '%2B' => '+',
             '%2C' => ',',
+            '%2D' => '-',
+            '%2E' => '.',
             '%2F' => '/',
             '%3A' => ':',
             '%3B' => ';',
-            '%40' => '@'
-        ]) . (isset($m[2]) && "" !== $m[2] && '?' !== $m[2] ? '?' . \strtr(\rawurlencode(\substr($m[2], 1)), [
-            '%25' => '%',
-            '%26' => '&',
-            '%3D' => '='
-        ]) : "") . (isset($m[3]) && "" !== $m[3] && '#' !== $m[3] ? '#' . \strtr(\rawurlencode(\substr($m[3], 1)), [
-            '%25' => '%'
-        ]) : "");
+            '%3D' => '=',
+            '%3F' => '?',
+            '%40' => '@',
+            '%5B' => '[',
+            '%5D' => ']',
+            '%5F' => '_',
+            '%7E' => '~'
+        ]);
     }
     // <https://spec.commonmark.org/0.30#example-12>
     function v(?string $value): string {
