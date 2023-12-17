@@ -1375,7 +1375,7 @@ namespace x\markdown\from {
             if (false === $v[0]) {
                 continue;
             }
-            if ('p' === $v[0] && isset($blocks[$k + 1]) && 'dl' === $blocks[$k + 1][0]) {
+            if ('p' === $v[0] && isset($blocks[$k + 1]) && 'dl' === $blocks[$k + 1][0] && \strlen($blocks[$k + 1][1]) > 2 && ':' === $blocks[$k + 1][1][0] && false !== \strpos(" \t", $blocks[$k + 1][1][1])) {
                 $v[0] = 'dl';
                 $v[1] .= "\n\n" . $blocks[$k + 1][1];
                 $v[4] = $blocks[$k + 1][4];
