@@ -1375,10 +1375,11 @@ namespace x\markdown\from {
             if (false === $v[0]) {
                 continue;
             }
-            if ('p' === $v[0] && isset($blocks[$k + 1]) && 'dl' === $blocks[$k + 1][0] && \strlen($blocks[$k + 1][1]) > 2 && ':' === $blocks[$k + 1][1][0] && false !== \strpos(" \t", $blocks[$k + 1][1][1])) {
+            $next = $blocks[$k + 1] ?? 0;
+            if ('p' === $v[0] && \is_array($next) && 'dl' === $next[0] && \strlen($next[1]) > 2 && ':' === $next[1][0] && false !== \strpos(" \t", $next[1][1])) {
                 $v[0] = 'dl';
-                $v[1] .= "\n\n" . $blocks[$k + 1][1];
-                $v[4] = $blocks[$k + 1][4];
+                $v[1] .= "\n\n" . $next[1];
+                $v[4] = $next[4];
                 unset($blocks[$k + 1]);
                 // Parse the definition list later
                 continue;
