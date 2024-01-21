@@ -311,7 +311,7 @@ namespace x\markdown\from {
                     if ('/' === $t[0] && '<' . $t . '>' === $test) {
                         return [false, $row, [], $dent, $t];
                     }
-                    if (\preg_match('/^<' . \preg_quote(\trim($t, '/'), '/') . '(\s(?>"[^"]*"|\'[^\']\'|[^>])*)?>$/', $test)) {
+                    if (\preg_match('/^<' . \preg_quote(\trim($t, '/'), '/') . '(\s(?>"[^"]*"|\'[^\']*\'|[^>])*)?>$/', $test)) {
                         return [false, $row, [], $dent, $t];
                     }
                 }
