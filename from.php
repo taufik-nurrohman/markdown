@@ -332,6 +332,9 @@ namespace x\markdown\from {
         }
         // `[…`
         if (0 === \strpos($row, '[')) {
+            if (1 === \strpos($row, '^')) {
+                return [2, $row, [], $dent];
+            }
             if (
                 // `[asdf](…`
                 \strpos($row, '](') > 0 ||
@@ -341,9 +344,6 @@ namespace x\markdown\from {
                 false !== ($n = \strpos($row, ']')) && ':' !== \substr($row, $n + 1, 1)
             ) {
                 return ['p', $row, [], $dent];
-            }
-            if (1 === \strpos($row, '^')) {
-                return [2, $row, [], $dent];
             }
             return [0, $row, [], $dent];
         }
@@ -683,7 +683,7 @@ namespace x\markdown\from {
                     }
                     $value = $chop = \substr($chop, \strlen($prev));
                     // `[^asdf]`
-                    if (0 === \strpos($m[1][0], '^')) {
+                    if (0 === \strpos($m[1][0], '^') && ("" === $chop || false === \strpos('([', $chop[0]))) {
                         if (!isset($lot[2][$key = \trim(\substr($m[1][0], 1))])) {
                             $chops[] = e($prev);
                             continue;
