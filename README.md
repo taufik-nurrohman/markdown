@@ -6,7 +6,7 @@ PHP Markdown Parser
 [from.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/from.php?branch=main&color=%234f5d95&label=from.php&labelColor=%231f2328&style=flat-square
 [to.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/to.php?branch=main&color=%234f5d95&label=to.php&labelColor=%231f2328&style=flat-square
 
-With 90% compliance to [CommonMark 0.30](https://spec.commonmark.org/0.30) specifications.
+With 90% compliance to [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2) specifications.
 
 Motivation
 ----------
