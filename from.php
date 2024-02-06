@@ -851,7 +851,7 @@ namespace x\markdown\from {
         }
         return [m($chops), $lot];
     }
-    function rows(?string $value, array &$lot = []): array {
+    function rows(?string $value, array &$lot = [], int $level = 1): array {
         // List of reference(s), abbreviation(s), and note(s)
         $lot = \array_replace([[], [], []], $lot);
         if ("" === \trim($value ?? "")) {
@@ -880,7 +880,7 @@ namespace x\markdown\from {
                         if (false !== \strpos(\substr($prev[1], 4), '--')) {
                             [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
                             $blocks[$block] = ['p', $a, [], $prev[3]];
-                            if ("" !== $b && \is_array($b = rows($b, $lot)[0])) {
+                            if ("" !== $b && \is_array($b = rows($b, $lot, $level + 1)[0])) {
                                 foreach ($b as $bb) {
                                     $blocks[++$block] = $bb;
                                 }
@@ -902,7 +902,7 @@ namespace x\markdown\from {
                             if ('-' === \substr($row, $n - 1, 1)) {
                                 [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
                                 $blocks[$block] = ['p', $a, [], $prev[3]];
-                                if ("" !== $b && \is_array($b = rows($b, $lot)[0])) {
+                                if ("" !== $b && \is_array($b = rows($b, $lot, $level + 1)[0])) {
                                     foreach ($b as $bb) {
                                         $blocks[++$block] = $bb;
                                     }
@@ -1315,7 +1315,7 @@ namespace x\markdown\from {
                     ]), "\n");
                     // Queue the note data to be used later
                     $lot_of_note = [$lot[0], $lot[1]];
-                    $lot[$v[0]][$key] = rows($note, $lot_of_note)[0];
+                    $lot[$v[0]][$key] = rows($note, $lot_of_note, $level + 1)[0];
                     continue;
                 }
                 $data = $key = $link = $title = null;
@@ -1395,7 +1395,7 @@ namespace x\markdown\from {
             if ('blockquote' === $v[0]) {
                 $v[1] = \substr(\strtr($v[1], ["\n>" => "\n"]), 1);
                 $v[1] = \substr(\strtr("\n" . $v[1], ["\n " => "\n"]), 1); // Remove space
-                $v[1] = rows($v[1], $lot)[0];
+                $v[1] = rows($v[1], $lot, $level + 1)[0];
                 continue;
             }
             if ('figure' === $v[0]) {
@@ -1404,7 +1404,7 @@ namespace x\markdown\from {
                 if (\is_array($row) && \count($row) > 1) {
                     if (!empty($v[4])) {
                         [$a, $b] = \explode("\n\n", $v[4] . "\n\n", 2);
-                        $v = [false, \array_merge([['p', row(\trim($v[1] . "\n" . $a, "\n"), $lot)[0], [], 0]], rows(\trim($b, "\n"), $lot)[0]), [], $v[3]];
+                        $v = [false, \array_merge([['p', row(\trim($v[1] . "\n" . $a, "\n"), $lot)[0], [], 0]], rows(\trim($b, "\n"), $lot, $level + 1)[0]), [], $v[3]];
                         continue;
                     }
                     $v = ['p', $row, [], $v[3]];
@@ -1412,7 +1412,7 @@ namespace x\markdown\from {
                 }
                 if (!empty($v[4])) {
                     $b = \rtrim($v[4], "\n");
-                    $caption = rows($b, $lot)[0];
+                    $caption = rows($b, $lot, $level + 1)[0];
                     if (0 !== \strpos($b, "\n") && false === \strpos($b, "\n\n") && \is_array($test = \reset($caption)) && 'p' === $test[0]) {
                         $caption = $test[1];
                     }
@@ -1455,7 +1455,7 @@ namespace x\markdown\from {
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
-                    $vv = rows($vv, $lot)[0];
+                    $vv = rows($vv, $lot, $level + 1)[0];
                     if ($list_is_tight && \is_array($vv)) {
                         foreach ($vv as &$vvv) {
                             if (\is_array($vvv) && 'p' === $vvv[0]) {
@@ -1617,7 +1617,7 @@ namespace x\markdown\from {
                 }
                 if (!empty($v[4])) {
                     $b = \rtrim($v[4], "\n");
-                    $caption = rows($b, $lot)[0];
+                    $caption = rows($b, $lot, $level + 1)[0];
                     if (0 !== \strpos($b, "\n") && false === \strpos($b, "\n\n") && \is_array($test = \reset($caption)) && 'p' === $test[0]) {
                         $caption = $test[1];
                     }
@@ -1631,7 +1631,7 @@ namespace x\markdown\from {
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
-                    $vv = rows($vv, $lot)[0];
+                    $vv = rows($vv, $lot, $level + 1)[0];
                     if ($list_is_tight && \is_array($vv)) {
                         foreach ($vv as &$vvv) {
                             if (\is_array($vvv) && 'p' === $vvv[0]) {
@@ -1660,7 +1660,7 @@ namespace x\markdown\from {
                     if (\strlen($vv) > 2 && ':' === $vv[0] && false !== \strpos(" \t", $vv[1])) {
                         $vv = rows(\substr(\strtr($vv, [
                             "\n  " => "\n"
-                        ]), 2), $lot)[0];
+                        ]), 2), $lot, $level + 1)[0];
                         if ($list_is_tight && \is_array($vv)) {
                             foreach ($vv as &$vvv) {
                                 if (\is_array($vvv) && 'p' === $vvv[0]) {
@@ -1681,7 +1681,7 @@ namespace x\markdown\from {
         }
         unset($v);
         $blocks = \array_values($blocks);
-        if (!empty($lot[2])) {
+        if (!empty($lot[2]) && 1 === $level) {
             $notes = ['div', [
                 ['hr', false, [], 0, '-'],
                 ['ol', [], [], 0, [0, 1, '.']]
