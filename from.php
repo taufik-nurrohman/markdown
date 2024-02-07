@@ -548,17 +548,18 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
+                $x = '!"#$%&\'()*+,\-.\/:;<=>?@\[\\\]^_`{|}~\p{P}\p{S}';
                 if ('*' === $c) {
                     // Inner strong and emphasis
-                    $b0 = '(?>[*]{2}(?![\p{P}\s])|(?<=[\p{P}\s])[*]{2}(?=[\p{P}]))(?>' . $contains . ')+?(?>(?<![\p{P}\s])[*]{2}|(?<=[\p{P}])[*]{2}(?=[\p{P}\s]))';
-                    $i0 = '(?>[*](?![\p{P}\s])|(?<=[\p{P}\s])[*](?=[\p{P}]))(?>' . $contains . ')+?(?>(?<![\p{P}\s])[*]|(?<=[\p{P}])[*](?=[\p{P}\s]))';
+                    $b0 = '(?>[*]{2}(?![' . $x . '\s])|(?<=[' . $x . '\s])[*]{2}(?=[' . $x . ']))(?>' . $contains . ')+?(?>(?<![' . $x . '\s])[*]{2}|(?<=[' . $x . '])[*]{2}(?=[' . $x . '\s]))';
+                    $i0 = '(?>[*](?![' . $x . '\s])|(?<=[' . $x . '\s])[*](?=[' . $x . ']))(?>' . $contains . ')+?(?>(?<![' . $x . '\s])[*]|(?<=[' . $x . '])[*](?=[' . $x . '\s]))';
                     // Outer strong and emphasis (strict)
-                    $b1 = '(?>[*]{2}(?![\p{P}\s])|(?<=^|[\p{P}\s])[*]{2}(?=[\p{P}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![\p{P}\s])[*]{2}(?![*])|(?<=[\p{P}])[*]{2}(?![*])(?=[\p{P}\s]|$))';
-                    $i1 = '(?>[*](?![\p{P}\s])|(?<=^|[\p{P}\s])[*](?=[\p{P}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![\p{P}\s])[*](?![*])|(?<=[\p{P}])[*](?![*])(?=[\p{P}\s]|$))';
+                    $b1 = '(?>[*]{2}(?![' . $x . '\s])|(?<=^|[' . $x . '\s])[*]{2}(?=[' . $x . ']))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![' . $x . '\s])[*]{2}(?![*])|(?<=[' . $x . '])[*]{2}(?![*])(?=[' . $x . '\s]|$))';
+                    $i1 = '(?>[*](?![' . $x . '\s])|(?<=^|[' . $x . '\s])[*](?=[' . $x . ']))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![' . $x . '\s])[*](?![*])|(?<=[' . $x . '])[*](?![*])(?=[' . $x . '\s]|$))';
                 } else {
                     // Outer strong and emphasis (strict)
-                    $b1 = '(?<=^|[\p{P}\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<!\s)[_]{2}(?![_])(?=[\p{P}\s]|$)';
-                    $i1 = '(?<=^|[\p{P}\s])[_](?!\s)(?>' . $contains . '|(?<![\p{P}\s])[_]+(?![\p{P}\s])|(?R))+(?<!\s)[_](?![_])(?=[\p{P}\s]|$)';
+                    $b1 = '(?<=^|[' . $x . '\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![' . $x . '\s])[_]+(?![' . $x . '\s])|(?R))+(?<!\s)[_]{2}(?![_])(?=[' . $x . '\s]|$)';
+                    $i1 = '(?<=^|[' . $x . '\s])[_](?!\s)(?>' . $contains . '|(?<![' . $x . '\s])[_]+(?![' . $x . '\s])|(?R))+(?<!\s)[_](?![_])(?=[' . $x . '\s]|$)';
                 }
                 $before = \substr($prev, -1);
                 if (\preg_match('/(?>' . $b1 . '|' . $i1 . ')/u', $before . $chop, $m, \PREG_OFFSET_CAPTURE)) {
@@ -592,7 +593,14 @@ namespace x\markdown\from {
                     $v = \substr($chop, 0, $n + 3);
                     // <https://spec.commonmark.org/0.30#example-625>
                     // <https://spec.commonmark.org/0.30#example-626>
-                    if ($n < 4 || false !== \strpos(\substr($v, 4, -3), '--') || ('-' === \substr($v, -4, 1) && '<!---->' !== $v)) {
+                    if ('<!-->' === $v || '<!--->' === $v) {
+                        $chops[] = [false, $v, [], -1, '!--'];
+                        $value = $chop = \substr($chop, \strlen($prev = $v));
+                        continue;
+                    }
+                    $test = \substr($v, 4, -3);
+                    // `<!-- asdf --> -->` or `<!-- asdf --->`
+                    if (false !== \strpos($test, '-->') || '-' === \substr($test, -1)) {
                         $chops[] = e($prev = '<');
                         $value = $chop = \substr($chop, 1);
                         continue;
@@ -876,6 +884,7 @@ namespace x\markdown\from {
             if ($prev = $blocks[$block] ?? 0) {
                 // Raw HTML
                 if (false === $prev[0]) {
+                    // TODO: Bug Fix
                     if ('!--' === $prev[4]) {
                         if (false !== \strpos(\substr($prev[1], 4), '--')) {
                             [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
