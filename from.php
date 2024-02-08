@@ -24,9 +24,10 @@ namespace x\markdown {
         foreach ($rows as &$row) {
             $row = \is_array($row) ? from\s($row) : $row;
         }
-        $value = \implode("", $rows);
-        $value = \strtr($value, ['</dl><dl>' => ""]);
-        return $value;
+        if ("" === ($value = \implode("", $rows))) {
+            return null;
+        }
+        return \strtr($value, ['</dl><dl>' => ""]);
     }
 }
 
@@ -548,11 +549,11 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
-                $x = '!"#$%&\'()*+,\-.\/:;<=>?@\[\\\]^_`{|}~\p{P}\p{S}';
+                $x = '\p{P}\p{S}';
                 if ('*' === $c) {
                     // Inner strong and emphasis
-                    $b0 = '(?>[*]{2}(?![' . $x . '\s])|(?<=[' . $x . '\s])[*]{2}(?=[' . $x . ']))(?>' . $contains . ')+?(?>(?<![' . $x . '\s])[*]{2}|(?<=[' . $x . '])[*]{2}(?=[' . $x . '\s]))';
-                    $i0 = '(?>[*](?![' . $x . '\s])|(?<=[' . $x . '\s])[*](?=[' . $x . ']))(?>' . $contains . ')+?(?>(?<![' . $x . '\s])[*]|(?<=[' . $x . '])[*](?=[' . $x . '\s]))';
+                    $b0 = '(?>[*]{2}(?![' . $x . '\s])|(?<=[' . $x . '\s])[*]{2}(?=[' . $x . ']))(?>' . $contains . ')+(?>(?<![' . $x . '\s])[*]{2}|(?<=[' . $x . '])[*]{2}(?=[' . $x . '\s]))';
+                    $i0 = '(?>[*](?![' . $x . '\s])|(?<=[' . $x . '\s])[*](?=[' . $x . ']))(?>' . $contains . ')+(?>(?<![' . $x . '\s])[*]|(?<=[' . $x . '])[*](?=[' . $x . '\s]))';
                     // Outer strong and emphasis (strict)
                     $b1 = '(?>[*]{2}(?![' . $x . '\s])|(?<=^|[' . $x . '\s])[*]{2}(?=[' . $x . ']))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![' . $x . '\s])[*]{2}(?![*])|(?<=[' . $x . '])[*]{2}(?![*])(?=[' . $x . '\s]|$))';
                     $i1 = '(?>[*](?![' . $x . '\s])|(?<=^|[' . $x . '\s])[*](?=[' . $x . ']))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+(?>(?<![' . $x . '\s])[*](?![*])|(?<=[' . $x . '])[*](?![*])(?=[' . $x . '\s]|$))';
@@ -589,24 +590,11 @@ namespace x\markdown\from {
                 continue;
             }
             if (0 === \strpos($chop, '<')) {
+                // <https://spec.commonmark.org/0.31.2#html-comment>
                 if (0 === \strpos($chop, '<!--') && false !== ($n = \strpos($chop, '-->'))) {
-                    $v = \substr($chop, 0, $n + 3);
-                    // <https://spec.commonmark.org/0.30#example-625>
-                    // <https://spec.commonmark.org/0.30#example-626>
-                    if ('<!-->' === $v || '<!--->' === $v) {
-                        $chops[] = [false, $v, [], -1, '!--'];
-                        $value = $chop = \substr($chop, \strlen($prev = $v));
-                        continue;
-                    }
-                    $test = \substr($v, 4, -3);
-                    // `<!-- asdf --> -->` or `<!-- asdf --->`
-                    if (false !== \strpos($test, '-->') || '-' === \substr($test, -1)) {
-                        $chops[] = e($prev = '<');
-                        $value = $chop = \substr($chop, 1);
-                        continue;
-                    }
+                    $prev = $v = \substr($chop, 0, $n + 3);
                     $chops[] = [false, \strtr($v, "\n", ' '), [], -1, '!--'];
-                    $value = $chop = \substr($chop, \strlen($prev = $v));
+                    $value = $chop = \substr($chop, \strlen($prev));
                     continue;
                 }
                 if (0 === \strpos($chop, '<![CDATA[') && ($n = \strpos($chop, ']]>')) > 8) {
@@ -880,45 +868,19 @@ namespace x\markdown\from {
                 $row = $before . \str_repeat(' ', 4 - $v % 4) . \substr($row, $v + 1);
             }
             $current = data($row); // `[$type, $row, $data, $dent, …]`
-            // If a block is available in the index `$block`, it indicates that we have a previous block.
+            // If a block is available in the index `$block`, it indicates that we have a previous block
             if ($prev = $blocks[$block] ?? 0) {
                 // Raw HTML
                 if (false === $prev[0]) {
-                    // TODO: Bug Fix
                     if ('!--' === $prev[4]) {
-                        if (false !== \strpos(\substr($prev[1], 4), '--')) {
-                            [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
-                            $blocks[$block] = ['p', $a, [], $prev[3]];
-                            if ("" !== $b && \is_array($b = rows($b, $lot, $level + 1)[0])) {
-                                foreach ($b as $bb) {
-                                    $blocks[++$block] = $bb;
-                                }
-                            }
-                            continue;
-                        }
-                        if (false !== ($n = \strpos($prev[1], '-->'))) {
-                            if ($n < 4) {
-                                $blocks[$block++] = ['p', $prev[1], [], $prev[3]];
-                                continue;
-                            }
+                        if (false !== \strpos($prev[1], '-->')) {
                             if (null === $current[0]) {
                                 continue;
                             }
                             $blocks[++$block] = $current;
                             continue;
                         }
-                        if (false !== ($n = \strpos($row, '-->'))) {
-                            if ('-' === \substr($row, $n - 1, 1)) {
-                                [$a, $b] = \explode("\n", $prev[1] . "\n", 2);
-                                $blocks[$block] = ['p', $a, [], $prev[3]];
-                                if ("" !== $b && \is_array($b = rows($b, $lot, $level + 1)[0])) {
-                                    foreach ($b as $bb) {
-                                        $blocks[++$block] = $bb;
-                                    }
-                                }
-                                $blocks[++$block] = ['p', e($row), [], $current[3]];
-                                continue;
-                            }
+                        if (false !== \strpos($row, '-->')) {
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
