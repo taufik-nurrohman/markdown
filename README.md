@@ -819,6 +819,36 @@ $value = from_markdown($value . "\n" . $suffix);
 echo $value;
 ~~~
 
+### Pre-Defined Header’s ID
+
+Add an automatic `id` attribute to headers level 2 through 6 if it’s not set, and then prepend an anchor element that
+points to it:
+
+~~~ php
+$value = from_markdown($value);
+
+if ($value && false !== strpos($value, '</h')) {
+    $value = preg_replace_callback('/<(h[2-6])(\s(?>"[^"]*"|\'[^\']*\'|[^>])*)?>([\s\S]+?)<\/\1>/', static function ($m) {
+        if (!empty($m[2]) && false !== strpos($m[2], 'id=') && preg_match('/\bid=("[^"]+"|\'[^\']+\'|[^\/>\s]+)/', $m[2], $n)) {
+            if ('"' === $n[1][0] && '"' === substr($n[1], -1)) {
+                $id = substr($n[1], 1, -1);
+            } else if ("'" === $n[1][0] && "'" === substr($n[1], -1)) {
+                $id = substr($n[1], 1, -1);
+            } else {
+                $id = $n[1];
+            }
+            $m[3] = '<a href="#' . htmlspecialchars($id) . '" style="text-decoration: none;">⚓</a> ' . $m[3];
+            return '<' . $m[1] . $m[2] . '>' . $m[3] . '</' . $m[1] . '>';
+        }
+        $id = trim(preg_replace('/[^a-z\x{4e00}-\x{9fa5}\d]+/u', '-', strtolower(trim($m[3]))), '-');
+        $m[3] = '<a href="#' . htmlspecialchars($id) . '" style="text-decoration: none;">⚓</a> ' . $m[3];
+        return '<' . $m[1] . ($m[2] ?? "") . ' id="' . htmlspecialchars($id) . '">' . $m[3] . '</' . $m[1] . '>';
+    }, $value);
+}
+
+echo $value;
+~~~
+
 ### Idea: Embed Syntax
 
 The [CommonMark specification for automatic links](https://spec.commonmark.org/0.30#autolinks) doesn’t limit specific
