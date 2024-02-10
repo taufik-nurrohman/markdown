@@ -531,8 +531,7 @@ feature to display an image with a caption. Most Markdown converters will conver
 single line as an image element wrapped in a paragraph element in the output. My converter would instead wrap it in a
 figure element. Because for now, it seems like a figure element would be more desirable in this situation.
 
-Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces greater than 1 but
-less than 4.
+Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces less than 4.
 
 <table>
   <thead>
