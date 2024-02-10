@@ -847,7 +847,7 @@ namespace x\markdown\from {
         }
         return [m($chops), $lot];
     }
-    function rows(?string $value, array &$lot = [], int $level = 1): array {
+    function rows(?string $value, array &$lot = [], int $level = 0): array {
         // List of reference(s), abbreviation(s), and note(s)
         $lot = \array_replace([[], [], []], $lot);
         if ("" === \trim($value ?? "")) {
@@ -1652,7 +1652,7 @@ namespace x\markdown\from {
         }
         unset($v);
         $blocks = \array_values($blocks);
-        if (!empty($lot[2]) && 1 === $level) {
+        if (!empty($lot[2]) && 0 === $level) {
             $notes = ['div', [
                 ['hr', false, [], 0, '-'],
                 ['ol', [], [], 0, [0, 1, '.']]
