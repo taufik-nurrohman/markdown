@@ -197,8 +197,9 @@ $out .= '</fieldset>';
 
 $out .= '</form>';
 
+$error_count = 0;
 foreach ($files as $v) {
-    $content = "";
+    $error = false;
     $raw = file_get_contents($v);
     $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
     $out .= '<div style="display:flex;gap:1em;margin:1em 0 0;">';
@@ -208,33 +209,63 @@ foreach ($files as $v) {
         ' ' => '<span class="char-space"> </span>'
     ]);
     $out .= '</pre>';
-    $start = microtime(true);
     if ('raw' === $view) {
         $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+        $start = microtime(true);
         [$blocks, $data] = x\markdown\from\raw($raw);
+        $end = microtime(true);
         $out .= htmlspecialchars('$blocks = ' . preg_replace(['/=>\s*\n\s*/', '/\barray\s+\(/'], ['=> ', 'array('], var_export($blocks, true)) . ';');
         $out .= "\n\n";
         $out .= htmlspecialchars('$data = ' . preg_replace(['/=>\s*\n\s*/', '/\barray\s+\(/'], ['=> ', 'array('], var_export($data, true)) . ';');
         $out .= '</pre>';
     } else if ('result' === $view) {
         $out .= '<div style="border:2px solid #000;color:#000;flex:1;padding:1em;">';
-        $out .= x\markdown\from($raw);
+        $start = microtime(true);
+        $content = x\markdown\from($raw);
+        $end = microtime(true);
+        $out .= $content;
         $out .= '</div>';
     } else if ('source' === $view) {
-        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
-        $out .= strtr(htmlspecialchars(x\markdown\from($raw) ?? ""), [
+        $out .= '<div style="flex:1;">';
+        $a = $b = "";
+        $a .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+        $start = microtime(true);
+        $content = x\markdown\from($raw) ?? "";
+        $end = microtime(true);
+        $a .= strtr(htmlspecialchars($content), [
             "\t" => '<span class="char-tab">' . "\t" . '</span>',
             ' ' => '<span class="char-space"> </span>'
         ]);
-        $out .= '</pre>';
+        $a .= '</pre>';
+        if (is_file($f = dirname($v) . D . pathinfo($v, PATHINFO_FILENAME) . '.html')) {
+            $test = file_get_contents($f);
+            if ($error = $content !== $test) {
+                $b .= '<pre style="background:#cff;border:1px solid rgba(0,0,0,.25);color:#000;font:normal normal 100%/1.25 monospace;margin:1em 0 0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+                $b .= strtr(htmlspecialchars($test), [
+                    "\t" => '<span class="char-tab">' . "\t" . '</span>',
+                    ' ' => '<span class="char-space"> </span>'
+                ]);
+                $b .= '</pre>';
+            }
+        } else {
+            $error = false; // No test file to compare
+        }
+        $out .= ($error ? strtr($a, [':#cfc;' => ':#fcc;']) : $a) . $b . '</div>';
     }
-    $end = microtime(true);
     $out .= '</div>';
     $time = round(($end - $start) * 1000, 2);
-    $out .= '<p style="color:#' . ($time >= 1 ? '800' : '080') . ';">Parsed in ' . $time . ' ms.</p>';
+    if ($error) {
+        $error_count += 1;
+    }
+    $slow = $time >= 1;
+    $out .= '<p style="color:#' . ($error || $slow ? '800' : '080') . ';">Parsed in ' . $time . ' ms.</p>';
 }
 
 $out .= '</body>';
 $out .= '</html>';
+
+if ($error_count) {
+    $out = strtr($out, ['</title>' => ' (' . $error_count . ')</title>']);
+}
 
 echo $out;
