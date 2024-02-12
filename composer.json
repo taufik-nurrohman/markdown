@@ -1,12 +1,4 @@
 {
-  "archive": {
-    "exclude": [
-      "/.git",
-      "/.gitattributes",
-      "/.gitignore",
-      "/test"
-    ]
-  },
   "authors": [
     {
       "homepage": "https://github.com/taufik-nurrohman",
