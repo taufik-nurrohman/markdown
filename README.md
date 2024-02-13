@@ -839,7 +839,7 @@ if ($value && false !== strpos($value, '</h')) {
             $m[3] = '<a href="#' . htmlspecialchars($id) . '" style="text-decoration: none;">⚓</a> ' . $m[3];
             return '<' . $m[1] . $m[2] . '>' . $m[3] . '</' . $m[1] . '>';
         }
-        $id = trim(preg_replace('/[^a-z\x{4e00}-\x{9fa5}\d]+/u', '-', strtolower(trim($m[3]))), '-');
+        $id = trim(preg_replace('/[^a-z\x{4e00}-\x{9fa5}\d]+/u', '-', strtolower($m[3])), '-');
         $m[3] = '<a href="#' . htmlspecialchars($id) . '" style="text-decoration: none;">⚓</a> ' . $m[3];
         return '<' . $m[1] . ($m[2] ?? "") . ' id="' . htmlspecialchars($id) . '">' . $m[3] . '</' . $m[1] . '>';
     }, $value);
