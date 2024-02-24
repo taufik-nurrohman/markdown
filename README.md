@@ -134,7 +134,7 @@ clever and efficient.
 My Markdown converter supports a more extensive attribute syntax, including a mix of `.class` and `#id` attribute
 syntax, and a mix of `key=value` attribute syntax:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -159,7 +159,7 @@ syntax, and a mix of `key=value` attribute syntax:
 
 Inline attributes always win over native syntax attributes and pre-defined attributes:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -193,7 +193,7 @@ Notes follow the [Markdown Extra’s notes syntax](https://michelf.ca/projects/p
 slightly different HTML output to match [Mecha](https://github.com/mecha-cms)’s common naming style. Multi-line notes
 don’t have to be indented by four spaces as required by Markdown Extra. A space or tab is enough to continue the note.
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -217,7 +217,7 @@ don’t have to be indented by four spaces as required by Markdown Extra. A spac
 
 Soft breaks are collapsed to spaces in non-critical parts such as in paragraphs and list items:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -244,7 +244,7 @@ Here’s how the code block results compare across each Markdown converter:
 
 #### Markdown Extra
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -281,7 +281,7 @@ Here’s how the code block results compare across each Markdown converter:
 
 #### Parsedown Extra
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -317,7 +317,7 @@ Here’s how the code block results compare across each Markdown converter:
 
 #### Mine
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -361,7 +361,7 @@ like a HTML block tag, as specified in [Section 4.6](https://spec.commonmark.org
 Any text that comes after the opening and/or closing of a HTML block is treated as raw text and is not processed as
 Markdown syntax. A blank line is required to end the raw HTML block state:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -386,7 +386,7 @@ Markdown syntax. A blank line is required to end the raw HTML block state:
 
 Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw HTML block state:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -412,7 +412,7 @@ Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw HTM
 The examples below will generate a predictable HTML code, but not because this converter cares about the existing HTML
 tag balance:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -433,7 +433,7 @@ tag balance:
 
 You will understand why when you add a number of blank lines at any point in the HTML block:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -460,7 +460,7 @@ However, if you add a blank line, it’s as if the feature works (although the `
 doesn’t affect the HTML when rendered in the browser window). If you’re used to adding a blank line after the opening
 HTML block tag and before the closing HTML block tag, you should be okay.
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -482,7 +482,7 @@ HTML block tag and before the closing HTML block tag, you should be okay.
 Opening an inline HTML element will not trigger the raw HTML block state unless the opening and closing tags stand alone
 on a single line. This is explained in [Section 4.6](https://spec.commonmark.org/0.30#html-blocks), type 7:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -505,7 +505,7 @@ Since CommonMark doesn’t care about HTML structure, the examples below will al
 they result in broken HTML. However, these are very rarely intentionally written by hand, so such cases are very
 unlikely to occur:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -533,7 +533,7 @@ figure element. Because for now, it seems like a figure element would be more de
 
 Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces less than 4.
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -569,7 +569,7 @@ List blocks follow the CommonMark specifications with one exception: if the next
 less than the number of the previous ordered list item, a new list block will be created. This is different from the
 original specification, which does not care about the literal value of the number.
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -607,7 +607,7 @@ However, there are a few additional features and rules:
    as rarely as possible, unless you have no plans to switch to other Markdown converters in the future.
  - Table caption is supported and can be created using the same syntax as the image block’s caption syntax.
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
@@ -638,7 +638,7 @@ This converter is intended only to convert Markdown syntax to HTML based on the
 of adding any special security features in the future, sorry. The attribute syntax feature may be a security risk for
 you if you want to use this converter on your comment entries, for example:
 
-<table style="display: table; width: 100%;">
+<table>
   <thead>
     <tr>
       <th>Markdown</th>
