@@ -488,7 +488,7 @@ namespace x\markdown\from {
             }
             if (0 === \strpos($chop, "\n")) {
                 $prev = $chops[$last = \count($chops) - 1] ?? [];
-                if (\is_string($prev) && ('  ' === \substr($prev, -2))) {
+                if (\is_string($prev) && ('  ' === \substr(\strtr($prev, ["\t" => '  ']), -2))) {
                     $chops[$last] = $prev = \rtrim($prev);
                     $chops[] = ['br', false, [], -1];
                     $value = \ltrim(\substr($chop, 1));
