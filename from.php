@@ -1690,7 +1690,8 @@ namespace x\markdown\from {
                     }
                 }
                 $notes[1][1][1][] = ['li', $v, [
-                    'id' => 'to:' . $k
+                    'id' => 'to:' . $k,
+                    'role' => 'doc-endnote'
                 ], 0];
             }
             if ($notes[1][1][1]) {
