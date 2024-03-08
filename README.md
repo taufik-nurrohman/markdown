@@ -203,15 +203,14 @@ don’t have to be indented by four spaces as required by Markdown Extra. A spac
   <tbody>
     <tr>
       <td><pre><code>asdf [^1]&#10;&#10;[^1]: asdf</code></pre></td>
-      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&lt;div role="doc-endnotes"&gt;&lt;hr /&gt;&lt;ol&gt;&lt;li id="to:1"&gt;&lt;p&gt;asdf&amp;#160;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</code></pre></td>
+      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&lt;div role="doc-endnotes"&gt;&lt;hr /&gt;&lt;ol&gt;&lt;li id="to:1" role="doc-endnote"&gt;&lt;p&gt;asdf&amp;#160;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</code></pre></td>
     </tr>
     <tr>
       <td><pre><code>asdf [^1]&#10;&#10;[^1]:&#10;&#10;  asdf&#10;  ====&#10;&#10;  asdf&#10;  asdf&#10;&#10;      asdf&#10;&#10;  asdf&#10;  asdf&#10;&#10;asdf</code></pre></td>
-      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;div role="doc-endnotes"&gt;&lt;hr /&gt;&lt;ol&gt;&lt;li id="to:1"&gt;&lt;h1&gt;asdf&lt;/h1&gt;&lt;p&gt;asdf asdf&lt;/p&gt;&lt;pre&gt;&lt;code&gt;asdf&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;asdf asdf&amp;#160;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</code></pre></td>
+      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&lt;p&gt;asdf&lt;/p&gt;&lt;div role="doc-endnotes"&gt;&lt;hr /&gt;&lt;ol&gt;&lt;li id="to:1" role="doc-endnote"&gt;&lt;h1&gt;asdf&lt;/h1&gt;&lt;p&gt;asdf asdf&lt;/p&gt;&lt;pre&gt;&lt;code&gt;asdf&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;asdf asdf&amp;#160;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</code></pre></td>
     </tr>
   </tbody>
 </table>
-
 
 ### Soft Break
 
