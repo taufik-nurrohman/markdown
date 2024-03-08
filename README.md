@@ -69,21 +69,22 @@ require 'vendor/autoload.php';
 echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
-To make `from_markdown()` and `to_markdown()` functions reusable globally, use this method:
-
-~~~ php
-<?php
-
-require 'vendor/autoload.php';
-
-function from_markdown(...$v) {
-    return x\markdown\from(...$v);
-}
-
-function to_markdown(...$v) {
-    return x\markdown\to(...$v);
-}
-~~~
+> [!TIP]
+> To make `from_markdown()` and `to_markdown()` functions reusable globally, use this method:
+>
+> ~~~ php
+> <?php
+>
+> require 'vendor/autoload.php';
+>
+> function from_markdown(...$v) {
+>     return x\markdown\from(...$v);
+> }
+>
+> function to_markdown(...$v) {
+>     return x\markdown\to(...$v);
+> }
+> ~~~
 
 ### Using File
 
@@ -101,22 +102,23 @@ require 'to.php';
 echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
-To make `from_markdown()` and `to_markdown()` functions reusable globally, use this method:
-
-~~~ php
-<?php
-
-require 'from.php';
-require 'to.php';
-
-function from_markdown(...$v) {
-    return x\markdown\from(...$v);
-}
-
-function to_markdown(...$v) {
-    return x\markdown\to(...$v);
-}
-~~~
+> [!TIP]
+> To make `from_markdown()` and `to_markdown()` functions reusable globally, use this method:
+>
+> ~~~ php
+> <?php
+>
+> require 'from.php';
+> require 'to.php';
+>
+> function from_markdown(...$v) {
+>     return x\markdown\from(...$v);
+> }
+>
+> function to_markdown(...$v) {
+>     return x\markdown\to(...$v);
+> }
+> ~~~
 
 The `to.php` file is optional and is used to convert HTML to Markdown. If you just want to convert Markdown to HTML, you
 don’t need to include this file. This feature is experimental and is provided as a complementary feature, as there is
