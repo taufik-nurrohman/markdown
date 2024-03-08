@@ -69,23 +69,6 @@ require 'vendor/autoload.php';
 echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
-> [!TIP]
-> To make `from_markdown()` and `to_markdown()` functions reusable globally, use this method:
->
-> ~~~ php
-> <?php
->
-> require 'vendor/autoload.php';
->
-> function from_markdown(...$v) {
->     return x\markdown\from(...$v);
-> }
->
-> function to_markdown(...$v) {
->     return x\markdown\to(...$v);
-> }
-> ~~~
-
 ### Using File
 
 Require the `from.php` and `to.php` files in your application:
@@ -101,24 +84,6 @@ require 'to.php';
 
 echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
-
-> [!TIP]
-> To make `from_markdown()` and `to_markdown()` functions reusable globally, use this method:
->
-> ~~~ php
-> <?php
->
-> require 'from.php';
-> require 'to.php';
->
-> function from_markdown(...$v) {
->     return x\markdown\from(...$v);
-> }
->
-> function to_markdown(...$v) {
->     return x\markdown\to(...$v);
-> }
-> ~~~
 
 The `to.php` file is optional and is used to convert HTML to Markdown. If you just want to convert Markdown to HTML, you
 don’t need to include this file. This feature is experimental and is provided as a complementary feature, as there is
@@ -709,6 +674,28 @@ to add features that you might find in other Markdown converters.
 Your Markdown content is represented as variable `$value`. If you modify the content before the function
 `from_markdown()` is called, it means that you modify the Markdown content before it is converted. If you modify the
 content after the function `from_markdown()` is called, it means that you modify the results of the Markdown conversion.
+
+### Globally Reusable Functions
+
+To make `from_markdown()` and `to_markdown()` functions reusable globally, use this method:
+
+~~~ php
+<?php
+
+require 'from.php';
+require 'to.php';
+
+// Or, if you are using Composer…
+// require 'vendor/autoload.php';
+
+function from_markdown(...$v) {
+    return x\markdown\from(...$v);
+}
+
+function to_markdown(...$v) {
+    return x\markdown\to(...$v);
+}
+~~~
 
 ### XHTML to HTML5
 
