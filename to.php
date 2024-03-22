@@ -418,7 +418,12 @@ namespace x\markdown\to {
             }
             $out .= "\n\n";
         } else if ('ol' === $t) {
-            $out = $x . $out . "\n";
+            $start = 0;
+            $out = \preg_replace_callback('/^-(?=[ ])/m', static function ($m) use (&$start) {
+                return ($start += 1) . '.';
+            }, $out);
+            $out = \preg_replace('/^[ ]/m', '  ', $out);
+            $out = $out . "\n";
         } else if ('li' === $t) {
             $out = '- ' . \strtr(\trim($test = $out, "\n"), [
                 "\n" => "\n  ",

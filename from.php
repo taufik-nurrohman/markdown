@@ -559,8 +559,8 @@ namespace x\markdown\from {
                     $i1 = '(?>[*](?![\p{P}\p{S}\s])|(?<=^|[\p{P}\p{S}\s])[*](?=[\p{P}\p{S}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+?(?>(?<![\p{P}\p{S}\s])[*](?![*])|(?<=[\p{P}\p{S}])[*](?![*])(?=[\p{P}\p{S}\s]|$))';
                 } else {
                     // Outer strong and emphasis (strict)
-                    $b1 = '(?<=^|[\p{P}\p{S}\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+(?<!\s)[_]{2}(?![_])(?=[\p{P}\p{S}\s]|$)';
-                    $i1 = '(?<=^|[\p{P}\p{S}\s])[_](?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+(?<!\s)[_](?![_])(?=[\p{P}\p{S}\s]|$)';
+                    $b1 = '(?<=^|[\p{P}\p{S}\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_]{2}(?![_])(?=[\p{P}\p{S}\s]|$)';
+                    $i1 = '(?<=^|[\p{P}\p{S}\s])[_](?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_](?![_])(?=[\p{P}\p{S}\s]|$)';
                 }
                 $n = \strlen($before = \substr($prev, -1));
                 if (\preg_match('/(?>' . $b1 . '|' . $i1 . ')/u', $before . $chop, $m, \PREG_OFFSET_CAPTURE)) {
@@ -575,13 +575,27 @@ namespace x\markdown\from {
                         $value = \substr($chop, $n);
                         continue;
                     }
-                    $x = \min(\strspn($prev, $c), \strspn(\strrev($prev), $c));
+                    $x = \min($n = \strspn($prev, $c), \strspn(\strrev($prev), $c));
                     if (0 === $x % 2) {
-                        $chops[] = ['strong', row(\substr($prev, 2, -2), $lot)[0], [], -1, $c . $c];
+                        $v = row(\substr($prev, 2, -2), $lot)[0];
+                        // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
+                        if (isset($v[0][0]) && 'strong' === $v[0][0] && !empty($v[1][0]) && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/', $v[1][0])) {
+                            $chops[] = e(\substr($chop, 0, $n));
+                            $value = \substr($chop, $n);
+                            continue;
+                        }
+                        $chops[] = ['strong', $v, [], -1, $c . $c];
                         $value = \substr($chop, \strlen($prev));
                         continue;
                     }
-                    $chops[] = ['em', row(\substr($prev, 1, -1), $lot)[0], [], -1, $c];
+                    $v = row(\substr($prev, 1, -1), $lot)[0];
+                    // Hot fix for case `**asdf*asdf*` (case `*asdf*asdf**` works just fine)
+                    if (isset($v[0][0]) && 'em' === $v[0][0] && !empty($v[1][0]) && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/', $v[1][0])) {
+                        $chops[] = e(\substr($chop, 0, $n));
+                        $value = \substr($chop, $n);
+                        continue;
+                    }
+                    $chops[] = ['em', $v, [], -1, $c];
                     $value = \substr($chop, \strlen($prev));
                     continue;
                 }
