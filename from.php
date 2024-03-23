@@ -562,41 +562,43 @@ namespace x\markdown\from {
                     $b1 = '(?<=^|[\p{P}\p{S}\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_]{2}(?![_])(?=[\p{P}\p{S}\s]|$)';
                     $i1 = '(?<=^|[\p{P}\p{S}\s])[_](?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_](?![_])(?=[\p{P}\p{S}\s]|$)';
                 }
+                // Test pattern against the current chop plus the previous character that came before it to verify that
+                // this chop is a left flank <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
                 $n = \strlen($before = \substr($prev, -1));
                 if (\preg_match('/(?>' . $b1 . '|' . $i1 . ')/u', $before . $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    $prev = $m[0][0];
+                    $current = $m[0][0];
                     if ($m[0][1] > $n) {
-                        $chops[] = e(\substr($chop, 0, $m[0][1] - $n));
+                        $chops[] = e($prev = \substr($chop, 0, $m[0][1] - $n));
                         $value = $chop = \substr($chop, $m[0][1] - $n);
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
-                    if (false !== ($n = \strpos($prev, '[')) && (false === \strpos($prev, ']') || !\preg_match('/' . r('[]') . '/', $prev))) {
-                        $chops[] = e(\substr($chop, 0, $n));
+                    if (false !== ($n = \strpos($current, '[')) && (false === \strpos($current, ']') || !\preg_match('/' . r('[]') . '/', $current))) {
+                        $chops[] = e($prev = \substr($chop, 0, $n));
                         $value = \substr($chop, $n);
                         continue;
                     }
-                    $x = \min($n = \strspn($prev, $c), \strspn(\strrev($prev), $c));
+                    $x = \min($n = \strspn($current, $c), \strspn(\strrev($current), $c));
                     if (0 === $x % 2) {
-                        $v = row(\substr($prev, 2, -2), $lot)[0];
+                        $v = row(\substr($current, 2, -2), $lot)[0];
                         // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
-                        if (isset($v[0][0]) && 'strong' === $v[0][0] && !empty($v[1][0]) && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/', $v[1][0])) {
-                            $chops[] = e(\substr($chop, 0, $n));
+                        if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/', $v[1][0])) {
+                            $chops[] = $prev = \substr($chop, 0, $n);
                             $value = \substr($chop, $n);
                             continue;
                         }
                         $chops[] = ['strong', $v, [], -1, $c . $c];
-                        $value = \substr($chop, \strlen($prev));
+                        $value = \substr($chop, \strlen($current));
                         continue;
                     }
-                    $v = row(\substr($prev, 1, -1), $lot)[0];
+                    $v = row(\substr($current, 1, -1), $lot)[0];
                     // Hot fix for case `**asdf*asdf*` (case `*asdf*asdf**` works just fine)
-                    if (isset($v[0][0]) && 'em' === $v[0][0] && !empty($v[1][0]) && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/', $v[1][0])) {
-                        $chops[] = e(\substr($chop, 0, $n));
+                    if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/', $v[1][0])) {
+                        $chops[] = $prev = \substr($chop, 0, $n);
                         $value = \substr($chop, $n);
                         continue;
                     }
                     $chops[] = ['em', $v, [], -1, $c];
-                    $value = \substr($chop, \strlen($prev));
+                    $value = \substr($chop, \strlen($current));
                     continue;
                 }
                 $chops[] = $prev = $c;
