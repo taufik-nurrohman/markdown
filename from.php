@@ -581,7 +581,7 @@ namespace x\markdown\from {
                     if (0 === $x % 2) {
                         $v = row(\substr($current, 2, -2), $lot)[0];
                         // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
-                        if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/', $v[1][0])) {
+                        if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/u', $v[1][0])) {
                             $chops[] = $prev = \substr($chop, 0, $n);
                             $value = \substr($chop, $n);
                             continue;
@@ -592,7 +592,7 @@ namespace x\markdown\from {
                     }
                     $v = row(\substr($current, 1, -1), $lot)[0];
                     // Hot fix for case `**asdf*asdf*` (case `*asdf*asdf**` works just fine)
-                    if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/', $v[1][0])) {
+                    if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\s]/u', $v[1][0])) {
                         $chops[] = $prev = \substr($chop, 0, $n);
                         $value = \substr($chop, $n);
                         continue;
