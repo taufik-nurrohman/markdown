@@ -288,14 +288,14 @@ namespace x\markdown\from {
         if (0 === \strpos($row, '<')) {
             // `<asdf…`
             if ($t = \rtrim(\strtok(\substr($row, 1), " \n\t>"), '/')) {
+                // `<![…`
+                if (0 === \strpos($t, '![')) {
+                    $t = \substr($t, 0, \strrpos($t, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
+                }
                 // The `:` and `@` character is not a valid part of a HTML element name, so it must be a link syntax
                 // <https://spec.commonmark.org/0.30#tag-name>
                 if (false !== \strpos($t, ':') || false !== \strpos($t, '@')) {
                     return ['p', $row, [], $dent];
-                }
-                // `<![…`
-                if (0 === \strpos($t, '![')) {
-                    $t = \substr($t, 0, \strrpos($t, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
                 }
                 // `<!---…`
                 if (0 === \strpos($t, '!--')) {
@@ -562,9 +562,9 @@ namespace x\markdown\from {
                     $b1 = '(?<=^|[\p{P}\p{S}\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_]{2}(?![_])(?=[\p{P}\p{S}\s]|$)';
                     $i1 = '(?<=^|[\p{P}\p{S}\s])[_](?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_](?![_])(?=[\p{P}\p{S}\s]|$)';
                 }
-                // Test pattern against the current chop plus the previous character that came before it to verify that
-                // this chop is a left flank <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
-                $n = \strlen($before = \substr($prev, -1));
+                $n = \strlen($before = \substr($prev, -1)); // Either `0` or `1`
+                // Test the pattern against the current chop plus the previous character that came before it to verify
+                // that this chop is a left flank <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
                 if (\preg_match('/(?>' . $b1 . '|' . $i1 . ')/u', $before . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     $current = $m[0][0];
                     if ($m[0][1] > $n) {
