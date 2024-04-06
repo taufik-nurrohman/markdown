@@ -1061,9 +1061,8 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
-                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0]) {
-                        $current[1] = $prev[4][1] . $prev[4][2] . "\n" . $current[1];
-                        $blocks[$block] = $current;
+                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0] + 1) {
+                        $blocks[++$block] = $current;
                         continue;
                     }
                     // To exit the list, either start a new list marker with a lower number than the previous list
@@ -1104,9 +1103,8 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
-                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0]) {
-                        $current[1] = $prev[4][1] . "\n" . $current[1];
-                        $blocks[$block] = $current;
+                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0] + 1) {
+                        $blocks[++$block] = $current;
                         continue;
                     }
                     // To exit the list, use a different list marker.
