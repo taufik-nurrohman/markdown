@@ -607,7 +607,7 @@ namespace x\markdown\from {
             }
             if (0 === \strpos($chop, '<')) {
                 // <https://spec.commonmark.org/0.31.2#html-comment>
-                if (0 === \strpos($chop, '<!--') && false !== ($n = \strpos($chop, '-->'))) {
+                if (0 === \strpos($chop, '<!--') && ($n = \strpos($chop, '-->')) > 1) {
                     $prev = $v = \substr($chop, 0, $n + 3);
                     $chops[] = [false, \strtr($v, "\n", ' '), [], -1, '!--'];
                     $value = \substr($chop, \strlen($prev));
@@ -618,12 +618,12 @@ namespace x\markdown\from {
                     $value = \substr($chop, \strlen($prev = $v));
                     continue;
                 }
-                if (0 === \strpos($chop, '<!') && \preg_match('/^<![a-z](?>' . q('"') . '|' . q("'") . '|[^>])+>/i', $chop, $m)) {
+                if (0 === \strpos($chop, '<!') && \strpos($chop, '>') > 2 && \preg_match('/^<![a-z](?>' . q('"') . '|' . q("'") . '|[^>])+>/i', $chop, $m)) {
                     $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \rtrim(\strtok(\substr($m[0], 1), " \n\t>"), '/')];
                     $value = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
-                if (0 === \strpos($chop, '<' . '?') && \preg_match('/^<\?(?>' . q('"') . '|' . q("'") . '|[^>])+\?>/', $chop, $m)) {
+                if (0 === \strpos($chop, '<' . '?') && \strpos($chop, '?' . '>') > 1 && \preg_match('/^<\?(?>' . q('"') . '|' . q("'") . '|[^>])+\?>/', $chop, $m)) {
                     $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \strtok(\substr($m[0], 1), " \n\t>")];
                     $value = \substr($chop, \strlen($prev = $m[0]));
                     continue;
