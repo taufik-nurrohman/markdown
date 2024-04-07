@@ -392,7 +392,7 @@ namespace x\markdown\from {
             return ['p', $row, [], $dent];
         }
         // `1)` or `1.`
-        if ($n && ($n + 1) === \strlen(\rtrim($row)) && false !== \strpos(').', \substr(\rtrim($row), -1))) {
+        if ($n && ($n + 1) === \strlen($v = \rtrim($row)) && false !== \strpos(').', \substr($v, -1))) {
             $start = (int) \substr($row, 0, $n);
             return ['ol', "", ['start' => 1 !== $start ? $start : null], $dent, [$n + 1, $start, \substr($row, -1)]];
         }
@@ -1077,6 +1077,10 @@ namespace x\markdown\from {
                     if (null !== $current[0]) {
                         if ('ol' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
                             if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
+                                if ($prev[4][2] === \substr($prev[1], -1)) {
+                                    $blocks[++$block] = $current;
+                                    continue;
+                                }
                                 $blocks[$block][1] .= "\n" . $row; // Lazy list
                                 continue;
                             }
@@ -1117,6 +1121,10 @@ namespace x\markdown\from {
                     if (null !== $current[0]) {
                         if ('ul' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
                             if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
+                                if ($prev[4][1] === \substr($prev[1], -1)) {
+                                    $blocks[++$block] = $current;
+                                    continue;
+                                }
                                 $blocks[$block][1] .= "\n" . $row; // Lazy list
                                 continue;
                             }
@@ -1436,7 +1444,7 @@ namespace x\markdown\from {
                 continue;
             }
             if ('ol' === $v[0]) {
-                $list = \preg_split('/\n+(?=\d+[).]\s)/', $v[1]);
+                $list = \preg_split('/\n+(?=\d+[).](\s|$))/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
@@ -1612,7 +1620,7 @@ namespace x\markdown\from {
                 continue;
             }
             if ('ul' === $v[0]) {
-                $list = \preg_split('/\n+(?=[*+-]\s)/', $v[1]);
+                $list = \preg_split('/\n+(?=[*+-](\s|$))/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][0]) => "\n"]), $v[4][0]); // Remove indent(s)
