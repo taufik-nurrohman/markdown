@@ -1061,7 +1061,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
-                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0] + 1) {
+                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3] + $prev[4][0] + 1) {
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -1077,10 +1077,6 @@ namespace x\markdown\from {
                     if (null !== $current[0]) {
                         if ('ol' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
                             if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
-                                if ($prev[4][2] === \substr($prev[1], -1)) {
-                                    $blocks[++$block] = $current;
-                                    continue;
-                                }
                                 $blocks[$block][1] .= "\n" . $row; // Lazy list
                                 continue;
                             }
@@ -1107,7 +1103,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
-                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0] + 1) {
+                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[3] + $prev[4][0] + 1) {
                         $blocks[++$block] = $current;
                         continue;
                     }
@@ -1121,10 +1117,6 @@ namespace x\markdown\from {
                     if (null !== $current[0]) {
                         if ('ul' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
                             if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
-                                if ($prev[4][1] === \substr($prev[1], -1)) {
-                                    $blocks[++$block] = $current;
-                                    continue;
-                                }
                                 $blocks[$block][1] .= "\n" . $row; // Lazy list
                                 continue;
                             }
