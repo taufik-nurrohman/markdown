@@ -209,8 +209,7 @@ namespace x\markdown\from {
                 return ['p', $row, [], $dent];
             }
             // `# …`
-            $test = \substr($row, $n, 1);
-            if ("" !== $test && false !== \strpos(" \t", $test)) {
+            if ($n === \strlen($row) || ' ' === \substr($row, $n, 1)) {
                 return ['h' . $n, $row, [], $dent, [$n, '#']];
             }
             return ['p', $row, [], $dent];
@@ -225,15 +224,12 @@ namespace x\markdown\from {
                 return [1, $row, [], $dent];
             }
             // `***`
-            $test = \strtr($row, [
-                "\t" => "",
-                ' ' => ""
-            ]);
-            if (\strspn($test, '*') === ($v = \strlen($test)) && $v > 2) {
+            $test = \strtr($row, [' ' => ""]);
+            if (\strspn($test, '*') === ($n = \strlen($test)) && $n > 2) {
                 return ['hr', $row, [], $dent, '*'];
             }
             // `* …`
-            if (false !== \strpos(" \t", \substr($row, 1, 1))) {
+            if (' ' === \substr($row, 1, 1)) {
                 return ['ul', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0], ""]];
             }
             return ['p', $row, [], $dent];
@@ -245,7 +241,7 @@ namespace x\markdown\from {
         // `+…`
         if (0 === \strpos($row, '+')) {
             // `+ …`
-            if (false !== \strpos(" \t", \substr($row, 1, 1))) {
+            if (' ' === \substr($row, 1, 1)) {
                 return ['ul', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0], ""]];
             }
             return ['p', $row, [], $dent];
@@ -261,15 +257,12 @@ namespace x\markdown\from {
         // `-…`
         if (0 === \strpos($row, '-')) {
             // `---`
-            $test = \strtr($row, [
-                "\t" => "",
-                ' ' => ""
-            ]);
-            if (\strspn($test, '-') === ($v = \strlen($test)) && $v > 2) {
+            $test = \strtr($row, [' ' => ""]);
+            if (\strspn($test, '-') === ($n = \strlen($test)) && $n > 2) {
                 return ['hr', $row, [], $dent, '-'];
             }
             // `- …`
-            if (false !== \strpos(" \t", \substr($row, 1, 1))) {
+            if (' ' === \substr($row, 1, 1)) {
                 return ['ul', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0], ""]];
             }
             return ['p', $row, [], $dent];
@@ -277,7 +270,7 @@ namespace x\markdown\from {
         // `:…`
         if (0 === \strpos($row, ':')) {
             // `: …`
-            if (false !== \strpos(" \t", \substr($row, 1, 1))) {
+            if (' ' === \substr($row, 1, 1)) {
                 return ['dl', $row, [], $dent, [1 + \strspn($row, ' ', 1), $row[0], ""]]; // Look like a definition list
             }
             return ['p', $row, [], $dent];
@@ -285,7 +278,7 @@ namespace x\markdown\from {
         // `<…`
         if (0 === \strpos($row, '<')) {
             // `<asdf…`
-            if ($t = \rtrim(\strtok(\substr($row, 1), " \n\t>"), '/')) {
+            if ($t = \rtrim(\strtok(\substr($row, 1), " \n>"), '/')) {
                 // `<![…`
                 if (0 === \strpos($t, '![')) {
                     $t = \substr($t, 0, \strrpos($t, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
@@ -350,11 +343,8 @@ namespace x\markdown\from {
         // `_…`
         if (0 === \strpos($row, '_')) {
             // `___`
-            $test = \strtr($row, [
-                "\t" => "",
-                ' ' => ""
-            ]);
-            if (\strspn($test, '_') === ($v = \strlen($test)) && $v > 2) {
+            $test = \strtr($row, [' ' => ""]);
+            if (\strspn($test, '_') === ($n = \strlen($test)) && $n > 2) {
                 return ['hr', $row, [], $dent, '_'];
             }
             return ['p', $row, [], $dent];
@@ -395,7 +385,7 @@ namespace x\markdown\from {
             return ['ol', $row, ['start' => 1 !== $start ? $start : null], $dent, [$n + 2, $start, \substr($row, -1)]];
         }
         // `1) …` or `1. …`
-        if (false !== \strpos(').', \substr($row, $n, 1)) && false !== \strpos(" \t", \substr($row, $n + 1, 1))) {
+        if (false !== \strpos(').', \substr($row, $n, 1)) && ' ' === \substr($row, $n + 1, 1)) {
             $start = (int) \substr($row, 0, $n);
             return ['ol', $row, ['start' => 1 !== $start ? $start : null], $dent, [$n + 1 + \strspn($row, ' ', $n + 1), $start, \substr($row, $n, 1)]];
         }
@@ -486,7 +476,7 @@ namespace x\markdown\from {
             }
             if (0 === \strpos($chop, "\n")) {
                 $prev = $chops[$last = \count($chops) - 1] ?? [];
-                if (\is_string($prev) && ('  ' === \substr(\strtr($prev, ["\t" => '  ']), -2))) {
+                if (\is_string($prev) && ('  ' === \substr($prev, -2))) {
                     $chops[$last] = $prev = \rtrim($prev);
                     $chops[] = ['br', false, [], -1];
                     $value = \ltrim(\substr($chop, 1));
@@ -617,12 +607,12 @@ namespace x\markdown\from {
                     continue;
                 }
                 if (0 === \strpos($chop, '<!') && \strpos($chop, '>') > 2 && \preg_match('/^<![a-z](?>' . q('"') . '|' . q("'") . '|[^>])+>/i', $chop, $m)) {
-                    $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \rtrim(\strtok(\substr($m[0], 1), " \n\t>"), '/')];
+                    $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \rtrim(\strtok(\substr($m[0], 1), " \n>"), '/')];
                     $value = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
                 if (0 === \strpos($chop, '<' . '?') && \strpos($chop, '?' . '>') > 1 && \preg_match('/^<\?(?>' . q('"') . '|' . q("'") . '|[^>])+\?>/', $chop, $m)) {
-                    $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \strtok(\substr($m[0], 1), " \n\t>")];
+                    $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \strtok(\substr($m[0], 1), " \n>")];
                     $value = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
@@ -876,7 +866,6 @@ namespace x\markdown\from {
         $blocks = [];
         $rows = \explode("\n", $value);
         foreach ($rows as $row) {
-            // TODO: Keep the tab character(s) as-is!
             while (false !== ($before = \strstr($row, "\t", true))) {
                 $v = \strlen($before);
                 $row = $before . \str_repeat(' ', 4 - $v % 4) . \substr($row, $v + 1);
@@ -990,7 +979,7 @@ namespace x\markdown\from {
                     }
                     $row = \substr($row, $prev[3]);
                     if (2 === $prev[0]) {
-                        if ("" !== $current[1] && false === \strpos(" \t", $row[0]) && "\n" === \substr($prev[1], -1)) {
+                        if ("" !== $current[1] && ' ' !== $row[0] && "\n" === \substr($prev[1], -1)) {
                             $blocks[++$block] = $current;
                             continue;
                         }
@@ -1300,8 +1289,6 @@ namespace x\markdown\from {
                     }
                     if (false !== \strpos(" \n", $note[0])) {
                         $note = \substr($note, 1);
-                    } else if ("\t" === $note[0]) {
-                        $note = '   ' . \substr($note[0]);
                     }
                     // Remove indent(s)
                     [$a, $b] = \explode("\n", $note . "\n", 2);
@@ -1371,7 +1358,7 @@ namespace x\markdown\from {
                 continue;
             }
             $next = $blocks[$k + 1] ?? 0;
-            if ('p' === $v[0] && \is_array($next) && 'dl' === $next[0] && \strlen($next[1]) > 2 && ':' === $next[1][0] && false !== \strpos(" \t", $next[1][1])) {
+            if ('p' === $v[0] && \is_array($next) && 'dl' === $next[0] && \strlen($next[1]) > 2 && ':' === $next[1][0] && ' ' === $next[1][1]) {
                 $v[0] = 'dl';
                 $v[1] .= "\n\n" . $next[1];
                 $v[4] = $next[4];
@@ -1381,7 +1368,7 @@ namespace x\markdown\from {
             }
             if ('dl' === $v[0]) {
                 // Must be a definition data without its term(s). Fall it back to the default block type!
-                if (\strlen($v[1]) > 2 && ':' === $v[1][0] && false !== \strpos(" \t", $v[1][1])) {
+                if (\strlen($v[1]) > 2 && ':' === $v[1][0] && ' ' === $v[1][1]) {
                     $v = ['p', $v[1], [], $v[3]];
                 }
                 // Parse the definition list later
@@ -1426,9 +1413,9 @@ namespace x\markdown\from {
             if ('h' === $v[0][0]) {
                 if ('#' === $v[4][1]) {
                     $v[1] = \trim(\substr($v[1], \strspn($v[1], '#')));
-                    if ('#' === \substr($v[1], -1)) {
+                    if ("" !== $v[1] && '#' === \substr($v[1], -1)) {
                         $vv = \substr($v[1], 0, \strpos($v[1], '#'));
-                        if (false !== \strpos(" \t", \substr($vv, -1))) {
+                        if (' ' === \substr($vv, -1)) {
                             $v[1] = \substr($vv, 0, -1);
                         }
                     }
@@ -1487,10 +1474,10 @@ namespace x\markdown\from {
                     ['tbody', [], [], 0]
                 ];
                 $rows = \explode("\n", \trim($v[1], "\n"));
-                $headers = \trim(\array_shift($rows) ?? "", " \t|");
-                $styles = \trim(\array_shift($rows) ?? "", " \t|");
+                $headers = \trim(\array_shift($rows) ?? "", ' |');
+                $styles = \trim(\array_shift($rows) ?? "", ' |');
                 // Header-less table
-                if (\strspn($headers, " \t-:|") === \strlen($headers)) {
+                if (\strspn($headers, ' -:|') === \strlen($headers)) {
                     \array_unshift($rows, $styles);
                     $styles = $headers;
                     $headers = "";
@@ -1501,7 +1488,7 @@ namespace x\markdown\from {
                     continue;
                 }
                 // Invalid table header line
-                if (\strspn($styles, " \t-:|") !== \strlen($styles)) {
+                if (\strspn($styles, ' -:|') !== \strlen($styles)) {
                     $v = ['p', row($v[1], $lot)[0], [], $v[3]];
                     continue;
                 }
@@ -1565,7 +1552,7 @@ namespace x\markdown\from {
                 }
                 foreach ($rows as $row) {
                     $td = [];
-                    if (\is_array($row = row(\trim($row, " \t|"), $lot)[0])) {
+                    if (\is_array($row = row(\trim($row, ' |'), $lot)[0])) {
                         $i = 0;
                         foreach ($row as $vv) {
                             $td[$i] = $td[$i] ?? ['td', [], [], 0];
@@ -1652,7 +1639,7 @@ namespace x\markdown\from {
                 $list = \preg_split('/\n+(?=:\s|[^:\s])/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
-                    if (\strlen($vv) > 2 && ':' === $vv[0] && false !== \strpos(" \t", $vv[1])) {
+                    if (\strlen($vv) > 2 && ':' === $vv[0] && ' ' === $vv[1]) {
                         $vv = rows(\substr(\strtr($vv, [
                             "\n  " => "\n"
                         ]), 2), $lot, $level + 1)[0];
