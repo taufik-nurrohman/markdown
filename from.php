@@ -173,13 +173,11 @@ namespace x\markdown\from {
             return [null, $row, [], 0];
         }
         $dent = \strspn($row, ' ');
-        $d = \str_repeat(' ', $dent);
         if ($dent >= 4) {
-            $row = \substr(\strtr($row, ["\n" . $d => "\n"]), 4);
-            return ['pre', $row, [], $dent];
+            return ['pre', \substr($row, 4), [], $dent];
         }
         // Remove indent(s)
-        $row = \substr(\strtr($row, ["\n" . $d => "\n"]), $dent);
+        $row = \substr($row, $dent);
         if ("" === $row) {
             return [null, $row, [], $dent];
         }
@@ -219,7 +217,7 @@ namespace x\markdown\from {
         }
         // `*…`
         if ('*' === \rtrim($row)) {
-            return ['ul', "", [], $dent, [1, $row[0], ""]];
+            return ['ul', $row, [], $dent, [2, $row[0], ""]];
         }
         if (0 === \strpos($row, '*')) {
             // `*[…`
@@ -242,7 +240,7 @@ namespace x\markdown\from {
         }
         // `+`
         if ('+' === \rtrim($row)) {
-            return ['ul', "", [], $dent, [1, $row[0], ""]];
+            return ['ul', $row, [], $dent, [2, $row[0], ""]];
         }
         // `+…`
         if (0 === \strpos($row, '+')) {
@@ -254,7 +252,7 @@ namespace x\markdown\from {
         }
         // `-`
         if ('-' === \rtrim($row)) {
-            return ['ul', "", [], $dent, [1, $row[0], ""]];
+            return ['ul', $row, [], $dent, [2, $row[0], ""]];
         }
         // `--`
         if ('--' === \rtrim($row)) {
@@ -394,7 +392,7 @@ namespace x\markdown\from {
         // `1)` or `1.`
         if ($n && ($n + 1) === \strlen($v = \rtrim($row)) && false !== \strpos(').', \substr($v, -1))) {
             $start = (int) \substr($row, 0, $n);
-            return ['ol', "", ['start' => 1 !== $start ? $start : null], $dent, [$n + 1, $start, \substr($row, -1)]];
+            return ['ol', $row, ['start' => 1 !== $start ? $start : null], $dent, [$n + 2, $start, \substr($row, -1)]];
         }
         // `1) …` or `1. …`
         if (false !== \strpos(').', \substr($row, $n, 1)) && false !== \strpos(" \t", \substr($row, $n + 1, 1))) {
@@ -1014,7 +1012,7 @@ namespace x\markdown\from {
                     }
                     // <https://spec.commonmark.org/0.30#example-285>
                     // <https://spec.commonmark.org/0.30#example-304>
-                    if ('ol' === $current[0] && ("" === $current[1] || 1 !== $current[4][1])) {
+                    if ('ol' === $current[0] && ($current[1] === $current[4][1] . $current[4][2] || 1 !== $current[4][1])) {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
@@ -1024,7 +1022,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-285>
-                    if ('ul' === $current[0] && "" === $current[1]) {
+                    if ('ul' === $current[0] && $current[1] === $current[4][1]) {
                         if ('-' === $current[4][1]) {
                             $blocks[$block][0] = 'h2';
                             $blocks[$block][1] .= "\n" . $row;
@@ -1061,9 +1059,15 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
-                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0] + 1) {
-                        $blocks[++$block] = $current;
-                        continue;
+                    if ('p' === $current[0] && $current[3] < $prev[4][0]) {
+                        if ($prev[1] === $prev[4][1] . $prev[4][2]) {
+                            $blocks[++$block] = $current;
+                            continue;
+                        }
+                        if (false !== ($test = \strstr($prev[1], "\n")) && $test === "\n" . $prev[4][1] . $prev[4][2]) {
+                            $blocks[++$block] = $current;
+                            continue;
+                        }
                     }
                     // To exit the list, either start a new list marker with a lower number than the previous list
                     // number or use a different number suffix. For example, use `1)` to separate the previous list that
@@ -1075,7 +1079,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if (null !== $current[0]) {
-                        if ('ol' !== $current[0] && $current[3] < $prev[4][0] + 1) {
+                        if ('ol' !== $current[0] && $current[3] < $prev[4][0]) {
                             if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
                                 $blocks[$block][1] .= "\n" . $row; // Lazy list
                                 continue;
@@ -1103,9 +1107,15 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
-                    if ('p' === $current[0] && "" === $prev[1] && $current[3] < $prev[4][0] + 1) {
-                        $blocks[++$block] = $current;
-                        continue;
+                    if ('p' === $current[0] && $current[3] < $prev[4][0]) {
+                        if ($prev[1] === $prev[4][1]) {
+                            $blocks[++$block] = $current;
+                            continue;
+                        }
+                        if (false !== ($test = \strstr($prev[1], "\n")) && $test === "\n" . $prev[4][1]) {
+                            $blocks[++$block] = $current;
+                            continue;
+                        }
                     }
                     // To exit the list, use a different list marker.
                     if ('ul' === $current[0] && $current[3] === $prev[3] && $current[4][1] !== $prev[4][1]) {
@@ -1115,7 +1125,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if (null !== $current[0]) {
-                        if ('ul' !== $current[0] && $current[3] < $prev[4][0] + 1) {
+                        if ('ul' !== $current[0] && $current[3] < $prev[4][0]) {
                             if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
                                 $blocks[$block][1] .= "\n" . $row; // Lazy list
                                 continue;
