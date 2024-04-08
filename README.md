@@ -873,10 +873,14 @@ echo $value;
 
 The [CommonMark specification for automatic links](https://spec.commonmark.org/0.30#autolinks) doesn’t limit specific
 types of URL protocols. It just specifies the pattern so we can take advantage of the automatic link syntax to render it
-as a kind of “embed syntax”, which you can then turn it into a chunk of HTML elements.
+as a kind of “embed” syntax, which you can then turn it into a chunk of HTML elements.
 
 I’m sure this idea has never been done before and that’s why I want to be the first to mention it. But I’m not going to
-integrate this feature directly into my converter to keep it slim. I just want to give you a couple of ideas:
+integrate this feature directly into my converter to keep it slim. I just want to give you a couple of ideas.
+
+Be aware that these tweaks are very naive, as they will directly convert the “embed” syntax without taking the block
+type into account. You may need to use [this filter](https://github.com/taufik-nurrohman/markdown-filter) to replace the
+“embed” syntax only in certain block types, e.g. to ignore the “embed” syntax inside a fenced code block syntax.
 
 #### YouTube Video Embed
 
@@ -938,11 +942,6 @@ $value = from_markdown($value);
 
 echo $value;
 ~~~
-
-Be aware that the tweaks above are very naive, as they directly replace the syntax with regular expressions without
-taking the block type into account. You may need to use
-[this filter](https://github.com/taufik-nurrohman/markdown-filter) to replace the syntax only in certain block types,
-e.g. to ignore the syntax inside a fenced code block syntax.
 
 ### Idea: Note Block
 
