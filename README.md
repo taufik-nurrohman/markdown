@@ -939,6 +939,11 @@ $value = from_markdown($value);
 echo $value;
 ~~~
 
+Be aware that the tweaks above are very naive, as they directly replace the syntax with regular expressions without
+taking the block type into account. You may need to use
+[this filter](https://github.com/taufik-nurrohman/markdown-filter) to replace the syntax only in certain block types,
+e.g. to ignore the syntax inside a fenced code block syntax.
+
 ### Idea: Note Block
 
 Several people have discussed this feature, and I think I like
