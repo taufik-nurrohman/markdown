@@ -299,12 +299,15 @@ namespace x\markdown\from {
                     return ['p', $row, [], $dent];
                 }
                 // <https://spec.commonmark.org/0.30#html-blocks>
-                if (false !== \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,search,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($t, '/') . ',')) {
+                if (false !== \stripos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,search,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($t, '/') . ',')) {
                     return [false, $row, [], $dent, $t];
                 }
                 // <https://spec.commonmark.org/0.31.2#example-163>
                 if ('>' === \substr($test = \rtrim($row), -1)) {
                     if ('/' === $t[0] && false !== \strpos($test, ' ')) {
+                        return ['p', $row, [], $dent];
+                    }
+                    if (false !== \strpos(\substr($test, 0, -1), '>')) {
                         return ['p', $row, [], $dent];
                     }
                     return [false, $row, [], $dent, $t];
@@ -920,8 +923,8 @@ namespace x\markdown\from {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
-                    if (false !== \strpos(',pre,script,style,textarea,', ',' . $prev[4] . ',')) {
-                        if (false !== \strpos($prev[1], '</' . $prev[4] . '>')) {
+                    if (false !== \stripos(',pre,script,style,textarea,', ',' . $prev[4] . ',')) {
+                        if (false !== \stripos($prev[1], '</' . $prev[4] . '>')) {
                             if (null === $current[0]) {
                                 continue;
                             }
