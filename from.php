@@ -597,6 +597,12 @@ namespace x\markdown\from {
                 continue;
             }
             if (0 === \strpos($chop, '<')) {
+                // <https://spec.commonmark.org/0.31.2#processing-instruction>
+                if (0 === \strpos($chop, '<' . '?') && ($n = \strpos($chop, '?' . '>')) > 1) {
+                    $chops[] = [false, \strtr($prev = \substr($chop, 0, $n += 2), "\n", ' '), [], -1, \strtok(\substr($chop, 1), " \n>")];
+                    $value = \substr($chop, $n);
+                    continue;
+                }
                 // <https://spec.commonmark.org/0.31.2#html-comment>
                 if (0 === \strpos($chop, '<!--') && ($n = \strpos($chop, '-->')) > 1) {
                     $prev = $v = \substr($chop, 0, $n + 3);
@@ -604,19 +610,16 @@ namespace x\markdown\from {
                     $value = \substr($chop, \strlen($prev));
                     continue;
                 }
+                // <https://spec.commonmark.org/0.31.2#cdata-section>
                 if (0 === \strpos($chop, '<![CDATA[') && ($n = \strpos($chop, ']]>')) > 8) {
                     $chops[] = [false, \strtr($v = \substr($chop, 0, $n + 3), "\n", ' '), [], -1, '![CDATA['];
                     $value = \substr($chop, \strlen($prev = $v));
                     continue;
                 }
-                if (0 === \strpos($chop, '<!') && \strpos($chop, '>') > 2 && \preg_match('/^<![a-z](?>' . q('"') . '|' . q("'") . '|[^>])+>/i', $chop, $m)) {
-                    $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \rtrim(\strtok(\substr($m[0], 1), " \n>"), '/')];
-                    $value = \substr($chop, \strlen($prev = $m[0]));
-                    continue;
-                }
-                if (0 === \strpos($chop, '<' . '?') && \strpos($chop, '?' . '>') > 1 && \preg_match('/^<\?(?>' . q('"') . '|' . q("'") . '|[^>])+\?>/', $chop, $m)) {
-                    $chops[] = [false, \strtr($m[0], "\n", ' '), [], -1, \strtok(\substr($m[0], 1), " \n>")];
-                    $value = \substr($chop, \strlen($prev = $m[0]));
+                // <https://spec.commonmark.org/0.31.2#declaration>
+                if (0 === \strpos($chop, '<!') && ($n = \strpos($chop, '>')) > 2 && \preg_match('/^[a-z]/i', \substr($chop, 2))) {
+                    $chops[] = [false, \strtr($prev = \substr($chop, 0, $n += 1), "\n", ' '), [], -1, \rtrim(\strtok(\substr($chop, 1), " \n>"), '/')];
+                    $value = \substr($chop, $n);
                     continue;
                 }
                 $test = (string) \strstr($chop, '>', true);
@@ -649,13 +652,13 @@ namespace x\markdown\from {
                     $value = \substr($chop, \strlen($prev));
                     continue;
                 }
-                // <https://spec.commonmark.org/0.30#raw-html>
-                if (\preg_match('/^<(\/[a-z][a-z\d-]*)\s*>/i', $chop, $m)) {
+                // <https://spec.commonmark.org/0.31.2#closing-tag>
+                if ('/' === $chop[1] && \preg_match('/^<(\/[a-z][a-z\d-]*)\s*>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, $m[1]];
                     $value = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
-                // <https://spec.commonmark.org/0.30#raw-html>
+                // <https://spec.commonmark.org/0.31.2#open-tag>
                 if (\preg_match('/^<([a-z][a-z\d-]*)(\s+[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, $m[1]];
                     $value = \substr($chop, \strlen($prev = $m[0]));
@@ -810,25 +813,17 @@ namespace x\markdown\from {
                 continue;
             }
             if (0 === \strpos($chop, $c = '`')) {
-                $v = \str_repeat($c, $n = \strspn($chop, $c));
-                if (1 === $n) {
-                    $r = $c . '{2,}';
-                } else if (2 === $n) {
-                    $r = $c . '{3,}|' . $c;
-                } else {
-                    $r = $c . '{' . ($n + 1) . ',}|' . $c . '{1,' . ($n - 1) . '}';
-                }
-                if (\preg_match('/^' . $v . '((?>[^' . $c . ']|(?<!' . $c . ')(?>' . $r . ')(?!' . $c . '))+)' . $v . '(?!' . $c . ')/', $chop, $m)) {
-                    // <https://spec.commonmark.org/0.30#code-span>
-                    $raw = \strtr($m[1], "\n", ' ');
-                    if (' ' !== $raw && '  ' !== $raw && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
+                if (\preg_match('/^(`+)(?![`])([\s\S]+?)(?<![`])\1(?![`])/', $chop, $m)) {
+                    // <https://spec.commonmark.org/0.31.2#code-spans>
+                    $raw = \strtr($m[2], "\n", ' ');
+                    if ("" !== \trim($raw) && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
                         $raw = \substr($raw, 1, -1);
                     }
-                    $chops[] = ['code', e($raw), [], -1, $v];
+                    $chops[] = ['code', e($raw), [], -1, $m[1]];
                     $value = \substr($chop, \strlen($prev = $m[0]));
                     continue;
                 }
-                $chops[] = $prev = $v;
+                $chops[] = $prev = \str_repeat($c, $n = \strspn($chop, $c));
                 $value = \substr($chop, $n);
                 continue;
             }
