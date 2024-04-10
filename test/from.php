@@ -1,4 +1,4 @@
-<?php session_start();
+<?php
 
 if (!in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1'])) {
     exit;
@@ -238,7 +238,10 @@ foreach ($files as $v) {
         ]);
         $a .= '</pre>';
         if (is_file($f = dirname($v) . D . pathinfo($v, PATHINFO_FILENAME) . '.html')) {
-            $test = file_get_contents($f);
+            $test = strtr(file_get_contents($f), [
+                "\r\n" => "\n",
+                "\r" => "\n"
+            ]);
             if ($error = $content !== $test) {
                 $b .= '<pre style="background:#cff;border:1px solid rgba(0,0,0,.25);color:#000;font:normal normal 100%/1.25 monospace;margin:1em 0 0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
                 $b .= strtr(htmlspecialchars($test), [
