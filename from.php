@@ -279,36 +279,36 @@ namespace x\markdown\from {
         if (0 === \strpos($row, '<')) {
             // `<asdf…`
             if ($t = \rtrim(\strtok(\substr($row, 1), " \n>"), '/')) {
-                // `<![…`
-                if (0 === \strpos($t, '![')) {
-                    $t = \substr($t, 0, \strrpos($t, '[') + 1); // `![CDATA[asdf` → `![CDATA[`
+                // `<!--…`
+                if (0 === \strpos($t, '!--')) {
+                    return [false, $row, [], $dent, \substr($t, 0, 3)]; // `!--asdf` → `!--`
+                }
+                // `<![CDATA[…`
+                if (0 === \strpos($t, '![CDATA[')) {
+                    return [false, $row, [], $dent, \substr($t, 0, \strrpos($t, '[') + 1)]; // `![CDATA[asdf` → `![CDATA[`
+                }
+                if ('!' === $t[0]) {
+                    return \preg_match('/^[a-z]/i', \substr($t, 1)) ? [false, $row, [], $dent, $t] : ['p', $row, [], $dent];
+                }
+                if ('?' === $t[0]) {
+                    return [false, $row, [], $dent, $t];
                 }
                 // The `:` and `@` character is not a valid part of a HTML element name, so it must be a link syntax
                 // <https://spec.commonmark.org/0.30#tag-name>
                 if (false !== \strpos($t, ':') || false !== \strpos($t, '@')) {
                     return ['p', $row, [], $dent];
                 }
-                // `<!---…`
-                if (0 === \strpos($t, '!--')) {
-                    return [false, $row, [], $dent, '!--'];
-                }
-                if (false !== \strpos('!?', $t[0])) {
-                    return [false, $row, [], $dent, $t];
-                }
                 // <https://spec.commonmark.org/0.30#html-blocks>
                 if (false !== \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,search,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($t, '/') . ',')) {
                     return [false, $row, [], $dent, $t];
                 }
-                // <https://spec.commonmark.org/0.30#example-163>
+                // <https://spec.commonmark.org/0.31.2#example-163>
                 if ('>' === \substr($test = \rtrim($row), -1)) {
-                    if ('/' === $t[0] && '<' . $t . '>' === $test) {
-                        return [false, $row, [], $dent, $t];
+                    if ('/' === $t[0] && false !== \strpos($test, ' ')) {
+                        return ['p', $row, [], $dent];
                     }
-                    if (\preg_match('/^<' . \preg_quote(\trim($t, '/'), '/') . '(\s(?>"[^"]*"|\'[^\']*\'|[^>])*)?>$/', $test)) {
-                        return [false, $row, [], $dent, $t];
-                    }
+                    return [false, $row, [], $dent, $t];
                 }
-                return ['p', $row, [], $dent, $t];
             }
             return ['p', $row, [], $dent];
         }
