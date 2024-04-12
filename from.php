@@ -276,7 +276,7 @@ namespace x\markdown\from {
             return ['p', $row, [], $dent];
         }
         // `<…`
-        if (0 === \strpos($row, '<')) {
+        if (0 === \strpos($row, '<') && ' ' !== ($row[1] ?? 0)) {
             // `<asdf…`
             if ($t = \rtrim(\strtok(\substr($row, 1), " \n>"), '/')) {
                 // `<!--…`
@@ -285,7 +285,7 @@ namespace x\markdown\from {
                 }
                 // `<![CDATA[…`
                 if (0 === \strpos($t, '![CDATA[')) {
-                    return [false, $row, [], $dent, \substr($t, 0, \strrpos($t, '[') + 1)]; // `![CDATA[asdf` → `![CDATA[`
+                    return [false, $row, [], $dent, \substr($t, 0, 8)]; // `![CDATA[asdf` → `![CDATA[`
                 }
                 if ('!' === $t[0]) {
                     return \preg_match('/^[a-z]/i', \substr($t, 1)) ? [false, $row, [], $dent, $t] : ['p', $row, [], $dent];
@@ -871,6 +871,12 @@ namespace x\markdown\from {
             $current = data($row); // `[$type, $row, $data, $dent, …]`
             // If a block is available in the index `$block`, it indicates that we have a previous block
             if ($prev = $blocks[$block] ?? 0) {
+                // <https://spec.commonmark.org/0.31.2#example-187>
+                if (false === $current[0] && false === \strpos('!?', $current[4][0]) && false === \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,search,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($current[4], '/') . ',')) {
+                    // HTML block type 7 cannot interrupt a paragraph
+                    $blocks[$block][1] .= "\n" . $row;
+                    continue;
+                }
                 // Raw HTML
                 if (false === $prev[0]) {
                     if ('!--' === $prev[4]) {
@@ -934,14 +940,14 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ('?' === $prev[4][0]) {
-                        if (false !== \strpos(\preg_replace('/' . q('"') . '|' . q("'") . '/', "", $prev[1]), '?' . '>')) {
+                        if (false !== \strpos($prev[1], '?' . '>')) {
                             if (null === $current[0]) {
                                 continue;
                             }
                             $blocks[++$block] = $current;
                             continue;
                         }
-                        if (false !== \strpos(\preg_replace('/' . q('"') . '|' . q("'") . '/', "", $row), '?' . '>')) {
+                        if (false !== \strpos($row, '?' . '>')) {
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
@@ -1142,6 +1148,10 @@ namespace x\markdown\from {
                 }
                 if ('blockquote' === $prev[0]) {
                     if ('p' === $current[0]) {
+                        if ('>' === \rtrim($prev[1])) {
+                            $blocks[++$block] = $current;
+                            continue;
+                        }
                         $blocks[$block][1] .= "\n" . $row; // Lazy quote block
                         continue;
                     }
