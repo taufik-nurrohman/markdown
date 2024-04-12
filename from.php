@@ -813,7 +813,7 @@ namespace x\markdown\from {
                 continue;
             }
             if (0 === \strpos($chop, $c = '`')) {
-                if (\preg_match('/^(`+)(?![`])([\s\S]+?)(?<![`])\1(?![`])/', $chop, $m)) {
+                if (\preg_match('/^(`+)(?![`])(.+?)(?<![`])\1(?![`])/s', $chop, $m)) {
                     // <https://spec.commonmark.org/0.31.2#code-spans>
                     $raw = \strtr($m[2], "\n", ' ');
                     if ("" !== \trim($raw) && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
