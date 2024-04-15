@@ -280,7 +280,7 @@ namespace x\markdown\from {
             }
             // `* …`
             if (' ' === \substr($row, 1, 1)) {
-                return ['ul', $row, [], $dent, [$row[0], 1 + \strspn($row, ' ', 1)]];
+                return ['ul', $row, [], $dent, [$row[0], 2]];
             }
             return ['p', $row, [], $dent];
         }
@@ -292,7 +292,7 @@ namespace x\markdown\from {
         if (0 === \strpos($row, '+')) {
             // `+ …`
             if (' ' === \substr($row, 1, 1)) {
-                return ['ul', $row, [], $dent, [$row[0], 1 + \strspn($row, ' ', 1)]];
+                return ['ul', $row, [], $dent, [$row[0], 2]];
             }
             return ['p', $row, [], $dent];
         }
@@ -313,7 +313,7 @@ namespace x\markdown\from {
             }
             // `- …`
             if (' ' === \substr($row, 1, 1)) {
-                return ['ul', $row, [], $dent, [$row[0], 1 + \strspn($row, ' ', 1)]];
+                return ['ul', $row, [], $dent, [$row[0], 2]];
             }
             return ['p', $row, [], $dent];
         }
@@ -433,8 +433,9 @@ namespace x\markdown\from {
         }
         // `1) …` or `1. …`
         if (false !== \strpos(').', \substr($row, $n, 1)) && ' ' === \substr($row, $n + 1, 1)) {
+            $r = \strspn($row, ' ', $n + 1);
             $start = (int) \substr($row, 0, $n);
-            return ['ol', $row, ['start' => 1 !== $start ? $start : null], $dent, [\substr($row, $n, 1), $n + 1 + \strspn($row, ' ', $n + 1), $start]];
+            return ['ol', $row, ['start' => 1 !== $start ? $start : null], $dent, [\substr($row, $n, 1), $n + 1 + ($r > 3 ? 3 : $r), $start]];
         }
         return ['p', $row, [], $dent];
     }
@@ -473,7 +474,7 @@ namespace x\markdown\from {
             }
             if (0 === \strpos($chop, "\n")) {
                 $prev = $chops[$last = \count($chops) - 1] ?? [];
-                if (\is_string($prev) && ('  ' === \substr($prev, -2))) {
+                if (\is_string($prev) && '  ' === \substr($prev, -2)) {
                     $chops[$last] = $prev = \rtrim($prev);
                     $chops[] = ['br', false, [], -1, [' ', 2]];
                     $value = \ltrim(\substr($chop, 1));
@@ -860,6 +861,7 @@ namespace x\markdown\from {
         $rows = \explode("\n", $value);
         foreach ($rows as $row) {
             // Normalize tab(s) to space(s)
+            $row = \rtrim($row, "\t");
             while (false !== ($before = \strstr($row, "\t", true))) {
                 $v = \strlen($before);
                 $row = $before . \str_repeat(' ', 4 - $v % 4) . \substr($row, $v + 1);
@@ -881,7 +883,7 @@ namespace x\markdown\from {
                             continue;
                         }
                         // Continue the code block…
-                        $blocks[$block][1] .= "\n" . $current[1];
+                        $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
                     // End of the code block
@@ -1021,13 +1023,90 @@ namespace x\markdown\from {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
+                // Previous block is a figure block
+                if ('figure' === $prev[0]) {
+                    // End of the figure block
+                    if (null !== $current[0] && $current[3] <= $prev[3]) {
+                        $blocks[++$block] = $current;
+                        continue;
+                    }
+                    if ($current[3] > $prev[3] || "" === $current[1]) {
+                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
+                        continue;
+                    }
+                    // Continue the figure block…
+                    $blocks[$block][1] .= "\n" . $current[1];
+                    continue;
+                }
+                // Previous block is a table block
+                if ('table' === $prev[0]) {
+                    if (null === $current[0] || $current[3] > $prev[3]) {
+                        $blocks[$block][1] .= "\n"; // End of the table block, prepare to exit the table block
+                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
+                        continue;
+                    }
+                    // Continue the table block if previous table block does not end with a blank line
+                    if ('table' === $current[0] && "\n" !== \substr(\rtrim($prev[1], ' '), -1)) {
+                        $blocks[$block][1] .= "\n" . $current[1];
+                        continue;
+                    }
+                    // End of the table block
+                    $blocks[++$block] = $current;
+                    continue;
+                }
+                // Previous block is a header block or a rule block
+                if ('h' === $prev[0][0]) {
+                    if (null === $current[0]) {
+                        $block += 1;
+                        continue;
+                    }
+                    $blocks[++$block] = $current;
+                    continue;
+                }
                 // Previous block is a definition list block
-                if ('dl' === $prev[0]) {}
+                if ('dl' === $prev[0]) {
+                    // Continue the list block…
+                    if (null === $current[0] || $current[3] >= $prev[3] + $prev[4][1]) {
+                        $blocks[$block][1] .= "\n" . $row;
+                        continue;
+                    }
+                    // <https://spec.commonmark.org/0.31.2#example-312>
+                    if ('pre' === $current[0] && 1 === $current[4][0]) {
+                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
+                        continue;
+                    }
+                    if ('dl' === $current[0]) {
+                        $blocks[$block][1] .= "\n" . \substr($row, $current[3]);
+                        $blocks[$block][3] = $current[3];
+                        continue;
+                    }
+                    // Lazy definition list?
+                    if ("\n" !== \substr($v = \rtrim($prev[1], ' '), -1)) {
+                        if ('h1' === $current[0] && '=' === $current[4][0]) {
+                            $blocks[$block][1] .= ' ' . $current[1];
+                            continue;
+                        }
+                        if ('p' === $current[0] && $v !== $prev[4][0]) {
+                            $blocks[$block][1] .= "\n" . $row;
+                            continue;
+                        }
+                    } else {
+                        $blocks[$block][1] = \substr($v, 0, -1);
+                    }
+                    // End of the definition list block
+                    $blocks[++$block] = $current;
+                    continue;
+                }
                 // Previous block is a list block
                 if ('ol' === $prev[0]) {
                     // Continue the list block…
-                    if (null === $current[0] || $current[3] >= $prev[4][1]) {
+                    if (null === $current[0] || $current[3] >= $prev[3] + $prev[4][1]) {
                         $blocks[$block][1] .= "\n" . $row;
+                        continue;
+                    }
+                    // <https://spec.commonmark.org/0.31.2#example-312>
+                    if ('pre' === $current[0] && 1 === $current[4][0]) {
+                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
                         continue;
                     }
                     if ('ol' === $current[0]) {
@@ -1038,10 +1117,9 @@ namespace x\markdown\from {
                         }
                         // Continue the list block…
                         if ($current[4][2] >= $prev[4][2]) {
-                            $blocks[$block][1] .= "\n" . $row;
-                            if ($current[4][2] > $prev[4][2]) {
-                                $prev[4][2] = $current[4][2];
-                            }
+                            $blocks[$block][1] .= "\n" . \substr($row, $current[3]);
+                            $blocks[$block][3] = $current[3];
+                            $blocks[$block][4][2] = $current[4][2];
                             continue;
                         }
                         // End of the list block
@@ -1049,21 +1127,31 @@ namespace x\markdown\from {
                         continue;
                     }
                     // Lazy list?
-                    if ('p' === $current[0] && "\n" !== \substr($v = \rtrim($prev[1], ' '), -1) && $v !== $prev[4][2] . $prev[4][0]) {
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    // End of the list block
-                    if ("\n" === \substr($v = \rtrim($prev[1], ' '), -1)) {
+                    if ("\n" !== \substr($v = \rtrim($prev[1], ' '), -1)) {
+                        if ('h1' === $current[0] && '=' === $current[4][0]) {
+                            $blocks[$block][1] .= ' ' . $current[1];
+                            continue;
+                        }
+                        if ('p' === $current[0] && $v !== $prev[4][2] . $prev[4][0]) {
+                            $blocks[$block][1] .= "\n" . $row;
+                            continue;
+                        }
+                    } else {
                         $blocks[$block][1] = \substr($v, 0, -1);
                     }
+                    // End of the list block
                     $blocks[++$block] = $current;
                     continue;
                 }
                 // Previous block is a list block
                 if ('ul' === $prev[0]) {
-                    if (null === $current[0] || $current[3] >= $prev[4][1]) {
+                    if (null === $current[0] || $current[3] >= $prev[3] + $prev[4][1]) {
                         $blocks[$block][1] .= "\n" . $row;
+                        continue;
+                    }
+                    // <https://spec.commonmark.org/0.31.2#example-312>
+                    if ('pre' === $current[0] && 1 === $current[4][0]) {
+                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
                         continue;
                     }
                     if ('ul' === $current[0]) {
@@ -1072,18 +1160,24 @@ namespace x\markdown\from {
                             $blocks[++$block] = $current;
                             continue;
                         }
-                        $blocks[$block][1] .= "\n" . $row;
+                        $blocks[$block][1] .= "\n" . \substr($row, $current[3]);
+                        $blocks[$block][3] = $current[3];
                         continue;
                     }
                     // Lazy list?
-                    if ('p' === $current[0] && "\n" !== \substr($v = \rtrim($prev[1], ' '), -1) && $v !== $prev[4][0]) {
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    // End of the list block
-                    if ("\n" === \substr($v = \rtrim($prev[1], ' '), -1)) {
+                    if ("\n" !== \substr($v = \rtrim($prev[1], ' '), -1)) {
+                        if ('h1' === $current[0] && '=' === $current[4][0]) {
+                            $blocks[$block][1] .= ' ' . $current[1];
+                            continue;
+                        }
+                        if ('p' === $current[0] && $v !== $prev[4][0]) {
+                            $blocks[$block][1] .= "\n" . $row;
+                            continue;
+                        }
+                    } else {
                         $blocks[$block][1] = \substr($v, 0, -1);
                     }
+                    // End of the list block
                     $blocks[++$block] = $current;
                     continue;
                 }
@@ -1111,6 +1205,7 @@ namespace x\markdown\from {
                     }
                     if ('h1' === $current[0] && '=' === $current[4][0]) {
                         if ('p' !== $prev[0]) {
+                            // <https://spec.commonmark.org/0.31.2#example-93>
                             $blocks[$block][1] .= ' ' . $current[1];
                             continue;
                         }
@@ -1130,6 +1225,11 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ('pre' === $current[0] && 1 === $current[4][0] && 'p' === $prev[0]) {
+                        // Contains a hard-break syntax, keep!
+                        if ('  ' === \substr($prev[1], -2)) {
+                            $blocks[$block][1] = \rtrim($prev[1]) . "  \n" . $current[1];
+                            continue;
+                        }
                         $blocks[$block][1] .= ' ' . $current[1];
                         continue;
                     }
@@ -1137,16 +1237,6 @@ namespace x\markdown\from {
                         $blocks[$block][0] = 'dl';
                         $blocks[$block][1] .= "\n" . $row;
                         $blocks[$block][4] = $current[4];
-                        continue;
-                    }
-                    if ('ul' === $current[0] && \rtrim($current[1]) === $current[4][0]) {
-                        if ('p' === $prev[0] && '-' === $current[4][0]) {
-                            $blocks[$block][0] = 'h2';
-                            $blocks[$block][1] .= "\n-";
-                            $blocks[$block][4] = ['-', 2];
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
                     if ('ol' === $current[0]) {
@@ -1159,6 +1249,16 @@ namespace x\markdown\from {
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
+                    }
+                    if ('ul' === $current[0] && \rtrim($current[1]) === $current[4][0]) {
+                        if ('p' === $prev[0] && '-' === $current[4][0]) {
+                            $blocks[$block][0] = 'h2';
+                            $blocks[$block][1] .= "\n-";
+                            $blocks[$block][4] = ['-', 2];
+                            continue;
+                        }
+                        $blocks[$block][1] .= "\n" . $row;
+                        continue;
                     }
                     $blocks[++$block] = $current;
                     continue;
@@ -1179,410 +1279,6 @@ namespace x\markdown\from {
             // Start a new block…
             $blocks[++$block] = $current;
         }
-        foreach ($blocks as $block) {
-            echo '<pre style="border:1px solid">';
-            echo htmlspecialchars($block[1]);
-            echo '</pre>';
-        }
-        /*
-        foreach ($rows as $row) {
-            while (false !== ($before = \strstr($row, "\t", true))) {
-                $v = \strlen($before);
-                $row = $before . \str_repeat(' ', 4 - $v % 4) . \substr($row, $v + 1);
-            }
-            $current = of($row); // `[$type, $row, $data, $dent, …]`
-            // If a block is available in the index `$block`, it indicates that we have a previous block
-            if ($prev = $blocks[$block] ?? 0) {
-                // <https://spec.commonmark.org/0.31.2#example-187>
-                if (false === $current[0] && false === \strpos('!?', $current[4][0]) && false === \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,pre,param,script,search,section,source,style,summary,table,tbody,td,textarea,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($current[4], '/') . ',')) {
-                    // HTML block type 7 cannot interrupt a paragraph
-                    $blocks[$block][1] .= "\n" . $row;
-                    continue;
-                }
-                // Raw HTML
-                if (false === $prev[0]) {
-                    if ('!--' === $prev[4]) {
-                        if (false !== \strpos($prev[1], '-->')) {
-                            if (null === $current[0]) {
-                                continue;
-                            }
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        if (false !== \strpos($row, '-->')) {
-                            $blocks[$block++][1] .= "\n" . $row;
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    if ('![CDATA[' === $prev[4]) {
-                        if (false !== \strpos($prev[1], ']]>')) {
-                            if (null === $current[0]) {
-                                continue;
-                            }
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        if (false !== \strpos($row, ']]>')) {
-                            $blocks[$block++][1] .= "\n" . $row;
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    if ('!' === $prev[4][0]) {
-                        if (false !== \strpos($prev[1], '>')) {
-                            if (null === $current[0]) {
-                                continue;
-                            }
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        if (false !== \strpos($row, '>')) {
-                            $blocks[$block++][1] .= "\n" . $row;
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    if (false !== \stripos(',pre,script,style,textarea,', ',' . $prev[4] . ',')) {
-                        if (false !== \stripos($prev[1], '</' . $prev[4] . '>')) {
-                            if (null === $current[0]) {
-                                continue;
-                            }
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        if (false !== \strpos($row, '</' . $prev[4] . '>')) {
-                            $blocks[$block++][1] .= "\n" . $row;
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    if ('?' === $prev[4][0]) {
-                        if (false !== \strpos($prev[1], '?' . '>')) {
-                            if (null === $current[0]) {
-                                continue;
-                            }
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        if (false !== \strpos($row, '?' . '>')) {
-                            $blocks[$block++][1] .= "\n" . $row;
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    // CommonMark is not concerned with HTML tag balancing. It only concerned about blank line(s). Any
-                    // non-blank line that sits right next to or below the opening/closing tag other than `<pre>`,
-                    // `<script>`, `<style>`, and `<textarea> tag(s) will be interpreted as raw HTML. From that point
-                    // forward, no Markdown processing will be performed.
-                    // <https://spec.commonmark.org/0.30#example-161>
-                    if ("" !== $current[1]) {
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                }
-                // Indented code block
-                if ('pre' === $prev[0] && $prev[3] >= 4) {
-                    // Exit indented code block
-                    if (null !== $current[0] && $current[3] < 4) {
-                        $blocks[++$block] = $current;
-                        continue;
-                    }
-                    // Continue indented code block
-                    $blocks[$block][1] .= "\n" . \substr($row, 4);
-                    continue;
-                }
-                // Reference, abbreviation, or note
-                if (\is_int($prev[0])) {
-                    if (\is_int($current[0])) {
-                        $blocks[++$block] = $current;
-                        continue;
-                    }
-                    $row = \substr($row, $prev[3]);
-                    if (2 === $prev[0]) {
-                        if ("" !== $current[1] && ' ' !== $row[0] && "\n" === \substr($prev[1], -1)) {
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    if ("" !== $current[1]) {
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                }
-                if ('p' === $prev[0]) {
-                    // Followed by a definition data block. Convert the previous paragraph as its definition term(s).
-                    if ('dl' === $current[0]) {
-                        $blocks[$block][0] = 'dl';
-                        $blocks[$block][1] .= "\n" . $row;
-                        $blocks[$block][4] = $current[4];
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.30#example-285>
-                    // <https://spec.commonmark.org/0.30#example-304>
-                    if ('ol' === $current[0] && ($current[1] === $current[4][1] . $current[4][2] || 1 !== $current[4][1])) {
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.30#example-113>
-                    if ('pre' === $current[0] && $current[3] >= 4) {
-                        $blocks[$block][1] .= ' ' . $current[1];
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.30#example-285>
-                    if ('ul' === $current[0] && $current[1] === $current[4][1]) {
-                        if ('-' === $current[4][1]) {
-                            $blocks[$block][0] = 'h2';
-                            $blocks[$block][1] .= "\n" . $row;
-                            $blocks[$block][4] = [2, '-'];
-                            $block += 1;
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row;
-                        continue;
-                    }
-                }
-                // List block is so complex that I decided to blindly concatenate all of the remaining line(s) until the
-                // very end of the stream by default when the first list marker is found. To exit the list, we will do
-                // so manually while we are in the list block.
-                if ('dl' === $prev[0]) {
-                    if (null !== $current[0]) {
-                        if ('dl' !== $current[0] && $current[3] < $prev[3] + $prev[4][0]) {
-                            // Remove final line break
-                            $blocks[$block][1] = \rtrim($prev[1], "\n");
-                            // Exit the list using block(s) other than the paragraph block
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                    }
-                    // Continue as part of the list item content
-                    $row = \substr($row, $prev[3]);
-                    $blocks[$block][1] .= "\n" . $row;
-                    continue;
-                }
-                if ('ol' === $prev[0]) {
-                    // <https://spec.commonmark.org/0.30#example-99>
-                    if ('h1' === $current[0] && '=' === $current[4][1]) {
-                        $blocks[++$block] = ['p', $current[1], [], $current[3]];
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
-                    if ('p' === $current[0] && $current[3] < $prev[4][0]) {
-                        if ($prev[1] === $prev[4][1] . $prev[4][2]) {
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        if (false !== ($test = \strstr($prev[1], "\n")) && $test === "\n" . $prev[4][1] . $prev[4][2]) {
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                    }
-                    // To exit the list, either start a new list marker with a lower number than the previous list
-                    // number or use a different number suffix. For example, use `1)` to separate the previous list that
-                    // was using `1.` as the list marker.
-                    if ('ol' === $current[0] && $current[3] === $prev[3] && ($current[4][2] !== $prev[4][2] || $current[4][1] < $prev[4][1])) {
-                        // Remove final line break
-                        $blocks[$block][1] = \rtrim($prev[1], "\n");
-                        $blocks[++$block] = $current;
-                        continue;
-                    }
-                    if (null !== $current[0]) {
-                        if ('ol' !== $current[0] && $current[3] < $prev[4][0]) {
-                            if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
-                                $blocks[$block][1] .= "\n" . $row; // Lazy list
-                                continue;
-                            }
-                            // Remove final line break
-                            $blocks[$block][1] = \rtrim($prev[1], "\n");
-                            // Exit the list using block(s) other than the paragraph block
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                    }
-                    // Update final number list to track the current highest number
-                    if (isset($current[4][1]) && $current[3] === $prev[3]) {
-                        $blocks[$block][4][1] = $current[4][1];
-                    }
-                    // Continue as part of the list item content
-                    $row = \substr($row, $prev[3]);
-                    $blocks[$block][1] .= "\n" . $row;
-                    continue;
-                }
-                if ('ul' === $prev[0]) {
-                    // <https://spec.commonmark.org/0.30#example-99>
-                    if ('h1' === $current[0] && '=' === $current[4][1]) {
-                        $blocks[++$block] = ['p', $current[1], [], $current[3]];
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.30#example-278> but with indent less than the minimum required
-                    if ('p' === $current[0] && $current[3] < $prev[4][0]) {
-                        if ($prev[1] === $prev[4][1]) {
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        if (false !== ($test = \strstr($prev[1], "\n")) && $test === "\n" . $prev[4][1]) {
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                    }
-                    // To exit the list, use a different list marker.
-                    if ('ul' === $current[0] && $current[3] === $prev[3] && $current[4][1] !== $prev[4][1]) {
-                        // Remove final line break
-                        $blocks[$block][1] = \rtrim($prev[1], "\n");
-                        $blocks[++$block] = $current;
-                        continue;
-                    }
-                    if (null !== $current[0]) {
-                        if ('ul' !== $current[0] && $current[3] < $prev[4][0]) {
-                            if ('p' === $current[0] && "\n" !== \substr($prev[1], -1)) {
-                                $blocks[$block][1] .= "\n" . $row; // Lazy list
-                                continue;
-                            }
-                            // Remove final line break
-                            $blocks[$block][1] = \rtrim($prev[1], "\n");
-                            // Exit the list using block(s) other than the paragraph block
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                    }
-                    // Continue as part of the list item content
-                    $row = \substr($row, $prev[3]);
-                    $blocks[$block][1] .= "\n" . $row;
-                    continue;
-                }
-                // Fenced code block
-                if ('pre' === $prev[0] && isset($prev[4])) {
-                    // Exit fenced code block
-                    if ('pre' === $current[0] && isset($current[4]) && $prev[4] === $current[1]) {
-                        $blocks[$block++][1] .= "\n" . $row;
-                        continue;
-                    }
-                    // Continue fenced code block
-                    $blocks[$block][1] .= "" !== $prev[1] ? "\n" . $row : $row;
-                    continue;
-                }
-                if ('blockquote' === $prev[0]) {
-                    if ('p' === $current[0]) {
-                        if ('>' === \rtrim($prev[1])) {
-                            $blocks[++$block] = $current;
-                            continue;
-                        }
-                        $blocks[$block][1] .= "\n" . $row; // Lazy quote block
-                        continue;
-                    }
-                }
-                if ('figure' === $prev[0]) {
-                    // Exit image block
-                    if (null !== $current[0] && $current[3] <= $prev[3]) {
-                        $blocks[++$block] = $current;
-                        continue;
-                    }
-                    if ($current[3] > $prev[3] || "" === $current[1]) {
-                        $row = \substr($row, $current[3] > 4 ? $current[3] - 4 : $current[3]);
-                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
-                        continue;
-                    }
-                    $blocks[$block][1] .= "\n" . $current[1];
-                    continue;
-                }
-                if ('table' === $prev[0]) {
-                    // Continue table block if the previous table block does not end with a blank line
-                    if ('table' === $current[0] && "\n" !== \substr($prev[1], -1)) {
-                        $blocks[$block][1] .= "\n" . $current[1];
-                        continue;
-                    }
-                    if (null === $current[0]) {
-                        $blocks[$block][1] .= "\n"; // End of the table block, prepare to exit the table block
-                        $blocks[$block][4] = "\n"; // Initialize the caption with a blank line
-                    }
-                    if ($current[3] > $prev[3] || "" === $current[1]) {
-                        $row = \substr($row, $current[3] > 4 ? $current[3] - 4 : $current[3]);
-                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
-                        continue;
-                    }
-                    // Exit table block
-                    $blocks[++$block] = $current;
-                    continue;
-                }
-                // Found Setext-header marker level 1 right below a paragraph or quote block
-                if ('h1' === $current[0] && '=' === $current[4][1]) {
-                    // <https://spec.commonmark.org/0.30#example-93>
-                    if ('blockquote' === $prev[0]) {
-                        $blocks[$block][1] .= ' ' . $current[1];
-                    } else if ('p' === $prev[0]) {
-                        $blocks[$block][0] = $current[0]; // Treat the previous block as Setext-header level 1
-                        $blocks[$block][1] .= "\n" . $current[1];
-                        $blocks[$block][4] = $current[4];
-                    }
-                    $block += 1; // Start a new block after this
-                    continue;
-                }
-                // Found Setext-header marker level 2 right below a paragraph block
-                if ('h2' === $current[0] && '-' === $current[4][1] && 'p' === $prev[0]) {
-                    $blocks[$block][0] = $current[0]; // Treat the previous block as Setext-header level 2
-                    $blocks[$block][1] .= "\n" . $current[1];
-                    $blocks[$block][4] = $current[4];
-                    $block += 1; // Start a new block after this
-                    continue;
-                }
-                // Found thematic break that sits right below a paragraph block
-                if ('hr' === $current[0] && '-' === $current[4] && 'p' === $prev[0] && \strspn($current[1], $current[4]) === \strlen($current[1])) {
-                    $blocks[$block][0] = 'h2'; // Treat the previous block as Setext-header level 2
-                    $blocks[$block][1] .= "\n" . $current[1];
-                    $blocks[$block][4] = [2, '-'];
-                    $block += 1; // Start a new block after this
-                    continue;
-                }
-                // Default action is to join current block with the previous block that has the same type
-                if ($current[0] === $prev[0]) {
-                    $row = \substr($row, $current[3]);
-                    $blocks[$block][1] .= "\n" . $row;
-                    continue;
-                }
-            }
-            // Any other named block(s) will be processed from here
-            if (\is_string($current[0])) {
-                // Look like a Setext-header level 1, but preceded by a blank line, treat it as a paragraph block
-                // <https://spec.commonmark.org/0.30#example-97>
-                if ('h1' === $current[0] && '=' === $current[4][1] && (!$prev || null === $prev[0])) {
-                    $blocks[++$block] = ['p', $current[1], [], $current[3]];
-                    continue;
-                }
-                // Look like a Setext-header level 2, but preceded by a blank line, treat it as a paragraph block
-                if ('h2' === $current[0] && '-' === $current[4][1] && (!$prev || null === $prev[0])) {
-                    $blocks[++$block] = ['p', $current[1], [], $current[3]];
-                    continue;
-                }
-                // An ATX-header block or thematic break
-                if ('h' === $current[0][0]) {
-                    $blocks[++$block] = $current;
-                    $block += 1; // Start a new block after this
-                    continue;
-                }
-            }
-            // A blank line
-            if (null === $current[0]) {
-                if ($prev) {
-                    // <https://spec.commonmark.org/0.30#example-197>
-                    if (\is_int($prev[0]) && false === \strpos($prev[1], ']:')) {
-                        $blocks[$block++][0] = 'p';
-                        continue;
-                    }
-                }
-                // Default action is to start a new block after a blank line
-                $block += 1;
-                continue;
-            }
-            $blocks[++$block] = $current;
-        }
-        */
         foreach ($blocks as $k => &$v) {
             if (!\is_int($v[0])) {
                 continue;
@@ -1591,8 +1287,8 @@ namespace x\markdown\from {
             if (0 === \strpos($v[1], '*[') && \preg_match('/' . r('[]', true) . '/', \substr($v[1], 1), $m) && ':' === \substr($v[1], \strlen($m[0]) + 1, 1)) {
                 // Remove abbreviation block from the structure
                 unset($blocks[$k]);
-                // Abbreviation is not part of the CommonMark specification, but I will just assume it to behave similar
-                // to the reference specification.
+                // Abbreviation is not a part of the CommonMark specification, but I will just assume it to behave
+                // similar to the reference specification
                 $key = \trim(\preg_replace('/\s+/', ' ', $m[1]));
                 // Queue the abbreviation data to be used later
                 $title = \trim(\substr($v[1], \strlen($m[0]) + 2));
@@ -1688,23 +1384,23 @@ namespace x\markdown\from {
             if (false === $v[0]) {
                 continue;
             }
-            // $next = $blocks[$k + 1] ?? 0;
-            // if ('p' === $v[0] && \is_array($next) && 'dl' === $next[0] && \strlen($next[1]) > 2 && ':' === $next[1][0] && ' ' === $next[1][1]) {
-            //     $v[0] = 'dl';
-            //     $v[1] .= "\n\n" . $next[1];
-            //     $v[4] = $next[4];
-            //     unset($blocks[$k + 1]);
-            //     // Parse the definition list later
-            //     continue;
-            // }
-            // if ('dl' === $v[0]) {
-            //     // Must be a definition data without its term(s). Fall it back to the default block type!
-            //     if (\strlen($v[1]) > 2 && ':' === $v[1][0] && ' ' === $v[1][1]) {
-            //         $v = ['p', $v[1], [], $v[3]];
-            //     }
-            //     // Parse the definition list later
-            //     continue;
-            // }
+            $next = $blocks[$k + 1] ?? 0;
+            if ('p' === $v[0] && \is_array($next) && 'dl' === $next[0] && \strlen($next[1]) > 2 && ':' === $next[1][0] && ' ' === $next[1][1]) {
+                $v[0] = 'dl';
+                $v[1] .= "\n\n" . $next[1];
+                $v[4] = $next[4];
+                unset($blocks[$k + 1]);
+                // Parse the definition list later
+                continue;
+            }
+            if ('dl' === $v[0]) {
+                // Must be a definition data without its term(s). Fall it back to the default block type!
+                if (\strlen($v[1]) > 2 && ':' === $v[1][0] && ' ' === $v[1][1]) {
+                    $v = ['p', $v[1], [], $v[3]];
+                }
+                // Parse the definition list later
+                continue;
+            }
             if ('blockquote' === $v[0]) {
                 $v[1] = \substr(\strtr($v[1], ["\n>" => "\n"]), 1);
                 $v[1] = \substr(\strtr("\n" . $v[1], ["\n " => "\n"]), 1); // Remove space
@@ -1744,24 +1440,39 @@ namespace x\markdown\from {
             if ('h' === $v[0][0]) {
                 if ('#' === $v[4][0]) {
                     $v[1] = \trim(\substr($v[1], $v[4][1]));
+                    // `# asdf {asdf=asdf}`
+                    // `# asdf ## {asdf=asdf}`
+                    if (\strpos($v[1], '{') > 0 && \preg_match('/' . q('{}', true, q('"') . '|' . q("'")) . '\s*$/', $v[1], $m, \PREG_OFFSET_CAPTURE)) {
+                        if ("" !== \trim($m[1][0]) && '\\' !== \substr($v[1], $m[0][1] - 1, 1)) {
+                            $v[1] = \rtrim(\substr($v[1], 0, $m[0][1]));
+                            $v[2] = \array_replace($v[2], a(\rtrim($m[0][0]), true));
+                        }
+                    }
                     if ("" !== $v[1] && '#' === \substr($v[1], -1)) {
                         $vv = \substr($v[1], 0, \strpos($v[1], '#'));
                         if (' ' === \substr($vv, -1)) {
                             $v[1] = \substr($vv, 0, -1);
                         }
                     }
+                    // `# asdf {asdf=asdf} ##`
+                    if (\strpos($v[1], '{') > 0 && \preg_match('/' . q('{}', true, q('"') . '|' . q("'")) . '\s*$/', $v[1], $m, \PREG_OFFSET_CAPTURE)) {
+                        if ("" !== \trim($m[1][0]) && '\\' !== \substr($v[1], $m[0][1] - 1, 1)) {
+                            $v[1] = \rtrim(\substr($v[1], 0, $m[0][1]));
+                            $v[2] = \array_replace($v[2], a(\rtrim($m[0][0]), true));
+                        }
+                    }
                 } else if (false !== \strpos('-=', $v[4][0])) {
                     if (false !== ($n = \strpos($v[1], "\n" . $v[4][0]))) {
                         $v[1] = \substr($v[1], 0, $n);
+                        // `asdf {asdf=asdf}\n====`
+                        if (\strpos($v[1], '{') > 0 && \preg_match('/' . q('{}', true, q('"') . '|' . q("'")) . '\s*$/', $v[1], $m, \PREG_OFFSET_CAPTURE)) {
+                            if ("" !== \trim($m[1][0]) && '\\' !== \substr($v[1], $m[0][1] - 1, 1)) {
+                                $v[1] = \rtrim(\substr($v[1], 0, $m[0][1]));
+                                $v[2] = \array_replace($v[2], a(\rtrim($m[0][0]), true));
+                            }
+                        }
                     } else {
                         $v = ['p', $v[1], [], $v[3]];
-                    }
-                }
-                // Late attribute parsing
-                if (\strpos($v[1], '{') > 0 && \preg_match('/' . q('{}', true, q('"') . '|' . q("'")) . '\s*$/', $v[1], $m, \PREG_OFFSET_CAPTURE)) {
-                    if ("" !== \trim($m[1][0]) && '\\' !== \substr($v[1], $m[0][1] - 1, 1)) {
-                        $v[1] = \rtrim(\substr($v[1], 0, $m[0][1]));
-                        $v[2] = \array_replace($v[2], a(\rtrim($m[0][0]), true));
                     }
                 }
                 $v[1] = row($v[1], $lot)[0];
@@ -1771,7 +1482,8 @@ namespace x\markdown\from {
                 $list = \preg_split('/\n+(?=\d+[).](\s|$))/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
-                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][1]) => "\n"]), $v[4][1]); // Remove indent(s)
+                    $dent = \strlen($v[4][2] . $v[4][0]) + 1;
+                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $dent) => "\n"]), $dent); // Remove indent(s)
                     $vv = rows($vv, $lot, $level + 1)[0];
                     if ($list_is_tight && \is_array($vv)) {
                         foreach ($vv as &$vvv) {
@@ -1940,7 +1652,7 @@ namespace x\markdown\from {
                 $list = \preg_split('/\n+(?=[*+-](\s|$))/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
-                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][1]) => "\n"]), $v[4][1]); // Remove indent(s)
+                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', 2) => "\n"]), 2); // Remove indent(s)
                     $vv = rows($vv, $lot, $level + 1)[0];
                     if ($list_is_tight && \is_array($vv)) {
                         foreach ($vv as &$vvv) {
@@ -1968,9 +1680,8 @@ namespace x\markdown\from {
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     if (\strlen($vv) > 2 && ':' === $vv[0] && ' ' === $vv[1]) {
-                        $vv = rows(\substr(\strtr($vv, [
-                            "\n  " => "\n"
-                        ]), 2), $lot, $level + 1)[0];
+                        $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', 2) => "\n"]), 2); // Remove indent(s)
+                        $vv = rows($vv, $lot, $level + 1)[0];
                         if ($list_is_tight && \is_array($vv)) {
                             foreach ($vv as &$vvv) {
                                 if (\is_array($vvv) && 'p' === $vvv[0]) {
