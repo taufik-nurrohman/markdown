@@ -991,11 +991,17 @@ namespace x\markdown\from {
                 }
                 // Previous block is an abbreviation, note, or reference
                 if (\is_int($prev[0])) {
-                    if (\is_int($current[0])) {
-                        $blocks[++$block] = $current;
-                        continue;
-                    }
                     if (2 === $prev[0]) {
+                        // Must have at least 1 white-space after the `]:`
+                        if (false !== ($n = \strpos($prev[1], ']:')) && "\\" !== \substr($prev[1], $n - 1, 1) && false === \strpos(" \n", \substr($prev[1], $n + 2, 1))) {
+                            $blocks[$block][0] = 'p';
+                            if (null === $current[0]) {
+                                $block += 1;
+                                continue;
+                            }
+                            $blocks[$block][1] .= "\n" . $current[1];
+                            continue;
+                        }
                         // End of the note block
                         if (null !== $current[0] && $current[3] <= $prev[3]) {
                             if ("\n" === \substr($v = \rtrim($prev[1], ' '), -1)) {
@@ -1018,7 +1024,14 @@ namespace x\markdown\from {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
+                    if (\is_int($current[0])) {
+                        $blocks[++$block] = $current;
+                        continue;
+                    }
                     if (null === $current[0]) {
+                        if (false === ($n = \strpos($prev[1], ']:')) || "\\" === \substr($prev[1], $n - 1, 1)) {
+                            $blocks[$block][0] = 'p';
+                        }
                         $block += 1;
                         continue;
                     }
@@ -1073,8 +1086,8 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
-                    if ('pre' === $current[0] && 1 === $current[4][0]) {
-                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
+                    if ($current[3] > 3) {
+                        $blocks[$block][1] .= ' ' . \trim($current[1]);
                         continue;
                     }
                     if ('dl' === $current[0]) {
@@ -1107,8 +1120,8 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
-                    if ('pre' === $current[0] && 1 === $current[4][0]) {
-                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
+                    if ($current[3] > 3) {
+                        $blocks[$block][1] .= ' ' . \trim($current[1]);
                         continue;
                     }
                     if ('ol' === $current[0]) {
@@ -1152,8 +1165,8 @@ namespace x\markdown\from {
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
-                    if ('pre' === $current[0] && 1 === $current[4][0]) {
-                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
+                    if ($current[3] > 3) {
+                        $blocks[$block][1] .= ' ' . \trim($current[1]);
                         continue;
                     }
                     if ('ul' === $current[0]) {
@@ -1230,6 +1243,11 @@ namespace x\markdown\from {
                         // Contains a hard-break syntax, keep!
                         if ('  ' === \substr($prev[1], -2)) {
                             $blocks[$block][1] = \rtrim($prev[1]) . "  \n" . $current[1];
+                            continue;
+                        }
+                        // Contains a hard-break syntax, keep!
+                        if ("\\" === \substr($v = \rtrim($prev[1]), -1)) {
+                            $blocks[$block][1] = $v . "\n" . $current[1];
                             continue;
                         }
                         $blocks[$block][1] .= ' ' . $current[1];
@@ -1503,7 +1521,15 @@ namespace x\markdown\from {
             }
             if ('pre' === $v[0]) {
                 if (2 === $v[4][0] || 3 === $v[4][0]) {
-                    $v[1] = \substr(\strstr($v[1], "\n"), 1, -($v[4][1] + 1));
+                    $v[1] = \substr(\strstr($v[1], "\n"), 1);
+                    if ("" !== ($fence = \trim(\strrchr($v[1], "\n") ?: $v[1], "\n"))) {
+                        if (['`' => 2, '~' => 3][$fence[0]] === $v[4][0] && \strlen($fence) === $v[4][1]) {
+                            $v[1] = \substr($v[1], 0, -$v[4][1]);
+                        }
+                    }
+                    if ("" !== \trim($v[1])) {
+                        $v[1] = \substr($v[1], 0, -1);
+                    }
                 }
                 $v[1] = [['code', e($v[1]), $v[2]]];
                 $v[2] = [];
