@@ -280,7 +280,8 @@ namespace x\markdown\from {
             }
             // `* …`
             if (' ' === \substr($row, 1, 1)) {
-                return ['ul', $row, [], $dent, [$row[0], 2]];
+                $r = \strspn($row, ' ', 1);
+                return ['ul', $row, [], $dent, [$row[0], 1 + ($r > 3 ? 3 : $r)]];
             }
             return ['p', $row, [], $dent];
         }
@@ -292,7 +293,8 @@ namespace x\markdown\from {
         if (0 === \strpos($row, '+')) {
             // `+ …`
             if (' ' === \substr($row, 1, 1)) {
-                return ['ul', $row, [], $dent, [$row[0], 2]];
+                $r = \strspn($row, ' ', 1);
+                return ['ul', $row, [], $dent, [$row[0], 1 + ($r > 3 ? 3 : $r)]];
             }
             return ['p', $row, [], $dent];
         }
@@ -313,7 +315,8 @@ namespace x\markdown\from {
             }
             // `- …`
             if (' ' === \substr($row, 1, 1)) {
-                return ['ul', $row, [], $dent, [$row[0], 2]];
+                $r = \strspn($row, ' ', 1);
+                return ['ul', $row, [], $dent, [$row[0], 1 + ($r > 3 ? 3 : $r)]];
             }
             return ['p', $row, [], $dent];
         }
@@ -1482,8 +1485,7 @@ namespace x\markdown\from {
                 $list = \preg_split('/\n+(?=\d+[).](\s|$))/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
-                    $dent = \strlen($v[4][2] . $v[4][0]) + 1;
-                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $dent) => "\n"]), $dent); // Remove indent(s)
+                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][1]) => "\n"]), \strlen($v[4][2] . $v[4][0]) + 1); // Remove indent(s)
                     $vv = rows($vv, $lot, $level + 1)[0];
                     if ($list_is_tight && \is_array($vv)) {
                         foreach ($vv as &$vvv) {
@@ -1652,7 +1654,7 @@ namespace x\markdown\from {
                 $list = \preg_split('/\n+(?=[*+-](\s|$))/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
-                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', 2) => "\n"]), 2); // Remove indent(s)
+                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][1]) => "\n"]), 2); // Remove indent(s)
                     $vv = rows($vv, $lot, $level + 1)[0];
                     if ($list_is_tight && \is_array($vv)) {
                         foreach ($vv as &$vvv) {
@@ -1680,7 +1682,7 @@ namespace x\markdown\from {
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     if (\strlen($vv) > 2 && ':' === $vv[0] && ' ' === $vv[1]) {
-                        $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', 2) => "\n"]), 2); // Remove indent(s)
+                        $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $v[4][1]) => "\n"]), 2); // Remove indent(s)
                         $vv = rows($vv, $lot, $level + 1)[0];
                         if ($list_is_tight && \is_array($vv)) {
                             foreach ($vv as &$vvv) {
