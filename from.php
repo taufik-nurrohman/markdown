@@ -863,11 +863,10 @@ namespace x\markdown\from {
         $blocks = [];
         $rows = \explode("\n", $value);
         foreach ($rows as $row) {
-            // Normalize tab(s) to space(s)
+            // Normalize tab(s) to pad(s)
             $row = \rtrim($row, "\t");
-            while (false !== ($before = \strstr($row, "\t", true))) {
-                $v = \strlen($before);
-                $row = $before . \str_repeat(' ', 4 - $v % 4) . \substr($row, $v + 1);
+            while (false !== ($pad = \strstr($row, "\t", true))) {
+                $row = $pad . \str_repeat(' ', 4 - ($v = \strlen($pad)) % 4) . \substr($row, $v + 1);
             }
             $current = of($row);
             if ($prev = $blocks[$block] ?? 0) {
