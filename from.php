@@ -1533,7 +1533,7 @@ namespace x\markdown\from {
                             $v[1] = \substr($v[1], 0, -$v[4][1]);
                         }
                     }
-                    if ("" !== \trim($v[1])) {
+                    if ("\n" === \substr($v[1], -1) && "" !== \trim($v[1])) {
                         $v[1] = \substr($v[1], 0, -1);
                     }
                 }
