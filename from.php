@@ -1470,7 +1470,7 @@ namespace x\markdown\from {
                         }
                     }
                     if ("" !== $v[1] && '#' === \substr($v[1], -1)) {
-                        $vv = \substr($v[1], 0, \strpos($v[1], '#'));
+                        $vv = \rtrim($v[1], '#');
                         if (' ' === \substr($vv, -1)) {
                             $v[1] = \substr($vv, 0, -1);
                         }
