@@ -466,7 +466,7 @@ namespace x\markdown\from {
         $is_image = isset($lot['is']['image']);
         $is_table = isset($lot['is']['table']);
         $notes = $lot['notes'] ?? [];
-        while (false !== ($chop = \strpbrk($value, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
+        while (false !== ($chop = \strpbrk($value, "\\" . '<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
             if ("" !== ($prev = \strstr($value, $chop[0], true))) {
                 if (\is_array($abbr = abbr($prev, $lot))) {
                     $chops = \array_merge($chops, $abbr);
