@@ -1046,6 +1046,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($current[3] > $prev[3] || "" === $current[1]) {
+                        $row = \substr($row, 1);
                         $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
                         continue;
                     }
