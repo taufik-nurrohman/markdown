@@ -545,11 +545,11 @@ namespace x\markdown\from {
                     $i0 = '(?>[*](?![\p{P}\p{S}\s])|(?<=[\p{P}\p{S}\s])[*](?=[\p{P}\p{S}]))(?>' . $contains . ')+?(?>(?<![\p{P}\p{S}\s])[*]|(?<=[\p{P}\p{S}])[*](?=[\p{P}\p{S}\s]))';
                     // Outer strong and emphasis (strict)
                     $b1 = '(?>[*]{2}(?![\p{P}\p{S}\s])|(?<=^|[\p{P}\p{S}\s])[*]{2}(?=[\p{P}\p{S}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+?(?>(?<![\p{P}\p{S}\s])[*]{2}(?![*])|(?<=[\p{P}\p{S}])[*]{2}(?![*])(?=[\p{P}\p{S}\s]|$))';
-                    $i1 = '(?>[*](?![\p{P}\p{S}\s])|(?<=^|[\p{P}\p{S}\s])[*](?=[\p{P}\p{S}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+?(?>(?<![\p{P}\p{S}\s])[*](?![*])|(?<=[\p{P}\p{S}])[*](?![*])(?=[\p{P}\p{S}\s]|$))';
+                    $i1 = '(?>[*](?![\p{P}\p{S}\s])|(?<=^|[\p{P}\p{S}\s])[*](?=[\p{P}\p{S}]))(?>' . $contains . '|' . $b0 . '|' . $i0 . '|(?R))+?(?>(?<![\p{P}\p{S}\s])[*](?![*]+[^\p{P}\p{S}\s])|(?<=[\p{P}\p{S}])[*](?![*]+[^\p{P}\p{S}\s])(?=[\p{P}\p{S}\s]|$))';
                 } else {
                     // Outer strong and emphasis (strict)
-                    $b1 = '(?<=^|[\p{P}\p{S}\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_]{2}(?![_])(?=[\p{P}\p{S}\s]|$)';
-                    $i1 = '(?<=^|[\p{P}\p{S}\s])[_](?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_](?![_])(?=[\p{P}\p{S}\s]|$)';
+                    $b1 = '(?<=^|[\p{P}\p{S}\s])[_]{2}(?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_]{2}(?![_]+[^\p{P}\p{S}\s])(?=[\p{P}\p{S}\s]|$)';
+                    $i1 = '(?<=^|[\p{P}\p{S}\s])[_](?!\s)(?>' . $contains . '|(?<![\p{P}\p{S}\s])[_]+(?![\p{P}\p{S}\s])|(?R))+?(?<!\s)[_](?![_]+[^\p{P}\p{S}\s])(?=[\p{P}\p{S}\s]|$)';
                 }
                 $n = \strlen($before = \substr($prev, -1)); // Either `0` or `1`
                 // Test this pattern against the current chop plus the previous character that came before it to verify
@@ -1088,7 +1088,7 @@ namespace x\markdown\from {
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
                     if ($current[3] > 3) {
-                        $blocks[$block][1] .= ' ' . \trim($current[1]);
+                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
                         continue;
                     }
                     if ('dl' === $current[0]) {
@@ -1122,7 +1122,7 @@ namespace x\markdown\from {
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
                     if ($current[3] > 3) {
-                        $blocks[$block][1] .= ' ' . \trim($current[1]);
+                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
                         continue;
                     }
                     if ('ol' === $current[0]) {
@@ -1167,7 +1167,7 @@ namespace x\markdown\from {
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
                     if ($current[3] > 3) {
-                        $blocks[$block][1] .= ' ' . \trim($current[1]);
+                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
                         continue;
                     }
                     if ('ul' === $current[0]) {
@@ -1469,11 +1469,16 @@ namespace x\markdown\from {
                             $v[2] = \array_replace($v[2], a(\rtrim($m[0][0]), true));
                         }
                     }
-                    if ("" !== $v[1] && '#' === \substr($v[1], -1)) {
-                        $vv = \rtrim($v[1], '#');
-                        if (' ' === \substr($vv, -1)) {
-                            $v[1] = \substr($vv, 0, -1);
+                    if ("" !== $v[1]) {
+                        // Remove all decorative `#` at the end of the header text, but consider them as part of the
+                        // header text if they are not preceded by a space, right after the actual header text
+                        while ('#' === \substr($v[1], -1)) {
+                            if (false === \strpos(' #', \substr($v[1], -2, 1))) {
+                                break;
+                            }
+                            $v[1] = \substr($v[1], 0, -1);
                         }
+                        $v[1] = \rtrim($v[1]);
                     }
                     // `# asdf {asdf=asdf} ##`
                     if (\strpos($v[1], '{') > 0 && \preg_match('/' . q('{}', true, q('"') . '|' . q("'")) . '\s*$/', $v[1], $m, \PREG_OFFSET_CAPTURE)) {
