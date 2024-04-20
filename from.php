@@ -467,13 +467,30 @@ namespace x\markdown\from {
         $is_table = isset($lot['is']['table']);
         $notes = $lot['notes'] ?? [];
         while (false !== ($chop = \strpbrk($value, '\\<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
-            if ("" !== ($prev = \substr($value, 0, \strlen($value) - \strlen($chop)))) {
+            if ("" !== ($prev = \strstr($value, $chop[0], true))) {
                 if (\is_array($abbr = abbr($prev, $lot))) {
                     $chops = \array_merge($chops, $abbr);
                 } else {
                     $chops[] = e($prev);
                 }
                 $value = \substr($value, \strlen($prev));
+            }
+            if (0 === \strpos($chop, "\\")) {
+                if ("\\" === \trim($chop)) {
+                    $chops[] = $prev = "\\";
+                    $value = "";
+                    break;
+                }
+                // <https://spec.commonmark.org/0.30#example-644>
+                if ("\n" === \substr($chop, 1, 1)) {
+                    $chops[] = ['br', false, [], -1, ["\\", 1]];
+                    $value = \ltrim(\substr($chop, 2));
+                    $prev = "\\\n";
+                    continue;
+                }
+                $chops[] = e($prev = \substr($chop, 1, 1));
+                $value = \substr($chop, 2);
+                continue;
             }
             if (0 === \strpos($chop, "\n")) {
                 $prev = $chops[$last = \count($chops) - 1] ?? [];
@@ -792,23 +809,6 @@ namespace x\markdown\from {
                 }
                 $chops[] = $prev = '[';
                 $value = \substr($chop, 1);
-                continue;
-            }
-            if ("\\" === $chop) {
-                $chops[] = $prev = $chop;
-                $value = "";
-                break;
-            }
-            if (0 === \strpos($chop, "\\") && isset($chop[1])) {
-                // <https://spec.commonmark.org/0.30#example-644>
-                if ("\n" === $chop[1]) {
-                    $chops[] = ['br', false, [], -1, ["\\", 1]];
-                    $value = \ltrim(\substr($chop, 2));
-                    $prev = "\\";
-                    continue;
-                }
-                $chops[] = e($prev = \substr($chop, 1, 1));
-                $value = \substr($chop, 2);
                 continue;
             }
             if (0 === \strpos($chop, $c = '`')) {
