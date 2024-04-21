@@ -473,7 +473,6 @@ namespace x\markdown\from {
                 } else {
                     $chops[] = e($prev);
                 }
-                $value = \substr($value, \strlen($prev));
             }
             if (0 === \strpos($chop, "\\")) {
                 if ("\\" === \trim($chop)) {
@@ -844,7 +843,6 @@ namespace x\markdown\from {
             } else {
                 $chops[] = e($prev);
             }
-            $value = "";
         }
         return [m($chops), $lot];
     }
