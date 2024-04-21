@@ -473,6 +473,7 @@ namespace x\markdown\from {
                 } else {
                     $chops[] = e($prev);
                 }
+                $value = $chop;
             }
             if (0 === \strpos($chop, "\\")) {
                 if ("\\" === \trim($chop)) {
