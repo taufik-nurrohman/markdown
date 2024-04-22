@@ -191,12 +191,11 @@ namespace x\markdown\from {
             return $row;
         }
         if (1 === ($count = \count($row))) {
-            $v = \reset($row);
+            if (\is_string($v = \reset($row))) {
+                return $v;
+            }
             if (\is_array($v) && false === $v[0] && \is_string($v[1])) {
                 return $v[1];
-            }
-            if (\is_string($v)) {
-                return $v;
             }
         }
         // Concatenate a series of string(s) into one string
@@ -208,12 +207,11 @@ namespace x\markdown\from {
             }
         }
         if (1 === \count($row = \array_values($row))) {
-            $v = \reset($row);
+            if (\is_string($v = \reset($row))) {
+                return $v;
+            }
             if (\is_array($v) && false === $v[0] && \is_string($v[1])) {
                 return $v[1];
-            }
-            if (\is_string($v)) {
-                return $v;
             }
         }
         return $row;
@@ -1451,6 +1449,7 @@ namespace x\markdown\from {
                     $row[0][3] = 0; // Mark as block
                 }
                 $v[1] = $row;
+                unset($v[4]);
                 continue;
             }
             if ('hr' === $v[0]) {
@@ -1678,6 +1677,7 @@ namespace x\markdown\from {
                     \array_unshift($table, ['caption', $caption, [], 0]);
                 }
                 $v[1] = $table;
+                unset($v[4]);
                 continue;
             }
             if ('ul' === $v[0]) {
