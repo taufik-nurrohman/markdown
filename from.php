@@ -1412,7 +1412,7 @@ namespace x\markdown\from {
                 continue;
             }
             if ('dl' === $v[0]) {
-                // Must be a definition data without its term(s). Fall it back to the default block type!
+                // Must be a definition value without its term(s). Fall it back to the default block type!
                 if (\strlen($v[1]) > 2 && ':' === $v[1][0] && ' ' === $v[1][1]) {
                     $v = ['p', $v[1], [], $v[3]];
                 }

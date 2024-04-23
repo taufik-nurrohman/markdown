@@ -251,6 +251,7 @@ foreach ($files as $v) {
                 $b .= '</pre>';
             }
         } else {
+            // file_put_contents($f, $content);
             $error = false; // No test file to compare
         }
         $out .= ($error ? strtr($a, [':#cfc;' => ':#fcc;']) : $a) . $b . '</div>';
