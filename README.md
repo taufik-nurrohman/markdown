@@ -169,15 +169,15 @@ Inline attributes always win over native syntax attributes and pre-defined attri
   <tbody>
     <tr>
       <td><pre><code>[asdf](asdf) {href=x}</code></pre></td>
-      <td><pre><code>&lt;a href="x"&gt;asdf&lt;/a&gt;</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;a href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
     </tr>
     <tr>
       <td><pre><code>[asdf]&#10;&#10;[asdf]: asdf {href=x}</code></pre></td>
-      <td><pre><code>&lt;a href="x"&gt;asdf&lt;/a&gt;</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;a href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
     </tr>
     <tr>
       <td><pre><code>[asdf] {.x href=x}&#10;&#10;[asdf]: asdf {.asdf}</code></pre></td>
-      <td><pre><code>&lt;a class="x" href="x"&gt;asdf&lt;/a&gt;</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;a class="x" href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
     </tr>
   </tbody>
 </table>
