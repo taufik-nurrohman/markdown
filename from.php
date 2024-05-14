@@ -553,13 +553,13 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
-                $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
+                $contains = '(`+)(?![`])(.+?)(?<![`])\1(?![`])|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
                 if ('*' === $c) {
-                    $b = '(?>[*]{2}(?![\p{P}\p{S}\p{Z}])|(?<=^|[\p{P}\p{S}\p{Z}])[*]{2}(?=[\p{P}\p{S}\p{Z}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Z}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Z}])|(?<=[\p{P}\p{S}\p{Z}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Z}]|$))';
-                    $i = '(?>[*](?![\p{P}\p{S}\p{Z}])|(?<=^|[\p{P}\p{S}\p{Z}])[*](?=[\p{P}\p{S}\p{Z}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Z}])[*](?![*]+[^\p{P}\p{S}\p{Z}])|(?<=[\p{P}\p{S}\p{Z}])[*](?![*])(?=[\p{P}\p{S}\p{Z}]|$))';
+                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*][^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
+                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*][^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
                 } else {
-                    $b = '(?<=^|[\p{P}\p{S}\p{Z}])[_]{2}(?![\p{Z}])(?>' . $contains . '|(?<![\p{P}\p{S}\p{Z}])[_]+(?![\p{P}\p{S}\p{Z}])|(?R))+?(?<![\p{Z}])[_]{2}(?![_]+[^\p{P}\p{S}\p{Z}])(?=[\p{P}\p{S}\p{Z}]|$)';
-                    $i = '(?<=^|[\p{P}\p{S}\p{Z}])[_](?![\p{Z}])(?>' . $contains . '|(?<![\p{P}\p{S}\p{Z}])[_]+(?![\p{P}\p{S}\p{Z}])|(?R))+?(?<![\p{Z}])[_](?![_]+[^\p{P}\p{S}\p{Z}])(?=[\p{P}\p{S}\p{Z}]|$)';
+                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_]{2}(?![_][^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
+                    $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_](?![_][^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                 }
                 $n = \strlen($before = \substr($prev, -1)); // Either `0` or `1`
                 // Test this pattern against the current chop plus the previous character that came before it to verify
@@ -580,7 +580,7 @@ namespace x\markdown\from {
                     if (0 === $x % 2) {
                         $v = row(\substr($current, 2, -2), $lot)[0];
                         // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
-                        if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Z}]/u', $v[1][0])) {
+                        if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
                             $chops[] = $prev = \substr($chop, 0, $n);
                             $value = \substr($chop, $n);
                             continue;
@@ -591,7 +591,7 @@ namespace x\markdown\from {
                     }
                     $v = row(\substr($current, 1, -1), $lot)[0];
                     // Hot fix for case `**asdf*asdf*` (case `*asdf*asdf**` works just fine)
-                    if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Z}]/u', $v[1][0])) {
+                    if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
                         $chops[] = $prev = \substr($chop, 0, $n);
                         $value = \substr($chop, $n);
                         continue;
