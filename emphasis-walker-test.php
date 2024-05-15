@@ -1,12 +1,10 @@
 <?php
 
-$chop = <<<TEST
-asdf *asdf*
+/*
 
-*(*
+(?>(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>`[^`]+`|[^*\n\\\\]|\\.|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))|(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>`[^`]+`|[^*\n\\\\]|\\.|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$)))
 
-*)*
-TEST;
+*/
 
 function emphasize($chop) {
     $result = [];
@@ -34,9 +32,16 @@ function emphasize($chop) {
             $can_open = false;
             $can_close = false;
         }
-        if ($c_prev === $c_current || $c_current === $c_next) {
-            $can_open = false;
-            $can_close = false;
+        if ($c_current === $c_prev) {
+            $result[count($result) - 1][0] = '<strong>';
+            $result[count($result) - 1][1] .= $c_current;
+            $chop = substr($chop, 1);
+            continue;
+        }
+        if ($c_next === $c_current) {
+            $c_current .= $c_next;
+            $chop = substr($chop, 1);
+            continue;
         }
         if ($can_open) {
             $result[] = ['<em>', $c_prev = $c_current];
@@ -54,7 +59,7 @@ function emphasize($chop) {
         $chop = substr($chop, 1);
     }
     echo $stack . '<br>';
-    if (0 === $stack) {
+    if (0 !== $stack) {
         foreach ($result as &$r) {
             if (is_array($r)) {
                 $r = $r[0];
