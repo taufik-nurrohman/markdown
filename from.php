@@ -555,11 +555,11 @@ namespace x\markdown\from {
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
                 if ('*' === $c) {
-                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[*]{3,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
-                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[*]{2,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
+                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])(?>[*](?![*])|[*]{3,})(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
+                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[*]{2,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
                 } else {
                     $contains .= '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])';
-                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[_]{3,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
+                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])(?>[_](?![_])|[_]{3,})(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                     $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[_]{2,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_](?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                 }
                 $n = \strlen($prev);
@@ -585,6 +585,13 @@ namespace x\markdown\from {
                     $x = \min($n = \strspn($current, $c), \strspn(\strrev($current), $c));
                     if (0 === $x % 2) {
                         $v = row(\substr($current, 2, -2), $lot)[0];
+                        // Hot fix for case `**asdf* *asdf**`
+                        if (\is_array($v) && \is_string($v[0]) && '*' === \substr($v[0], -1) && \is_string($v[1]) && \preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
+                            $v = row(\substr($current, 1, -1), $lot)[0];
+                            $chops[] = ['em', $v, [], -1, [$c, 1]];
+                            $value = \substr($chop, \strlen($prev = $current));
+                            continue;
+                        }
                         // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
                         if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
                             $chops[] = $prev = \substr($chop, 0, $n);
