@@ -555,20 +555,26 @@ namespace x\markdown\from {
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
                 if ('*' === $c) {
-                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
-                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
+                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[*]{3,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
+                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[*]{2,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
                 } else {
-                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
-                    $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_](?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
+                    $contains .= '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])';
+                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[_]{3,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
+                    $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[_]{2,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?<![\p{Zs}])[_](?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                 }
-                $n = \strlen($before = \substr($prev, -1)); // Either `0` or `1`
-                // Test this pattern against the current chop plus the previous character that came before it to verify
-                // if this chop is a left flank or not <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
-                if (\preg_match('/(?>' . $b . '|' . $i . ')/u', $before . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                $n = \strlen($prev);
+                // Test this pattern against the previous and current chop to verify if current chop has a left flank
+                // <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
+                if (\preg_match('/(?>' . $b . '|' . $i . ')/u', $prev . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     $current = $m[0][0];
                     if ($m[0][1] > $n) {
                         $chops[] = e($prev = \substr($chop, 0, $m[0][1] - $n));
                         $value = $chop = \substr($chop, $m[0][1] - $n);
+                        if ($c === \substr($prev, -1) && \preg_match('/(?<![\p{P}\p{S}\p{Zs}])[' . $c . ']+$/u', $prev, $mm)) {
+                            $chops[] = e($current);
+                            $value = \substr($chop, \strlen($current));
+                            continue;
+                        }
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
                     if (false !== ($n = \strpos($current, '[')) && (false === \strpos($current, ']') || !\preg_match('/' . r('[]') . '/', $current))) {
@@ -577,10 +583,6 @@ namespace x\markdown\from {
                         continue;
                     }
                     $x = \min($n = \strspn($current, $c), \strspn(\strrev($current), $c));
-                    // echo '<pre style="border:1px solid">';
-                    // echo $current . "\n";
-                    // echo \strspn($current, $c) + \strspn(\strrev($current), $c);
-                    // echo '</pre>';
                     if (0 === $x % 2) {
                         $v = row(\substr($current, 2, -2), $lot)[0];
                         // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
