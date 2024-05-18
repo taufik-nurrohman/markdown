@@ -1,6 +1,6 @@
 <?php
 
-function emphasize($chop) {
+function walk($chop) {
     $result = [];
     $c_prev = "";
     while ("" !== $chop) {
@@ -37,7 +37,26 @@ function emphasize($chop) {
         $result[] = $c_prev = $c_current;
         $chop = substr($chop, 1);
     }
-    return $result;
+    return str($result);
+}
+
+function str($result) {
+    $out = "";
+    $open = false;
+    foreach ($result as $r) {
+        if (is_array($r)) {
+            if ($r['open'] && $r['close']) {
+                $out .= $open ? '</em>' : '<em>';
+                $open = !$open;
+                continue;
+            }
+            $out .= $r['open'] ? '<em>' : '</em>';
+            $open = $r['open'];
+            continue;
+        }
+        $out .= $r;
+    }
+    return $out;
 }
 
 foreach ([
@@ -57,7 +76,7 @@ foreach ([
 ] as $test) {
     echo '<pre style="border: 1px solid;">';
     echo htmlspecialchars($test) . "\n\n";
-    echo htmlspecialchars(json_encode(emphasize($test), JSON_PRETTY_PRINT));
+    echo htmlspecialchars(walk($test));
     echo '</pre>';
 }
 
@@ -80,7 +99,7 @@ foreach ([
 ] as $test) {
     echo '<pre style="border: 1px solid;">';
     echo htmlspecialchars($test) . "\n\n";
-    echo htmlspecialchars(json_encode(emphasize($test), JSON_PRETTY_PRINT));
+    echo htmlspecialchars(walk($test));
     echo '</pre>';
 }
 
@@ -93,6 +112,6 @@ foreach ([
 ] as $test) {
     echo '<pre style="border: 1px solid;">';
     echo htmlspecialchars($test) . "\n\n";
-    echo htmlspecialchars(json_encode(emphasize($test), JSON_PRETTY_PRINT));
+    echo htmlspecialchars(walk($test));
     echo '</pre>';
 }
