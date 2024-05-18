@@ -262,7 +262,7 @@ foreach ($files as $v) {
         $error_count += 1;
     }
     $slow = $time >= 1;
-    $out .= '<p style="color:#' . ($error || $slow ? '800' : '080') . ';">Parsed in ' . $time . ' ms.</p>';
+    $out .= '<p style="color:#' . ($slow ? '800' : '080') . ';">Parsed in ' . $time . ' ms.</p>';
 }
 
 $out .= '</body>';
