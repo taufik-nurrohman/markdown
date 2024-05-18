@@ -559,8 +559,8 @@ namespace x\markdown\from {
                     $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
                 } else {
                     $contains .= '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])';
-                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?R))+?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
-                    $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?R))+?(?<![\p{Zs}])[_](?![_]+[^\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
+                    $b = '(?>(?<=[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{P}\p{S}\p{Zs}])|^[_]{2}(?![\p{Zs}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[_]{2}(?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}])|(?<![\p{Zs}])[_]{2}$)';
+                    $i = '(?>(?<=[\p{P}\p{S}\p{Zs}])[_](?![\p{P}\p{S}\p{Zs}])|^[_](?![\p{Zs}]))(?>' . $contains . '|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[_](?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}])|(?<![\p{Zs}])[_]$)';
                 }
                 $n = \strlen($prev);
                 // Test the pattern against the previous and current chop to verify if current chop has a left flank
