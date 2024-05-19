@@ -553,7 +553,13 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
+                if ($is_table && false !== ($n = \strpos($chop, '|')) && "\\" !== \substr($chop, $n - 1, 1)) {
+                    $chops[] = e($prev = \substr($chop, 0, $n));
+                    $value = \substr($chop, $n);
+                    continue;
+                }
                 $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
+                $n = \strlen($prev);
                 if ('*' === $c) {
                     $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
                     $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
@@ -562,7 +568,6 @@ namespace x\markdown\from {
                     $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                     $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_](?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                 }
-                $n = \strlen($prev);
                 // Test the pattern against the previous and current chop to verify if current chop has a left flank
                 // <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
                 if (\preg_match('/(?>' . $b . '|' . $i . ')/u', $prev . $chop, $m, \PREG_OFFSET_CAPTURE)) {
@@ -1156,6 +1161,12 @@ namespace x\markdown\from {
                             continue;
                         }
                         if ('p' === $current[0] && $v !== $prev[4][2] . $prev[4][0]) {
+                            // Hot fix for case `1) 1)\nasdf`
+                            if (\preg_match('/^\d+[).](?>[ ]+\d+[).])+[ ]*$/', $prev[1])) {
+                                // End of the list block
+                                $blocks[++$block] = $current;
+                                continue;
+                            }
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
@@ -1194,6 +1205,12 @@ namespace x\markdown\from {
                             continue;
                         }
                         if ('p' === $current[0] && $v !== $prev[4][0]) {
+                            // Hot fix for case `* *\nasdf`
+                            if (\preg_match('/^[*+-](?>[ ]+[*+-])+[ ]*$/', $prev[1])) {
+                                // End of the list block
+                                $blocks[++$block] = $current;
+                                continue;
+                            }
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
