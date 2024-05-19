@@ -473,6 +473,11 @@ namespace x\markdown\from {
                 }
                 $value = $chop;
             }
+            if ($is_table && (0 === \strpos($chop, '![') || false !== \strpos('&*[_', $chop[0])) && false !== ($n = \strpos($chop, '|')) && "\\" !== \substr($chop, $n - 1, 1)) {
+                $chops[] = e($prev = \substr($chop, 0, $n));
+                $value = \substr($chop, $n);
+                continue;
+            }
             if (0 === \strpos($chop, "\\")) {
                 if ("\\" === \trim($chop)) {
                     $chops[] = $prev = "\\";
@@ -553,12 +558,7 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
-                if ($is_table && false !== ($n = \strpos($chop, '|')) && "\\" !== \substr($chop, $n - 1, 1)) {
-                    $chops[] = e($prev = \substr($chop, 0, $n));
-                    $value = \substr($chop, $n);
-                    continue;
-                }
-                $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
+                $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
                 $n = \strlen($prev);
                 if ('*' === $c) {
                     $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
@@ -659,7 +659,7 @@ namespace x\markdown\from {
                     continue;
                 }
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
-                if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^<>' . ($is_table ? '|' : "") . '\x00-\x20]*)>/i', $chop, $m)) {
+                if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^' . ($is_table ? '|' : "") . '<>\x00-\x20]*)>/i', $chop, $m)) {
                     if (l($m[1])) {
                         $rel = $target = null;
                     } else {
@@ -681,7 +681,7 @@ namespace x\markdown\from {
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#open-tag>
-                if (\preg_match('/^<([a-z][a-z\d-]*)(\s+[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
+                if (\preg_match('/^<([a-z][a-z\d-]*)(\s+[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^' . ($is_table ? '|' : "") . '\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, [7, $m[1]]];
                     $value = \substr($chop, \strlen($prev = $m[0]));
                     continue;
@@ -695,14 +695,14 @@ namespace x\markdown\from {
                 // <https://spec.commonmark.org/0.30#example-342>
                 $contains = '`[^`]+`';
                 // `[asdf]…`
-                if (\preg_match('/' . r('[]', true, $contains, $is_table ? '|' : "") . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/' . r('[]', true, $contains) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     $prev = $m[0][0];
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $value = $chop = \substr($chop, $m[0][1]);
                     }
                     // <https://spec.commonmark.org/0.30#example-517>
-                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains, $is_table ? '|' : "") . '/', $prev, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
+                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains) . '/', $prev, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
                         if (false !== \strpos($prev, '](') || false !== \strpos($prev, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
                             $chops[] = e($prev = \substr($prev, 0, $n[0][1]));
                             $value = \substr($chop, \strlen($prev));
@@ -728,7 +728,7 @@ namespace x\markdown\from {
                     }
                     $row = row($m[1][0], $lot)[0];
                     // `…(asdf)`
-                    if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>'), $is_table ? '|' : "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
+                    if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $prev = $n[0][0];
                         // `[asdf]()`
                         if ("" === ($n[1][0] = \trim($n[1][0] ?? ""))) {
@@ -778,7 +778,7 @@ namespace x\markdown\from {
                         $key = false;
                         $value = $chop = \substr($chop, \strlen($n[0][0]));
                     // `…[]` or `…[asdf]`
-                    } else if (0 === \strpos($chop, '[') && \preg_match('/' . r('[]', true, "", $is_table ? '|' : "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
+                    } else if (0 === \strpos($chop, '[') && \preg_match('/' . r('[]', true, "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $key = \trim(\strtolower("" === $n[1][0] ? $m[1][0] : $n[1][0]));
                         $value = $chop = \substr($chop, \strlen($prev = $n[0][0]));
                         if (!isset($lot[0][$key])) {
@@ -792,7 +792,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     // …{asdf}
-                    if (0 === \strpos(\trim($chop), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'"), $is_table ? '|' : "") . ')/', $chop, $o)) {
+                    if (0 === \strpos(\trim($chop), '{') && \preg_match('/^\s*(' . q('{}', false, q('"') . '|' . q("'")) . ')/', $chop, $o)) {
                         if ("" !== \trim(\substr($o[1], 1, -1))) {
                             $data = \array_replace($data ?? [], a($o[1], true));
                             $value = \substr($chop, \strlen($o[0]));
@@ -1154,6 +1154,11 @@ namespace x\markdown\from {
                             continue;
                         }
                         if ('p' === $current[0] && $v !== $prev[4][2] . $prev[4][0]) {
+                            // Hot fix for case `1) 1)\nasdf`
+                            if (\preg_match('/(^|\n)\d+[).]([ ]+\d+[).])+[ ]*$/', $prev[1])) {
+                                $blocks[++$block] = $current;
+                                continue;
+                            }
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
@@ -1192,6 +1197,11 @@ namespace x\markdown\from {
                             continue;
                         }
                         if ('p' === $current[0] && $v !== $prev[4][0]) {
+                            // Hot fix for case `* *\nasdf`
+                            if (\preg_match('/(^|\n)[*+-]([ ]+[*+-])+[ ]*$/', $prev[1])) {
+                                $blocks[++$block] = $current;
+                                continue;
+                            }
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
@@ -1301,20 +1311,6 @@ namespace x\markdown\from {
             // Current block is empty, skip!
             if (null === $current[0]) {
                 continue;
-            }
-            if ('ol' === $current[0]) {
-                // Hot fix for case `1) 1)\nasdf`
-                if (\preg_match('/^\d+[).](?>[ ]+\d+[).])+[ ]*$/', $current[1])) {
-                    $blocks[$block++] = $current;
-                    continue;
-                }
-            }
-            if ('ul' === $current[0]) {
-                // Hot fix for case `* *\nasdf`
-                if (\preg_match('/^[*+-](?>[ ]+[*+-])+[ ]*$/', $current[1])) {
-                    $blocks[$block++] = $current;
-                    continue;
-                }
             }
             // Start a new block…
             $blocks[++$block] = $current;
