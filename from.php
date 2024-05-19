@@ -555,12 +555,12 @@ namespace x\markdown\from {
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $contains = '`[^`]+`|[^' . $c . ($is_table ? '|' : "") . '\\\\]|\\\\.';
                 if ('*' === $c) {
-                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[*]{4,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
-                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?<=[\p{P}\p{S}\p{Zs}])[*]{2,}(?=[\p{P}\p{S}\p{Zs}])|(?R))+?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
+                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
+                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
                 } else {
                     $contains .= '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])';
-                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?R))+?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
-                    $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?R))+?(?<![\p{Zs}])[_](?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
+                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
+                    $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_](?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                 }
                 $n = \strlen($prev);
                 // Test the pattern against the previous and current chop to verify if current chop has a left flank
@@ -570,6 +570,13 @@ namespace x\markdown\from {
                     if ($m[0][1] > $n) {
                         $chops[] = e($prev = \substr($chop, 0, $m[0][1] - $n));
                         $value = $chop = \substr($chop, $m[0][1] - $n);
+                    }
+                    // <https://spec.commonmark.org/0.31.2#example-420>
+                    // <https://spec.commonmark.org/0.31.2#example-421>
+                    if (\strspn($current, $c) === ($n = \strlen($current))) {
+                        $chops[] = $prev = $current;
+                        $value = \substr($chop, $n);
+                        continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
                     if (false !== ($n = \strpos($current, '[')) && (false === \strpos($current, ']') || !\preg_match('/' . r('[]') . '/', $current))) {
