@@ -592,13 +592,6 @@ namespace x\markdown\from {
                     $x = \min($n = \strspn($current, $c), \strspn(\strrev($current), $c));
                     if (0 === (int) ($x % 2)) {
                         $v = row(\substr($current, 2, -2), $lot)[0];
-                        // Hot fix for case `**asdf* *asdf**`
-                        // if (\is_array($v) && \count($v) > 1 && \is_string($v[0]) && '*' === \substr($v[0], -1) && \is_string($v[1]) && \preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
-                        //     $v = row(\substr($current, 1, -1), $lot)[0];
-                        //     $chops[] = ['em', $v, [], -1, [$c, 1]];
-                        //     $value = \substr($chop, \strlen($prev = $current));
-                        //     continue;
-                        // }
                         // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
                         if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
                             $chops[] = $prev = \substr($chop, 0, $n);
@@ -1161,12 +1154,6 @@ namespace x\markdown\from {
                             continue;
                         }
                         if ('p' === $current[0] && $v !== $prev[4][2] . $prev[4][0]) {
-                            // Hot fix for case `1) 1)\nasdf`
-                            if (\preg_match('/^\d+[).](?>[ ]+\d+[).])+[ ]*$/', $prev[1])) {
-                                // End of the list block
-                                $blocks[++$block] = $current;
-                                continue;
-                            }
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
@@ -1205,12 +1192,6 @@ namespace x\markdown\from {
                             continue;
                         }
                         if ('p' === $current[0] && $v !== $prev[4][0]) {
-                            // Hot fix for case `* *\nasdf`
-                            if (\preg_match('/^[*+-](?>[ ]+[*+-])+[ ]*$/', $prev[1])) {
-                                // End of the list block
-                                $blocks[++$block] = $current;
-                                continue;
-                            }
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
@@ -1320,6 +1301,20 @@ namespace x\markdown\from {
             // Current block is empty, skip!
             if (null === $current[0]) {
                 continue;
+            }
+            if ('ol' === $current[0]) {
+                // Hot fix for case `1) 1)\nasdf`
+                if (\preg_match('/^\d+[).](?>[ ]+\d+[).])+[ ]*$/', $current[1])) {
+                    $blocks[$block++] = $current;
+                    continue;
+                }
+            }
+            if ('ul' === $current[0]) {
+                // Hot fix for case `* *\nasdf`
+                if (\preg_match('/^[*+-](?>[ ]+[*+-])+[ ]*$/', $current[1])) {
+                    $blocks[$block++] = $current;
+                    continue;
+                }
             }
             // Start a new block…
             $blocks[++$block] = $current;
