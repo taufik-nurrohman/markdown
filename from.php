@@ -556,6 +556,16 @@ namespace x\markdown\from {
                 $value = \substr($chop, \strlen($prev = $m[0]));
                 continue;
             }
+            /**
+             * NOTE: After making a couple of tweak(s) here and there, I can conclude that using regular expression(s)
+             * is completely wrong for parsing the emphasis-strong syntax according to the specification. However, I
+             * admit that my capabilit(y|ies) are still not up to the level of understanding how these specification(s)
+             * work. Anyone who wants to help me to improve this emphasis-strong parser can find out how to parse the
+             * delimiter character by character from these references:
+             *
+             * <https://github.com/commonmark/commonmark.js/blob/3ef341bdd7f59e272badb40c17bc3958eea288e2/lib/inlines.js#L249>
+             * <https://github.com/commonmark/commonmark.js/blob/3ef341bdd7f59e272badb40c17bc3958eea288e2/lib/inlines.js#L372>
+             */
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
@@ -592,6 +602,15 @@ namespace x\markdown\from {
                     $x = \min($n = \strspn($current, $c), \strspn(\strrev($current), $c));
                     if (0 === (int) ($x % 2)) {
                         $v = row(\substr($current, 2, -2), $lot)[0];
+                        // Hot fix for case `**asdf* asdf *asdf**`
+                        if (\is_array($v) && isset($v[0], $v[1]) && \is_string($v[0]) && \is_string($v[1])) {
+                            if ('*' === \substr($v[0], -1) && \preg_match('/^[\p{P}\p{S}\p{Zs}][\s\S]+?[\p{P}\p{S}\p{Zs}][*]$/u', $v[1])) {
+                                $v = row(\substr($current, 1, -1), $lot)[0];
+                                $chops[] = ['em', $v, [], -1, [$c, 1]];
+                                $value = \substr($chop, \strlen($prev = $current));
+                                continue;
+                            }
+                        }
                         // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
                         if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
                             $chops[] = $prev = \substr($chop, 0, $n);
