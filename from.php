@@ -561,7 +561,7 @@ namespace x\markdown\from {
              * is completely wrong for parsing the emphasis-strong syntax according to the specification. However, I
              * admit that my capabilit(y|ies) are still not up to the level of understanding how these specification(s)
              * work. Anyone who wants to help me to improve this emphasis-strong parser can find out how to parse the
-             * delimiter character by character from these references:
+             * delimiter character by character from these reference(s):
              *
              * <https://github.com/commonmark/commonmark.js/blob/3ef341bdd7f59e272badb40c17bc3958eea288e2/lib/inlines.js#L249>
              * <https://github.com/commonmark/commonmark.js/blob/3ef341bdd7f59e272badb40c17bc3958eea288e2/lib/inlines.js#L372>
