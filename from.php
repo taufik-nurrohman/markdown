@@ -749,6 +749,11 @@ namespace x\markdown\from {
                     // `…(asdf)`
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $prev = $n[0][0];
+                        if ($n[0][1] > 0) {
+                            $chops[] = e($m[0][0] . $prev);
+                            $value = \substr($chop, \strlen($prev));
+                            continue;
+                        }
                         // `[asdf]()`
                         if ("" === ($n[1][0] = \trim($n[1][0] ?? ""))) {
                             $link = "";
