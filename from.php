@@ -750,8 +750,8 @@ namespace x\markdown\from {
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $prev = $n[0][0];
                         if ($n[0][1] > 0) {
-                            $chops[] = e($m[0][0] . $prev);
-                            $value = \substr($chop, \strlen($prev));
+                            $chops[] = e($m[0][0] . \substr($chop, 0, $n[0][1]));
+                            $value = \substr($chop, $n[0][1]);
                             continue;
                         }
                         // `[asdf]()`
