@@ -187,7 +187,7 @@ foreach ($files as $v) {
     $raw = file_get_contents($v);
     $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
     $out .= '<div style="display:flex;gap:1em;margin:1em 0 0;">';
-    $out .= '<pre style="background:#ccc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+    $out .= '<pre style="background:#ccc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;min-width:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
     $out .= strtr(htmlspecialchars($raw), [
         "\t" => '<span class="char-tab">' . "\t" . '</span>',
         ' ' => '<span class="char-space"> </span>'
@@ -195,18 +195,18 @@ foreach ($files as $v) {
     $out .= '</pre>';
     $start = microtime(true);
     if ('raw' === $view) {
-        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;min-width:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
         // [$blocks, $lot] = x\markdown\from\raw($raw);
         // $out .= htmlspecialchars('$blocks = ' . var_export($blocks, true) . ';');
         // $out .= "\n\n";
         // $out .= htmlspecialchars('$data = ' . var_export($lot, true) . ';');
         // $out .= '</pre>';
     } else if ('result' === $view) {
-        // $out .= '<div style="border:2px solid #000;color:#000;flex:1;padding:1em;">';
+        // $out .= '<div style="border:2px solid #000;color:#000;flex:1;min-width:0;padding:1em;">';
         // $out .= x\markdown\from($raw);
         // $out .= '</div>';
     } else if ('source' === $view) {
-        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
+        $out .= '<pre style="background:#cfc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;min-width:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';
         $out .= strtr(htmlspecialchars(x\markdown\to($raw) ?? ""), [
             "\t" => '<span class="char-tab">' . "\t" . '</span>',
             ' ' => '<span class="char-space"> </span>'

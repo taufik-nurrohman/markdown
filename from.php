@@ -460,27 +460,27 @@ namespace x\markdown\from {
             return [[], $lot];
         }
         $chops = [];
-        $prev = ""; // Capture the previous chunk
         $is_image = isset($lot['is']['image']);
         $is_table = isset($lot['is']['table']);
+        $last = ""; // Capture the last chunk
         $notes = $lot['notes'] ?? [];
         while (false !== ($chop = \strpbrk($value, "\\" . '<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
-            if ("" !== ($prev = \strstr($value, $chop[0], true))) {
-                if (\is_array($abbr = abbr($prev, $lot))) {
+            if ("" !== ($last = \strstr($value, $chop[0], true))) {
+                if (\is_array($abbr = abbr($last, $lot))) {
                     $chops = \array_merge($chops, $abbr);
                 } else {
-                    $chops[] = e($prev);
+                    $chops[] = e($last);
                 }
                 $value = $chop;
             }
             if ($is_table && (0 === \strpos($chop, '![') || false !== \strpos('&*[_', $chop[0])) && false !== ($n = \strpos($chop, '|')) && "\\" !== \substr($chop, $n - 1, 1)) {
-                $chops[] = e($prev = \substr($chop, 0, $n));
+                $chops[] = e($last = \substr($chop, 0, $n));
                 $value = \substr($chop, $n);
                 continue;
             }
             if (0 === \strpos($chop, "\\")) {
                 if ("\\" === \trim($chop)) {
-                    $chops[] = $prev = "\\";
+                    $chops[] = $last = "\\";
                     $value = "";
                     break;
                 }
@@ -488,17 +488,17 @@ namespace x\markdown\from {
                 if ("\n" === \substr($chop, 1, 1)) {
                     $chops[] = ['br', false, [], -1, ["\\", 1]];
                     $value = \ltrim(\substr($chop, 2));
-                    $prev = "\\\n";
+                    $last = "\\\n";
                     continue;
                 }
-                $chops[] = e($prev = \substr($chop, 1, 1));
+                $chops[] = e($last = \substr($chop, 1, 1));
                 $value = \substr($chop, 2);
                 continue;
             }
             if (0 === \strpos($chop, "\n")) {
-                $prev = $chops[$last = \count($chops) - 1] ?? [];
-                if (\is_string($prev) && '  ' === \substr($prev, -2)) {
-                    $chops[$last] = $prev = \rtrim($prev);
+                $last = $chops[$end = \count($chops) - 1] ?? [];
+                if (\is_string($last) && '  ' === \substr($last, -2)) {
+                    $chops[$end] = $last = \rtrim($last);
                     $chops[] = ['br', false, [], -1, [' ', 2]];
                     $value = \ltrim(\substr($chop, 1));
                     continue;
@@ -534,17 +534,17 @@ namespace x\markdown\from {
                         $row[4][1] = '!' . $row[4][1];
                         unset($row[2]['href'], $row[2]['rel'], $row[2]['target']);
                         $chops[] = $row;
-                        $value = \substr($chop, \strlen($prev = $row[4][1]));
+                        $value = \substr($chop, \strlen($last = $row[4][1]));
                         continue;
                     }
                 }
-                $chops[] = $prev = '!';
+                $chops[] = $last = '!';
                 $value = \substr($chop, 1);
                 continue;
             }
             if (0 === \strpos($chop, '&')) {
                 if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?>#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
-                    $chops[] = e($prev = '&');
+                    $chops[] = e($last = '&');
                     $value = \substr($chop, 1);
                     continue;
                 }
@@ -553,7 +553,7 @@ namespace x\markdown\from {
                     $m[0] = '&#xfffd;';
                 }
                 $chops[] = ['&', $m[0], [], -1];
-                $value = \substr($chop, \strlen($prev = $m[0]));
+                $value = \substr($chop, \strlen($last = $m[0]));
                 continue;
             }
             /**
@@ -569,7 +569,7 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
                 $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
-                $n = \strlen($prev);
+                $n = \strlen($last);
                 if ('*' === $c) {
                     $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
                     $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
@@ -578,24 +578,24 @@ namespace x\markdown\from {
                     $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                     $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_](?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
                 }
-                // Test the pattern against the previous and current chop to verify if current chop has a left flank
+                // Test the pattern against the last and current chop to verify if current chop has a left flank
                 // <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
-                if (\preg_match('/(?>' . $b . '|' . $i . ')/u', $prev . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/(?>' . $b . '|' . $i . ')/u', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     $current = $m[0][0];
                     if ($m[0][1] > $n) {
-                        $chops[] = e($prev = \substr($chop, 0, $m[0][1] - $n));
+                        $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
                         $value = $chop = \substr($chop, $m[0][1] - $n);
                     }
                     // <https://spec.commonmark.org/0.31.2#example-420>
                     // <https://spec.commonmark.org/0.31.2#example-421>
                     if (\strspn($current, $c) === ($n = \strlen($current))) {
-                        $chops[] = $prev = $current;
+                        $chops[] = $last = $current;
                         $value = \substr($chop, $n);
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
                     if (false !== ($n = \strpos($current, '[')) && (false === \strpos($current, ']') || !\preg_match('/' . r('[]') . '/', $current))) {
-                        $chops[] = e($prev = \substr($chop, 0, $n));
+                        $chops[] = e($last = \substr($chop, 0, $n));
                         $value = \substr($chop, $n);
                         continue;
                     }
@@ -607,58 +607,58 @@ namespace x\markdown\from {
                             if ('*' === \substr($v[0], -1) && \preg_match('/^[\p{P}\p{S}\p{Zs}][\s\S]+?[\p{P}\p{S}\p{Zs}][*]$/u', $v[1])) {
                                 $v = row(\substr($current, 1, -1), $lot)[0];
                                 $chops[] = ['em', $v, [], -1, [$c, 1]];
-                                $value = \substr($chop, \strlen($prev = $current));
+                                $value = \substr($chop, \strlen($last = $current));
                                 continue;
                             }
                         }
                         // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
                         if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
-                            $chops[] = $prev = \substr($chop, 0, $n);
+                            $chops[] = $last = \substr($chop, 0, $n);
                             $value = \substr($chop, $n);
                             continue;
                         }
                         $chops[] = ['strong', $v, [], -1, [$c, 2]];
-                        $value = \substr($chop, \strlen($prev = $current));
+                        $value = \substr($chop, \strlen($last = $current));
                         continue;
                     }
                     $v = row(\substr($current, 1, -1), $lot)[0];
                     // Hot fix for case `**asdf*asdf*` (case `*asdf*asdf**` works just fine)
                     if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
-                        $chops[] = $prev = \substr($chop, 0, $n);
+                        $chops[] = $last = \substr($chop, 0, $n);
                         $value = \substr($chop, $n);
                         continue;
                     }
                     $chops[] = ['em', $v, [], -1, [$c, 1]];
-                    $value = \substr($chop, \strlen($prev = $current));
+                    $value = \substr($chop, \strlen($last = $current));
                     continue;
                 }
-                $chops[] = $prev = $c;
+                $chops[] = $last = $c;
                 $value = \substr($chop, 1);
                 continue;
             }
             if (0 === \strpos($chop, '<')) {
                 // <https://spec.commonmark.org/0.31.2#processing-instruction>
                 if (0 === \strpos($chop, '<' . '?') && ($n = \strpos($chop, '?' . '>')) > 1) {
-                    $v = \strtr($prev = \substr($chop, 0, $n += 2), "\n", ' ');
+                    $v = \strtr($last = \substr($chop, 0, $n += 2), "\n", ' ');
                     $chops[] = [false, $v, [], -1, [3, '?' . \trim(\strtok(\substr($v, 1), ' >'), '?')]];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#html-comment>
                 if (0 === \strpos($chop, '<!--') && ($n = \strpos($chop, '-->')) > 1) {
-                    $chops[] = [false, \strtr($prev = \substr($chop, 0, $n += 3), "\n", ' '), [], -1, [2, '!--']];
+                    $chops[] = [false, \strtr($last = \substr($chop, 0, $n += 3), "\n", ' '), [], -1, [2, '!--']];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#cdata-section>
                 if (0 === \strpos($chop, '<![CDATA[') && ($n = \strpos($chop, ']]>')) > 8) {
-                    $chops[] = [false, \strtr($prev = \substr($chop, 0, $n += 3), "\n", ' '), [], -1, [5, '![CDATA[']];
+                    $chops[] = [false, \strtr($last = \substr($chop, 0, $n += 3), "\n", ' '), [], -1, [5, '![CDATA[']];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#declaration>
                 if (0 === \strpos($chop, '<!') && ($n = \strpos($chop, '>')) > 2 && \preg_match('/^[a-z]/i', \substr($chop, 2))) {
-                    $v = \strtr($prev = \substr($chop, 0, $n += 1), "\n", ' ');
+                    $v = \strtr($last = \substr($chop, 0, $n += 1), "\n", ' ');
                     $chops[] = [false, $v, [], -1, [4, \rtrim(\strtok(\substr($v, 1), ' >'), '/')]];
                     $value = \substr($chop, $n);
                     continue;
@@ -666,15 +666,15 @@ namespace x\markdown\from {
                 $test = (string) \strstr($chop, '>', true);
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
                 if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?(?>\.[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
-                    $prev = $m[0];
+                    $last = $m[0];
                     // <https://spec.commonmark.org/0.30#example-605>
                     if (false !== \strpos($email = $m[1], '\\')) {
-                        $chops[] = e($prev);
-                        $value = \substr($chop, \strlen($prev));
+                        $chops[] = e($last);
+                        $value = \substr($chop, \strlen($last));
                         continue;
                     }
-                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $prev]];
-                    $value = \substr($chop, \strlen($prev));
+                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $last]];
+                    $value = \substr($chop, \strlen($last));
                     continue;
                 }
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
@@ -689,23 +689,23 @@ namespace x\markdown\from {
                         'href' => u($m[1]),
                         'rel' => $rel,
                         'target' => $target
-                    ], -1, [false, $prev = $m[0]]];
-                    $value = \substr($chop, \strlen($prev));
+                    ], -1, [false, $last = $m[0]]];
+                    $value = \substr($chop, \strlen($last));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#closing-tag>
                 if ('/' === $chop[1] && \preg_match('/^<(\/[a-z][a-z\d-]*)\s*>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, [7, $m[1]]];
-                    $value = \substr($chop, \strlen($prev = $m[0]));
+                    $value = \substr($chop, \strlen($last = $m[0]));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#open-tag>
                 if (\preg_match('/^<([a-z][a-z\d-]*)(\s+[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^' . ($is_table ? '|' : "") . '\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, [7, $m[1]]];
-                    $value = \substr($chop, \strlen($prev = $m[0]));
+                    $value = \substr($chop, \strlen($last = $m[0]));
                     continue;
                 }
-                $chops[] = e($prev = '<');
+                $chops[] = e($last = '<');
                 $value = \substr($chop, 1);
                 continue;
             }
@@ -715,40 +715,40 @@ namespace x\markdown\from {
                 $contains = '`[^`]+`';
                 // `[asdf]…`
                 if (\preg_match('/' . r('[]', true, $contains) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    $prev = $m[0][0];
+                    $last = $m[0][0];
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $value = $chop = \substr($chop, $m[0][1]);
                     }
                     // <https://spec.commonmark.org/0.30#example-517>
-                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains) . '/', $prev, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
-                        if (false !== \strpos($prev, '](') || false !== \strpos($prev, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
-                            $chops[] = e($prev = \substr($prev, 0, $n[0][1]));
-                            $value = \substr($chop, \strlen($prev));
+                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains) . '/', $last, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
+                        if (false !== \strpos($last, '](') || false !== \strpos($last, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
+                            $chops[] = e($last = \substr($last, 0, $n[0][1]));
+                            $value = \substr($chop, \strlen($last));
                             continue;
                         }
                     }
-                    $value = $chop = \substr($chop, \strlen($prev));
+                    $value = $chop = \substr($chop, \strlen($last));
                     // `[^asdf]`
                     if (0 === \strpos($m[1][0], '^') && ("" === $chop || false === \strpos('([', $chop[0]))) {
                         if (!isset($lot[2][$key = \trim(\substr($m[1][0], 1))])) {
-                            $chops[] = e($prev);
+                            $chops[] = e($last);
                             continue;
                         }
                         $notes[$key] = ($notes[$key] ?? 0) + 1;
                         $chops[] = ['sup', [['a', (string) \count($notes), [
                             'href' => '#to:' . $key,
                             'role' => 'doc-noteref'
-                        ], -1, [false, $prev]]], [
+                        ], -1, [false, $last]]], [
                             'id' => 'from:' . $key . ($notes[$key] > 1 ? '.' . $notes[$key] : "")
-                        ], -1, [$key, $prev]];
+                        ], -1, [$key, $last]];
                         $lot['notes'] = $notes;
                         continue;
                     }
                     $row = row($m[1][0], $lot)[0];
                     // `…(asdf)`
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
-                        $prev = $n[0][0];
+                        $last = $n[0][0];
                         if ($n[0][1] > 0) {
                             $chops[] = e($m[0][0] . \substr($chop, 0, $n[0][1]));
                             $value = \substr($chop, $n[0][1]);
@@ -804,15 +804,15 @@ namespace x\markdown\from {
                     // `…[]` or `…[asdf]`
                     } else if (0 === \strpos($chop, '[') && \preg_match('/' . r('[]', true, "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $key = \trim(\strtolower("" === $n[1][0] ? $m[1][0] : $n[1][0]));
-                        $value = $chop = \substr($chop, \strlen($prev = $n[0][0]));
+                        $value = $chop = \substr($chop, \strlen($last = $n[0][0]));
                         if (!isset($lot[0][$key])) {
-                            $chops[] = e($prev = $m[0][0] . $n[0][0]);
+                            $chops[] = e($last = $m[0][0] . $n[0][0]);
                             continue;
                         }
                     }
                     $key = $key ?? \trim(\strtolower($m[1][0]));
                     if (\is_string($key) && !isset($lot[0][$key])) {
-                        $chops[] = e($prev);
+                        $chops[] = e($last);
                         continue;
                     }
                     // …{asdf}
@@ -834,10 +834,10 @@ namespace x\markdown\from {
                     $chops[] = ['a', $row, \array_replace([
                         'href' => u(v($link)),
                         'title' => $title
-                    ], $data ?? []), -1, [$key, $prev = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
+                    ], $data ?? []), -1, [$key, $last = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                     continue;
                 }
-                $chops[] = $prev = '[';
+                $chops[] = $last = '[';
                 $value = \substr($chop, 1);
                 continue;
             }
@@ -849,10 +849,10 @@ namespace x\markdown\from {
                         $raw = \substr($raw, 1, -1);
                     }
                     $chops[] = ['code', e($raw), [], -1, [$c, \strlen($m[1])]];
-                    $value = \substr($chop, \strlen($prev = $m[0]));
+                    $value = \substr($chop, \strlen($last = $m[0]));
                     continue;
                 }
-                $chops[] = $prev = \str_repeat($c, $n = \strspn($chop, $c));
+                $chops[] = $last = \str_repeat($c, $n = \strspn($chop, $c));
                 $value = \substr($chop, $n);
                 continue;
             }
@@ -861,18 +861,18 @@ namespace x\markdown\from {
                 $value = \substr($chop, 1);
                 continue;
             }
-            if (\is_array($abbr = abbr($prev = $chop, $lot))) {
+            if (\is_array($abbr = abbr($last = $chop, $lot))) {
                 $chops = \array_merge($chops, $abbr);
             } else {
-                $chops[] = e($prev);
+                $chops[] = e($last);
             }
             $value = "";
         }
         if ("" !== $value) {
-            if (\is_array($abbr = abbr($prev = $value, $lot))) {
+            if (\is_array($abbr = abbr($last = $value, $lot))) {
                 $chops = \array_merge($chops, $abbr);
             } else {
-                $chops[] = e($prev);
+                $chops[] = e($last);
             }
         }
         return [m($chops), $lot];
@@ -898,12 +898,12 @@ namespace x\markdown\from {
                 $row = $pad . \str_repeat(' ', 4 - ($v = \strlen($pad)) % 4) . \substr($row, $v + 1);
             }
             $current = of($row);
-            if ($prev = $blocks[$block] ?? 0) {
-                // Previous block is a code block
-                if ('pre' === $prev[0]) {
-                    if (2 === $prev[4][0] || 3 === $prev[4][0]) {
+            if ($last = $blocks[$block] ?? 0) {
+                // Last block is a code block
+                if ('pre' === $last[0]) {
+                    if (2 === $last[4][0] || 3 === $last[4][0]) {
                         // End of the code block
-                        if ('pre' === $current[0] && $prev[4][0] === $current[4][0] && $prev[4][1] === $current[4][1]) {
+                        if ('pre' === $current[0] && $last[4][0] === $current[4][0] && $last[4][1] === $current[4][1]) {
                             $fence = \rtrim(\strstr($current[1], "\n", true) ?: $current[1]);
                             // End of the code block cannot have an info string
                             if (\strlen($fence) !== $current[4][1]) {
@@ -919,7 +919,7 @@ namespace x\markdown\from {
                     }
                     // End of the code block
                     if (null !== $current[0] && 'pre' !== $current[0]) {
-                        if ("\n" === \substr($v = \rtrim($prev[1], ' '), -1)) {
+                        if ("\n" === \substr($v = \rtrim($last[1], ' '), -1)) {
                             $blocks[$block][1] = \substr($v, 0, -1);
                         }
                         $blocks[++$block] = $current;
@@ -929,10 +929,10 @@ namespace x\markdown\from {
                     $blocks[$block][1] .= "\n" . $current[1];
                     continue;
                 }
-                // Previous block is a raw block
-                if (false === $prev[0]) {
-                    if (1 === $prev[4][0]) {
-                        if (false !== \strpos($prev[1], '</' . $prev[4][1] . '>')) {
+                // Last block is a raw block
+                if (false === $last[0]) {
+                    if (1 === $last[4][0]) {
+                        if (false !== \strpos($last[1], '</' . $last[4][1] . '>')) {
                             if (null === $current[0]) {
                                 $block += 1;
                                 continue;
@@ -940,15 +940,15 @@ namespace x\markdown\from {
                             $blocks[++$block] = $current;
                             continue;
                         }
-                        if (null !== $current[0] && false !== \strpos($current[1], '</' . $prev[4][1] . '>')) {
+                        if (null !== $current[0] && false !== \strpos($current[1], '</' . $last[4][1] . '>')) {
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
-                    if (2 === $prev[4][0]) {
-                        if (false !== \strpos($prev[1], '-->')) {
+                    if (2 === $last[4][0]) {
+                        if (false !== \strpos($last[1], '-->')) {
                             if (null === $current[0]) {
                                 $block += 1;
                                 continue;
@@ -963,8 +963,8 @@ namespace x\markdown\from {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
-                    if (3 === $prev[4][0]) {
-                        if (false !== \strpos($prev[1], '?' . '>')) {
+                    if (3 === $last[4][0]) {
+                        if (false !== \strpos($last[1], '?' . '>')) {
                             if (null === $current[0]) {
                                 $block += 1;
                                 continue;
@@ -979,8 +979,8 @@ namespace x\markdown\from {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
-                    if (4 === $prev[4][0]) {
-                        if (false !== \strpos($prev[1], '>')) {
+                    if (4 === $last[4][0]) {
+                        if (false !== \strpos($last[1], '>')) {
                             if (null === $current[0]) {
                                 $block += 1;
                                 continue;
@@ -995,8 +995,8 @@ namespace x\markdown\from {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
-                    if (5 === $prev[4][0]) {
-                        if (false !== \strpos($prev[1], ']]>')) {
+                    if (5 === $last[4][0]) {
+                        if (false !== \strpos($last[1], ']]>')) {
                             if (null === $current[0]) {
                                 $block += 1;
                                 continue;
@@ -1018,11 +1018,11 @@ namespace x\markdown\from {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
-                // Previous block is an abbreviation, note, or reference
-                if (\is_int($prev[0])) {
-                    if (2 === $prev[0]) {
+                // Last block is an abbreviation, note, or reference
+                if (\is_int($last[0])) {
+                    if (2 === $last[0]) {
                         // Must have at least 1 white-space after the `]:`
-                        if (false !== ($n = \strpos($prev[1], ']:')) && "\\" !== \substr($prev[1], $n - 1, 1) && false === \strpos(" \n", \substr($prev[1], $n + 2, 1))) {
+                        if (false !== ($n = \strpos($last[1], ']:')) && "\\" !== \substr($last[1], $n - 1, 1) && false === \strpos(" \n", \substr($last[1], $n + 2, 1))) {
                             $blocks[$block][0] = 'p';
                             if (null === $current[0]) {
                                 $block += 1;
@@ -1032,8 +1032,8 @@ namespace x\markdown\from {
                             continue;
                         }
                         // End of the note block
-                        if (null !== $current[0] && $current[3] <= $prev[3]) {
-                            if ("\n" === \substr($v = \rtrim($prev[1], ' '), -1)) {
+                        if (null !== $current[0] && $current[3] <= $last[3]) {
+                            if ("\n" === \substr($v = \rtrim($last[1], ' '), -1)) {
                                 $blocks[$block][1] = $v = \substr($v, 0, -1);
                             } else {
                                 // Lazy note block?
@@ -1058,7 +1058,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if (null === $current[0]) {
-                        if (false === ($n = \strpos($prev[1], ']:')) || "\\" === \substr($prev[1], $n - 1, 1)) {
+                        if (false === ($n = \strpos($last[1], ']:')) || "\\" === \substr($last[1], $n - 1, 1)) {
                             $blocks[$block][0] = 'p';
                         }
                         $block += 1;
@@ -1067,31 +1067,31 @@ namespace x\markdown\from {
                     $blocks[$block][1] .= "\n" . $row;
                     continue;
                 }
-                // Previous block is a figure block
-                if ('figure' === $prev[0]) {
+                // Last block is a figure block
+                if ('figure' === $last[0]) {
                     // End of the figure block
-                    if (null !== $current[0] && $current[3] <= $prev[3]) {
+                    if (null !== $current[0] && $current[3] <= $last[3]) {
                         $blocks[++$block] = $current;
                         continue;
                     }
-                    if ($current[3] > $prev[3] || "" === $current[1]) {
+                    if ($current[3] > $last[3] || "" === $current[1]) {
                         $row = \substr($row, 1);
-                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
+                        $blocks[$block][4] = isset($last[4]) ? $last[4] . "\n" . $row : $row;
                         continue;
                     }
                     // Continue the figure block…
                     $blocks[$block][1] .= "\n" . $current[1];
                     continue;
                 }
-                // Previous block is a table block
-                if ('table' === $prev[0]) {
-                    if (null === $current[0] || $current[3] > $prev[3]) {
+                // Last block is a table block
+                if ('table' === $last[0]) {
+                    if (null === $current[0] || $current[3] > $last[3]) {
                         $blocks[$block][1] .= "\n"; // End of the table block, prepare to exit the table block
-                        $blocks[$block][4] = isset($prev[4]) ? $prev[4] . "\n" . $row : $row;
+                        $blocks[$block][4] = isset($last[4]) ? $last[4] . "\n" . $row : $row;
                         continue;
                     }
-                    // Continue the table block if previous table block does not end with a blank line
-                    if ('table' === $current[0] && "\n" !== \substr(\rtrim($prev[1], ' '), -1)) {
+                    // Continue the table block if last table block does not end with a blank line
+                    if ('table' === $current[0] && "\n" !== \substr(\rtrim($last[1], ' '), -1)) {
                         $blocks[$block][1] .= "\n" . $current[1];
                         continue;
                     }
@@ -1099,8 +1099,8 @@ namespace x\markdown\from {
                     $blocks[++$block] = $current;
                     continue;
                 }
-                // Previous block is a header block or a rule block
-                if ('h' === $prev[0][0]) {
+                // Last block is a header block or a rule block
+                if ('h' === $last[0][0]) {
                     if (null === $current[0]) {
                         $block += 1;
                         continue;
@@ -1108,10 +1108,10 @@ namespace x\markdown\from {
                     $blocks[++$block] = $current;
                     continue;
                 }
-                // Previous block is a definition list block
-                if ('dl' === $prev[0]) {
+                // Last block is a definition list block
+                if ('dl' === $last[0]) {
                     // Continue the list block…
-                    if (null === $current[0] || $current[3] >= $prev[3] + $prev[4][1]) {
+                    if (null === $current[0] || $current[3] >= $last[3] + $last[4][1]) {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
@@ -1126,12 +1126,12 @@ namespace x\markdown\from {
                         continue;
                     }
                     // Lazy definition list?
-                    if ("\n" !== \substr($v = \rtrim($prev[1], ' '), -1)) {
+                    if ("\n" !== \substr($v = \rtrim($last[1], ' '), -1)) {
                         if ('h1' === $current[0] && '=' === $current[4][0]) {
                             $blocks[$block][1] .= ' ' . $current[1];
                             continue;
                         }
-                        if ('p' === $current[0] && $v !== $prev[4][0]) {
+                        if ('p' === $current[0] && $v !== $last[4][0]) {
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
@@ -1142,10 +1142,10 @@ namespace x\markdown\from {
                     $blocks[++$block] = $current;
                     continue;
                 }
-                // Previous block is a list block
-                if ('ol' === $prev[0]) {
+                // Last block is a list block
+                if ('ol' === $last[0]) {
                     // Continue the list block…
-                    if (null === $current[0] || $current[3] >= $prev[3] + $prev[4][1]) {
+                    if (null === $current[0] || $current[3] >= $last[3] + $last[4][1]) {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
@@ -1156,12 +1156,12 @@ namespace x\markdown\from {
                     }
                     if ('ol' === $current[0]) {
                         // End of the list block
-                        if ($current[4][0] !== $prev[4][0]) {
+                        if ($current[4][0] !== $last[4][0]) {
                             $blocks[++$block] = $current;
                             continue;
                         }
                         // Continue the list block…
-                        if ($current[4][2] >= $prev[4][2]) {
+                        if ($current[4][2] >= $last[4][2]) {
                             $blocks[$block][1] .= "\n" . \substr($row, $current[3]);
                             $blocks[$block][3] = $current[3];
                             $blocks[$block][4][2] = $current[4][2];
@@ -1172,14 +1172,14 @@ namespace x\markdown\from {
                         continue;
                     }
                     // Lazy list?
-                    if ("\n" !== \substr($v = \rtrim($prev[1], ' '), -1)) {
+                    if ("\n" !== \substr($v = \rtrim($last[1], ' '), -1)) {
                         if ('h1' === $current[0] && '=' === $current[4][0]) {
                             $blocks[$block][1] .= ' ' . $current[1];
                             continue;
                         }
-                        if ('p' === $current[0] && $v !== $prev[4][2] . $prev[4][0]) {
+                        if ('p' === $current[0] && $v !== $last[4][2] . $last[4][0]) {
                             // Hot fix for case `1) 1)\nasdf`
-                            if (\preg_match('/(^|\n)\d+[).]([ ]+\d+[).])+[ ]*$/', $prev[1])) {
+                            if (\preg_match('/(^|\n)\d+[).]([ ]+\d+[).])+[ ]*$/', $last[1])) {
                                 $blocks[++$block] = $current;
                                 continue;
                             }
@@ -1193,9 +1193,9 @@ namespace x\markdown\from {
                     $blocks[++$block] = $current;
                     continue;
                 }
-                // Previous block is a list block
-                if ('ul' === $prev[0]) {
-                    if (null === $current[0] || $current[3] >= $prev[3] + $prev[4][1]) {
+                // Last block is a list block
+                if ('ul' === $last[0]) {
+                    if (null === $current[0] || $current[3] >= $last[3] + $last[4][1]) {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
@@ -1206,7 +1206,7 @@ namespace x\markdown\from {
                     }
                     if ('ul' === $current[0]) {
                         // End of the list block
-                        if ($current[4][0] !== $prev[4][0]) {
+                        if ($current[4][0] !== $last[4][0]) {
                             $blocks[++$block] = $current;
                             continue;
                         }
@@ -1215,14 +1215,14 @@ namespace x\markdown\from {
                         continue;
                     }
                     // Lazy list?
-                    if ("\n" !== \substr($v = \rtrim($prev[1], ' '), -1)) {
+                    if ("\n" !== \substr($v = \rtrim($last[1], ' '), -1)) {
                         if ('h1' === $current[0] && '=' === $current[4][0]) {
                             $blocks[$block][1] .= ' ' . $current[1];
                             continue;
                         }
-                        if ('p' === $current[0] && $v !== $prev[4][0]) {
+                        if ('p' === $current[0] && $v !== $last[4][0]) {
                             // Hot fix for case `* *\nasdf`
-                            if (\preg_match('/(^|\n)[*+-]([ ]+[*+-])+[ ]*$/', $prev[1])) {
+                            if (\preg_match('/(^|\n)[*+-]([ ]+[*+-])+[ ]*$/', $last[1])) {
                                 $blocks[++$block] = $current;
                                 continue;
                             }
@@ -1242,14 +1242,14 @@ namespace x\markdown\from {
                     continue;
                 }
                 // Start a new tight block…
-                if (\is_string($prev[0]) && \is_string($current[0]) && $prev[0] !== $current[0]) {
+                if (\is_string($last[0]) && \is_string($current[0]) && $last[0] !== $current[0]) {
                     // Lazy quote?
-                    if ('blockquote' === $prev[0] && '>' !== \rtrim($prev[1]) && 'p' === $current[0]) {
+                    if ('blockquote' === $last[0] && '>' !== \rtrim($last[1]) && 'p' === $current[0]) {
                         $blocks[$block][1] .= ' ' . $current[1];
                         continue;
                     }
                     if ('hr' === $current[0] && '-' === $current[4][0] && \strlen($current[1]) === \strspn($current[1], '-')) {
-                        if ('p' !== $prev[0]) {
+                        if ('p' !== $last[0]) {
                             $blocks[++$block] = $current;
                             continue;
                         }
@@ -1259,7 +1259,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ('h1' === $current[0] && '=' === $current[4][0]) {
-                        if ('p' !== $prev[0]) {
+                        if ('p' !== $last[0]) {
                             // <https://spec.commonmark.org/0.31.2#example-93>
                             $blocks[$block][1] .= ' ' . $current[1];
                             continue;
@@ -1270,7 +1270,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ('h2' === $current[0] && '-' === $current[4][0]) {
-                        if ('p' !== $prev[0]) {
+                        if ('p' !== $last[0]) {
                             $blocks[$block][1] .= ' ' . $current[1];
                             continue;
                         }
@@ -1279,21 +1279,21 @@ namespace x\markdown\from {
                         $blocks[$block][4] = ['-', 2];
                         continue;
                     }
-                    if ('pre' === $current[0] && 1 === $current[4][0] && 'p' === $prev[0]) {
+                    if ('pre' === $current[0] && 1 === $current[4][0] && 'p' === $last[0]) {
                         // Contains a hard-break syntax, keep!
-                        if ('  ' === \substr($prev[1], -2)) {
-                            $blocks[$block][1] = \rtrim($prev[1]) . "  \n" . $current[1];
+                        if ('  ' === \substr($last[1], -2)) {
+                            $blocks[$block][1] = \rtrim($last[1]) . "  \n" . $current[1];
                             continue;
                         }
                         // Contains a hard-break syntax, keep!
-                        if ("\\" === \substr($v = \rtrim($prev[1]), -1)) {
+                        if ("\\" === \substr($v = \rtrim($last[1]), -1)) {
                             $blocks[$block][1] = $v . "\n" . $current[1];
                             continue;
                         }
                         $blocks[$block][1] .= ' ' . $current[1];
                         continue;
                     }
-                    if ('dl' === $current[0] && 'p' === $prev[0]) {
+                    if ('dl' === $current[0] && 'p' === $last[0]) {
                         $blocks[$block][0] = 'dl';
                         $blocks[$block][1] .= "\n" . $row;
                         $blocks[$block][4] = $current[4];
@@ -1311,7 +1311,7 @@ namespace x\markdown\from {
                         }
                     }
                     if ('ul' === $current[0] && \rtrim($current[1]) === $current[4][0]) {
-                        if ('p' === $prev[0] && '-' === $current[4][0]) {
+                        if ('p' === $last[0] && '-' === $current[4][0]) {
                             $blocks[$block][0] = 'h2';
                             $blocks[$block][1] .= "\n-";
                             $blocks[$block][4] = ['-', 2];
@@ -1328,7 +1328,7 @@ namespace x\markdown\from {
                     $block += 1;
                     continue;
                 }
-                // Continue the previous block…
+                // Continue the last block…
                 $blocks[$block][1] .= "\n" . $current[1];
                 continue;
             }
