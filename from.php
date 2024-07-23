@@ -581,33 +581,33 @@ namespace x\markdown\from {
                 // Test the pattern against the last and current chop to verify if current chop has a left flank
                 // <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
                 if (\preg_match('/(?>' . $b . '|' . $i . ')/u', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    $current = $m[0][0];
+                    $of = $m[0][0];
                     if ($m[0][1] > $n) {
                         $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
                         $value = $chop = \substr($chop, $m[0][1] - $n);
                     }
                     // <https://spec.commonmark.org/0.31.2#example-420>
                     // <https://spec.commonmark.org/0.31.2#example-421>
-                    if (\strspn($current, $c) === ($n = \strlen($current))) {
-                        $chops[] = $last = $current;
+                    if (\strspn($of, $c) === ($n = \strlen($of))) {
+                        $chops[] = $last = $of;
                         $value = \substr($chop, $n);
                         continue;
                     }
                     // <https://spec.commonmark.org/0.30#example-520>
-                    if (false !== ($n = \strpos($current, '[')) && (false === \strpos($current, ']') || !\preg_match('/' . r('[]') . '/', $current))) {
+                    if (false !== ($n = \strpos($of, '[')) && (false === \strpos($of, ']') || !\preg_match('/' . r('[]') . '/', $of))) {
                         $chops[] = e($last = \substr($chop, 0, $n));
                         $value = \substr($chop, $n);
                         continue;
                     }
-                    $x = \min($n = \strspn($current, $c), \strspn(\strrev($current), $c));
+                    $x = \min($n = \strspn($of, $c), \strspn(\strrev($of), $c));
                     if (0 === (int) ($x % 2)) {
-                        $v = row(\substr($current, 2, -2), $lot)[0];
+                        $v = row(\substr($of, 2, -2), $lot)[0];
                         // Hot fix for case `**asdf* asdf *asdf**`
                         if (\is_array($v) && isset($v[0], $v[1]) && \is_string($v[0]) && \is_string($v[1])) {
                             if ('*' === \substr($v[0], -1) && \preg_match('/^[\p{P}\p{S}\p{Zs}][\s\S]+?[\p{P}\p{S}\p{Zs}][*]$/u', $v[1])) {
-                                $v = row(\substr($current, 1, -1), $lot)[0];
+                                $v = row(\substr($of, 1, -1), $lot)[0];
                                 $chops[] = ['em', $v, [], -1, [$c, 1]];
-                                $value = \substr($chop, \strlen($last = $current));
+                                $value = \substr($chop, \strlen($last = $of));
                                 continue;
                             }
                         }
@@ -618,10 +618,10 @@ namespace x\markdown\from {
                             continue;
                         }
                         $chops[] = ['strong', $v, [], -1, [$c, 2]];
-                        $value = \substr($chop, \strlen($last = $current));
+                        $value = \substr($chop, \strlen($last = $of));
                         continue;
                     }
-                    $v = row(\substr($current, 1, -1), $lot)[0];
+                    $v = row(\substr($of, 1, -1), $lot)[0];
                     // Hot fix for case `**asdf*asdf*` (case `*asdf*asdf**` works just fine)
                     if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
                         $chops[] = $last = \substr($chop, 0, $n);
@@ -629,7 +629,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     $chops[] = ['em', $v, [], -1, [$c, 1]];
-                    $value = \substr($chop, \strlen($last = $current));
+                    $value = \substr($chop, \strlen($last = $of));
                     continue;
                 }
                 $chops[] = $last = $c;
@@ -897,20 +897,20 @@ namespace x\markdown\from {
             while (false !== ($pad = \strstr($row, "\t", true))) {
                 $row = $pad . \str_repeat(' ', 4 - ($v = \strlen($pad)) % 4) . \substr($row, $v + 1);
             }
-            $current = of($row);
+            $of = of($row);
             if ($last = $blocks[$block] ?? 0) {
                 // Last block is a code block
                 if ('pre' === $last[0]) {
                     if (2 === $last[4][0] || 3 === $last[4][0]) {
                         // End of the code block
-                        if ('pre' === $current[0] && $last[4][0] === $current[4][0] && $last[4][1] === $current[4][1]) {
-                            $fence = \rtrim(\strstr($current[1], "\n", true) ?: $current[1]);
+                        if ('pre' === $of[0] && $last[4][0] === $of[4][0] && $last[4][1] === $of[4][1]) {
+                            $fence = \rtrim(\strstr($of[1], "\n", true) ?: $of[1]);
                             // End of the code block cannot have an info string
-                            if (\strlen($fence) !== $current[4][1]) {
-                                $blocks[$block][1] .= "\n" . $current[1];
+                            if (\strlen($fence) !== $of[4][1]) {
+                                $blocks[$block][1] .= "\n" . $of[1];
                                 continue;
                             }
-                            $blocks[$block++][1] .= "\n" . $current[1];
+                            $blocks[$block++][1] .= "\n" . $of[1];
                             continue;
                         }
                         // Continue the code block…
@@ -918,29 +918,29 @@ namespace x\markdown\from {
                         continue;
                     }
                     // End of the code block
-                    if (null !== $current[0] && 'pre' !== $current[0]) {
+                    if (null !== $of[0] && 'pre' !== $of[0]) {
                         if ("\n" === \substr($v = \rtrim($last[1], ' '), -1)) {
                             $blocks[$block][1] = \substr($v, 0, -1);
                         }
-                        $blocks[++$block] = $current;
+                        $blocks[++$block] = $of;
                         continue;
                     }
                     // Continue the code block…
-                    $blocks[$block][1] .= "\n" . $current[1];
+                    $blocks[$block][1] .= "\n" . $of[1];
                     continue;
                 }
                 // Last block is a raw block
                 if (false === $last[0]) {
                     if (1 === $last[4][0]) {
                         if (false !== \strpos($last[1], '</' . $last[4][1] . '>')) {
-                            if (null === $current[0]) {
+                            if (null === $of[0]) {
                                 $block += 1;
                                 continue;
                             }
-                            $blocks[++$block] = $current;
+                            $blocks[++$block] = $of;
                             continue;
                         }
-                        if (null !== $current[0] && false !== \strpos($current[1], '</' . $last[4][1] . '>')) {
+                        if (null !== $of[0] && false !== \strpos($of[1], '</' . $last[4][1] . '>')) {
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
@@ -949,14 +949,14 @@ namespace x\markdown\from {
                     }
                     if (2 === $last[4][0]) {
                         if (false !== \strpos($last[1], '-->')) {
-                            if (null === $current[0]) {
+                            if (null === $of[0]) {
                                 $block += 1;
                                 continue;
                             }
-                            $blocks[++$block] = $current;
+                            $blocks[++$block] = $of;
                             continue;
                         }
-                        if (null !== $current[0] && false !== \strpos($current[1], '-->')) {
+                        if (null !== $of[0] && false !== \strpos($of[1], '-->')) {
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
@@ -965,14 +965,14 @@ namespace x\markdown\from {
                     }
                     if (3 === $last[4][0]) {
                         if (false !== \strpos($last[1], '?' . '>')) {
-                            if (null === $current[0]) {
+                            if (null === $of[0]) {
                                 $block += 1;
                                 continue;
                             }
-                            $blocks[++$block] = $current;
+                            $blocks[++$block] = $of;
                             continue;
                         }
-                        if (null !== $current[0] && false !== \strpos($current[1], '?' . '>')) {
+                        if (null !== $of[0] && false !== \strpos($of[1], '?' . '>')) {
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
@@ -981,14 +981,14 @@ namespace x\markdown\from {
                     }
                     if (4 === $last[4][0]) {
                         if (false !== \strpos($last[1], '>')) {
-                            if (null === $current[0]) {
+                            if (null === $of[0]) {
                                 $block += 1;
                                 continue;
                             }
-                            $blocks[++$block] = $current;
+                            $blocks[++$block] = $of;
                             continue;
                         }
-                        if (null !== $current[0] && false !== \strpos($current[1], '>')) {
+                        if (null !== $of[0] && false !== \strpos($of[1], '>')) {
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
@@ -997,21 +997,21 @@ namespace x\markdown\from {
                     }
                     if (5 === $last[4][0]) {
                         if (false !== \strpos($last[1], ']]>')) {
-                            if (null === $current[0]) {
+                            if (null === $of[0]) {
                                 $block += 1;
                                 continue;
                             }
-                            $blocks[++$block] = $current;
+                            $blocks[++$block] = $of;
                             continue;
                         }
-                        if (null !== $current[0] && false !== \strpos($current[1], ']]>')) {
+                        if (null !== $of[0] && false !== \strpos($of[1], ']]>')) {
                             $blocks[$block++][1] .= "\n" . $row;
                             continue;
                         }
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
-                    if (null === $current[0]) {
+                    if (null === $of[0]) {
                         $block += 1;
                         continue;
                     }
@@ -1024,21 +1024,21 @@ namespace x\markdown\from {
                         // Must have at least 1 white-space after the `]:`
                         if (false !== ($n = \strpos($last[1], ']:')) && "\\" !== \substr($last[1], $n - 1, 1) && false === \strpos(" \n", \substr($last[1], $n + 2, 1))) {
                             $blocks[$block][0] = 'p';
-                            if (null === $current[0]) {
+                            if (null === $of[0]) {
                                 $block += 1;
                                 continue;
                             }
-                            $blocks[$block][1] .= "\n" . $current[1];
+                            $blocks[$block][1] .= "\n" . $of[1];
                             continue;
                         }
                         // End of the note block
-                        if (null !== $current[0] && $current[3] <= $last[3]) {
+                        if (null !== $of[0] && $of[3] <= $last[3]) {
                             if ("\n" === \substr($v = \rtrim($last[1], ' '), -1)) {
                                 $blocks[$block][1] = $v = \substr($v, 0, -1);
                             } else {
                                 // Lazy note block?
-                                if ('p' === $current[0]) {
-                                    $blocks[$block][1] .= "\n" . $current[1];
+                                if ('p' === $of[0]) {
+                                    $blocks[$block][1] .= "\n" . $of[1];
                                     continue;
                                 }
                             }
@@ -1046,18 +1046,18 @@ namespace x\markdown\from {
                             if (']:' === \substr($v, -2) && "\\" !== \substr($v, -3, 1)) {
                                 $blocks[$block++][0] = 'p';
                             }
-                            $blocks[++$block] = $current;
+                            $blocks[++$block] = $of;
                             continue;
                         }
                         // Continue the note block…
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
-                    if (\is_int($current[0])) {
-                        $blocks[++$block] = $current;
+                    if (\is_int($of[0])) {
+                        $blocks[++$block] = $of;
                         continue;
                     }
-                    if (null === $current[0]) {
+                    if (null === $of[0]) {
                         if (false === ($n = \strpos($last[1], ']:')) || "\\" === \substr($last[1], $n - 1, 1)) {
                             $blocks[$block][0] = 'p';
                         }
@@ -1070,68 +1070,68 @@ namespace x\markdown\from {
                 // Last block is a figure block
                 if ('figure' === $last[0]) {
                     // End of the figure block
-                    if (null !== $current[0] && $current[3] <= $last[3]) {
-                        $blocks[++$block] = $current;
+                    if (null !== $of[0] && $of[3] <= $last[3]) {
+                        $blocks[++$block] = $of;
                         continue;
                     }
-                    if ($current[3] > $last[3] || "" === $current[1]) {
+                    if ($of[3] > $last[3] || "" === $of[1]) {
                         $row = \substr($row, 1);
                         $blocks[$block][4] = isset($last[4]) ? $last[4] . "\n" . $row : $row;
                         continue;
                     }
                     // Continue the figure block…
-                    $blocks[$block][1] .= "\n" . $current[1];
+                    $blocks[$block][1] .= "\n" . $of[1];
                     continue;
                 }
                 // Last block is a table block
                 if ('table' === $last[0]) {
-                    if (null === $current[0] || $current[3] > $last[3]) {
+                    if (null === $of[0] || $of[3] > $last[3]) {
                         $blocks[$block][1] .= "\n"; // End of the table block, prepare to exit the table block
                         $blocks[$block][4] = isset($last[4]) ? $last[4] . "\n" . $row : $row;
                         continue;
                     }
                     // Continue the table block if last table block does not end with a blank line
-                    if ('table' === $current[0] && "\n" !== \substr(\rtrim($last[1], ' '), -1)) {
-                        $blocks[$block][1] .= "\n" . $current[1];
+                    if ('table' === $of[0] && "\n" !== \substr(\rtrim($last[1], ' '), -1)) {
+                        $blocks[$block][1] .= "\n" . $of[1];
                         continue;
                     }
                     // End of the table block
-                    $blocks[++$block] = $current;
+                    $blocks[++$block] = $of;
                     continue;
                 }
                 // Last block is a header block or a rule block
                 if ('h' === $last[0][0]) {
-                    if (null === $current[0]) {
+                    if (null === $of[0]) {
                         $block += 1;
                         continue;
                     }
-                    $blocks[++$block] = $current;
+                    $blocks[++$block] = $of;
                     continue;
                 }
                 // Last block is a definition list block
                 if ('dl' === $last[0]) {
                     // Continue the list block…
-                    if (null === $current[0] || $current[3] >= $last[3] + $last[4][1]) {
+                    if (null === $of[0] || $of[3] >= $last[3] + $last[4][1]) {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
-                    if ($current[3] > 3) {
-                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
+                    if ($of[3] > 3) {
+                        $blocks[$block][1] .= ' ' . \ltrim($of[1]);
                         continue;
                     }
-                    if ('dl' === $current[0]) {
-                        $blocks[$block][1] .= "\n" . \substr($row, $current[3]);
-                        $blocks[$block][3] = $current[3];
+                    if ('dl' === $of[0]) {
+                        $blocks[$block][1] .= "\n" . \substr($row, $of[3]);
+                        $blocks[$block][3] = $of[3];
                         continue;
                     }
                     // Lazy definition list?
                     if ("\n" !== \substr($v = \rtrim($last[1], ' '), -1)) {
-                        if ('h1' === $current[0] && '=' === $current[4][0]) {
-                            $blocks[$block][1] .= ' ' . $current[1];
+                        if ('h1' === $of[0] && '=' === $of[4][0]) {
+                            $blocks[$block][1] .= ' ' . $of[1];
                             continue;
                         }
-                        if ('p' === $current[0] && $v !== $last[4][0]) {
+                        if ('p' === $of[0] && $v !== $last[4][0]) {
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
@@ -1139,48 +1139,48 @@ namespace x\markdown\from {
                         $blocks[$block][1] = \substr($v, 0, -1);
                     }
                     // End of the definition list block
-                    $blocks[++$block] = $current;
+                    $blocks[++$block] = $of;
                     continue;
                 }
                 // Last block is a list block
                 if ('ol' === $last[0]) {
                     // Continue the list block…
-                    if (null === $current[0] || $current[3] >= $last[3] + $last[4][1]) {
+                    if (null === $of[0] || $of[3] >= $last[3] + $last[4][1]) {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
-                    if ($current[3] > 3) {
-                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
+                    if ($of[3] > 3) {
+                        $blocks[$block][1] .= ' ' . \ltrim($of[1]);
                         continue;
                     }
-                    if ('ol' === $current[0]) {
+                    if ('ol' === $of[0]) {
                         // End of the list block
-                        if ($current[4][0] !== $last[4][0]) {
-                            $blocks[++$block] = $current;
+                        if ($of[4][0] !== $last[4][0]) {
+                            $blocks[++$block] = $of;
                             continue;
                         }
                         // Continue the list block…
-                        if ($current[4][2] >= $last[4][2]) {
-                            $blocks[$block][1] .= "\n" . \substr($row, $current[3]);
-                            $blocks[$block][3] = $current[3];
-                            $blocks[$block][4][2] = $current[4][2];
+                        if ($of[4][2] >= $last[4][2]) {
+                            $blocks[$block][1] .= "\n" . \substr($row, $of[3]);
+                            $blocks[$block][3] = $of[3];
+                            $blocks[$block][4][2] = $of[4][2];
                             continue;
                         }
                         // End of the list block
-                        $blocks[++$block] = $current;
+                        $blocks[++$block] = $of;
                         continue;
                     }
                     // Lazy list?
                     if ("\n" !== \substr($v = \rtrim($last[1], ' '), -1)) {
-                        if ('h1' === $current[0] && '=' === $current[4][0]) {
-                            $blocks[$block][1] .= ' ' . $current[1];
+                        if ('h1' === $of[0] && '=' === $of[4][0]) {
+                            $blocks[$block][1] .= ' ' . $of[1];
                             continue;
                         }
-                        if ('p' === $current[0] && $v !== $last[4][2] . $last[4][0]) {
+                        if ('p' === $of[0] && $v !== $last[4][2] . $last[4][0]) {
                             // Hot fix for case `1) 1)\nasdf`
                             if (\preg_match('/(^|\n)\d+[).]([ ]+\d+[).])+[ ]*$/', $last[1])) {
-                                $blocks[++$block] = $current;
+                                $blocks[++$block] = $of;
                                 continue;
                             }
                             $blocks[$block][1] .= "\n" . $row;
@@ -1190,40 +1190,40 @@ namespace x\markdown\from {
                         $blocks[$block][1] = \substr($v, 0, -1);
                     }
                     // End of the list block
-                    $blocks[++$block] = $current;
+                    $blocks[++$block] = $of;
                     continue;
                 }
                 // Last block is a list block
                 if ('ul' === $last[0]) {
-                    if (null === $current[0] || $current[3] >= $last[3] + $last[4][1]) {
+                    if (null === $of[0] || $of[3] >= $last[3] + $last[4][1]) {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#example-312>
-                    if ($current[3] > 3) {
-                        $blocks[$block][1] .= ' ' . \ltrim($current[1]);
+                    if ($of[3] > 3) {
+                        $blocks[$block][1] .= ' ' . \ltrim($of[1]);
                         continue;
                     }
-                    if ('ul' === $current[0]) {
+                    if ('ul' === $of[0]) {
                         // End of the list block
-                        if ($current[4][0] !== $last[4][0]) {
-                            $blocks[++$block] = $current;
+                        if ($of[4][0] !== $last[4][0]) {
+                            $blocks[++$block] = $of;
                             continue;
                         }
-                        $blocks[$block][1] .= "\n" . \substr($row, $current[3]);
-                        $blocks[$block][3] = $current[3];
+                        $blocks[$block][1] .= "\n" . \substr($row, $of[3]);
+                        $blocks[$block][3] = $of[3];
                         continue;
                     }
                     // Lazy list?
                     if ("\n" !== \substr($v = \rtrim($last[1], ' '), -1)) {
-                        if ('h1' === $current[0] && '=' === $current[4][0]) {
-                            $blocks[$block][1] .= ' ' . $current[1];
+                        if ('h1' === $of[0] && '=' === $of[4][0]) {
+                            $blocks[$block][1] .= ' ' . $of[1];
                             continue;
                         }
-                        if ('p' === $current[0] && $v !== $last[4][0]) {
+                        if ('p' === $of[0] && $v !== $last[4][0]) {
                             // Hot fix for case `* *\nasdf`
                             if (\preg_match('/(^|\n)[*+-]([ ]+[*+-])+[ ]*$/', $last[1])) {
-                                $blocks[++$block] = $current;
+                                $blocks[++$block] = $of;
                                 continue;
                             }
                             $blocks[$block][1] .= "\n" . $row;
@@ -1233,85 +1233,85 @@ namespace x\markdown\from {
                         $blocks[$block][1] = \substr($v, 0, -1);
                     }
                     // End of the list block
-                    $blocks[++$block] = $current;
+                    $blocks[++$block] = $of;
                     continue;
                 }
                 // Start a new tight raw block…
-                if (false === $current[0] && 7 !== $current[4][0]) {
-                    $blocks[++$block] = $current;
+                if (false === $of[0] && 7 !== $of[4][0]) {
+                    $blocks[++$block] = $of;
                     continue;
                 }
                 // Start a new tight block…
-                if (\is_string($last[0]) && \is_string($current[0]) && $last[0] !== $current[0]) {
+                if (\is_string($last[0]) && \is_string($of[0]) && $last[0] !== $of[0]) {
                     // Lazy quote?
-                    if ('blockquote' === $last[0] && '>' !== \rtrim($last[1]) && 'p' === $current[0]) {
-                        $blocks[$block][1] .= ' ' . $current[1];
+                    if ('blockquote' === $last[0] && '>' !== \rtrim($last[1]) && 'p' === $of[0]) {
+                        $blocks[$block][1] .= ' ' . $of[1];
                         continue;
                     }
-                    if ('hr' === $current[0] && '-' === $current[4][0] && \strlen($current[1]) === \strspn($current[1], '-')) {
+                    if ('hr' === $of[0] && '-' === $of[4][0] && \strlen($of[1]) === \strspn($of[1], '-')) {
                         if ('p' !== $last[0]) {
-                            $blocks[++$block] = $current;
+                            $blocks[++$block] = $of;
                             continue;
                         }
                         $blocks[$block][0] = 'h2';
-                        $blocks[$block][1] .= "\n" . $current[1];
+                        $blocks[$block][1] .= "\n" . $of[1];
                         $blocks[$block][4] = ['-', 2];
                         continue;
                     }
-                    if ('h1' === $current[0] && '=' === $current[4][0]) {
+                    if ('h1' === $of[0] && '=' === $of[4][0]) {
                         if ('p' !== $last[0]) {
                             // <https://spec.commonmark.org/0.31.2#example-93>
-                            $blocks[$block][1] .= ' ' . $current[1];
+                            $blocks[$block][1] .= ' ' . $of[1];
                             continue;
                         }
                         $blocks[$block][0] = 'h1';
-                        $blocks[$block][1] .= "\n" . $current[1];
+                        $blocks[$block][1] .= "\n" . $of[1];
                         $blocks[$block][4] = ['=', 1];
                         continue;
                     }
-                    if ('h2' === $current[0] && '-' === $current[4][0]) {
+                    if ('h2' === $of[0] && '-' === $of[4][0]) {
                         if ('p' !== $last[0]) {
-                            $blocks[$block][1] .= ' ' . $current[1];
+                            $blocks[$block][1] .= ' ' . $of[1];
                             continue;
                         }
                         $blocks[$block][0] = 'h2';
-                        $blocks[$block][1] .= "\n" . $current[1];
+                        $blocks[$block][1] .= "\n" . $of[1];
                         $blocks[$block][4] = ['-', 2];
                         continue;
                     }
-                    if ('pre' === $current[0] && 1 === $current[4][0] && 'p' === $last[0]) {
+                    if ('pre' === $of[0] && 1 === $of[4][0] && 'p' === $last[0]) {
                         // Contains a hard-break syntax, keep!
                         if ('  ' === \substr($last[1], -2)) {
-                            $blocks[$block][1] = \rtrim($last[1]) . "  \n" . $current[1];
+                            $blocks[$block][1] = \rtrim($last[1]) . "  \n" . $of[1];
                             continue;
                         }
                         // Contains a hard-break syntax, keep!
                         if ("\\" === \substr($v = \rtrim($last[1]), -1)) {
-                            $blocks[$block][1] = $v . "\n" . $current[1];
+                            $blocks[$block][1] = $v . "\n" . $of[1];
                             continue;
                         }
-                        $blocks[$block][1] .= ' ' . $current[1];
+                        $blocks[$block][1] .= ' ' . $of[1];
                         continue;
                     }
-                    if ('dl' === $current[0] && 'p' === $last[0]) {
+                    if ('dl' === $of[0] && 'p' === $last[0]) {
                         $blocks[$block][0] = 'dl';
                         $blocks[$block][1] .= "\n" . $row;
-                        $blocks[$block][4] = $current[4];
+                        $blocks[$block][4] = $of[4];
                         continue;
                     }
-                    if ('ol' === $current[0]) {
-                        if (\rtrim($current[1]) === $current[4][2] . $current[4][0]) {
+                    if ('ol' === $of[0]) {
+                        if (\rtrim($of[1]) === $of[4][2] . $of[4][0]) {
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
                         // <https://spec.commonmark.org/0.31.2#example-304>
-                        if (1 !== $current[4][2]) {
+                        if (1 !== $of[4][2]) {
                             $blocks[$block][1] .= "\n" . $row;
                             continue;
                         }
                     }
-                    if ('ul' === $current[0] && \rtrim($current[1]) === $current[4][0]) {
-                        if ('p' === $last[0] && '-' === $current[4][0]) {
+                    if ('ul' === $of[0] && \rtrim($of[1]) === $of[4][0]) {
+                        if ('p' === $last[0] && '-' === $of[4][0]) {
                             $blocks[$block][0] = 'h2';
                             $blocks[$block][1] .= "\n-";
                             $blocks[$block][4] = ['-', 2];
@@ -1320,24 +1320,24 @@ namespace x\markdown\from {
                         $blocks[$block][1] .= "\n" . $row;
                         continue;
                     }
-                    $blocks[++$block] = $current;
+                    $blocks[++$block] = $of;
                     continue;
                 }
                 // Current block is empty, start a new block…
-                if (null === $current[0]) {
+                if (null === $of[0]) {
                     $block += 1;
                     continue;
                 }
                 // Continue the last block…
-                $blocks[$block][1] .= "\n" . $current[1];
+                $blocks[$block][1] .= "\n" . $of[1];
                 continue;
             }
             // Current block is empty, skip!
-            if (null === $current[0]) {
+            if (null === $of[0]) {
                 continue;
             }
             // Start a new block…
-            $blocks[++$block] = $current;
+            $blocks[++$block] = $of;
         }
         foreach ($blocks as $k => &$v) {
             if (!\is_int($v[0])) {
