@@ -556,13 +556,11 @@ namespace x\markdown\from {
                 $n = \strlen($last);
                 $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
                 if ('*' === $c) {
-                    // <https://spec.commonmark.org/0.31.2#left-flanking-delimiter-run>
-                    // <https://spec.commonmark.org/0.31.2#right-flanking-delimiter-run>
-                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>[*])(?=[\p{P}\p{S}\p{Zs}])|(?<L>[*])(?![\p{P}\p{S}\p{Zs}])(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>[*])(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>[*]))';
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>\*)(?=[\p{P}\p{S}\p{Zs}])|(?<L>\*)(?![\p{P}\p{S}\p{Zs}])(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*))';
                     $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
-                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>[*][*])(?=[\p{P}\p{S}\p{Zs}])|(?<L>[*][*])(?![\p{P}\p{S}\p{Zs}])(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>[*][*])(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>[*][*]))';
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>\*\*)(?=[\p{P}\p{S}\p{Zs}])|(?<L>\*\*)(?![\p{P}\p{S}\p{Zs}])(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*\*))';
                     $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
                     if (\preg_match('/(?>' . $s2 . '|' . $s1 . ')/Ju', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                         $of = $m[0][0];
@@ -576,6 +574,23 @@ namespace x\markdown\from {
                         continue;
                     }
                 } else {
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>_)(?=[\p{P}\p{S}\p{Zs}])|(?<L>_)(?![\p{P}\p{S}\p{Zs}])(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>_)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>_))';
+                    $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>__)(?=[\p{P}\p{S}\p{Zs}])|(?<L>__)(?![\p{P}\p{S}\p{Zs}])(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>__)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>__))';
+                    $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
+                    if (\preg_match('/(?>' . $s2 . '|' . $s1 . ')/Ju', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                        $of = $m[0][0];
+                        if ($m[0][1] > $n) {
+                            $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
+                            $value = $chop = \substr($chop, $m[0][1] - $n);
+                        }
+                        $v = row(\substr($of, 1, -1), $lot)[0];
+                        $chops[] = ['em', $v, [], -1, [$c, 1]];
+                        $value = \substr($chop, \strlen($last = $of));
+                        continue;
+                    }
                 }
                 $chops[] = $last = $c;
                 $value = \substr($chop, 1);
