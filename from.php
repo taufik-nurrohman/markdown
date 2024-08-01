@@ -456,6 +456,141 @@ namespace x\markdown\from {
         return $block ? rows($value) : row($value);
     }
     function row(?string $value, array &$lot = []) {
+        $chops = [];
+        $is_image = isset($lot['is']['image']);
+        $is_table = isset($lot['is']['table']);
+        $last = ""; // Capture the last token
+        $notes = $lot['notes'] ?? [];
+        while (false !== ($chop = \strpbrk($value, "\\" . '<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
+            if ("" !== ($last = \strstr($value, $c = $chop[0], true))) {
+                if (\is_array($abbr = abbr($last, $lot))) {
+                    $chops = \array_merge($chops, $abbr);
+                } else {
+                    $chops[] = e($last);
+                }
+                $value = $chop;
+            }
+            if ($is_table && (0 === \strpos($chop, '![') || false !== \strpos('&*[_', $chop[0])) && false !== ($n = \strpos($chop, '|')) && "\\" !== \substr($chop, $n - 1, 1)) {
+                $chops[] = e($last = \substr($chop, 0, $n));
+                $value = \substr($chop, $n);
+                continue;
+            }
+            if ("\\" === $c) {
+                if ("\\" === \trim($chop)) {
+                    $chops[] = $last = "\\";
+                    $value = "";
+                    // A back-slash is not a hard break when it is at the end of a paragraph block
+                    break;
+                }
+                // <https://spec.commonmark.org/0.31.2#example-644>
+                if ("\n" === ($chop[1] ?? 0)) {
+                    $chops[] = ['br', false, [], -1, ["\\", 1]];
+                    $value = \ltrim(\substr($chop, 2));
+                    $last = "\\\n";
+                    continue;
+                }
+                // Un-escape a character
+                $chops[] = e($last = \substr($chop, 1, 1));
+                $value = \substr($chop, 2);
+                continue;
+            }
+            if ("\n" === $c) {
+                $last = $chops[$n = \count($chops) - 1] ?? [];
+                if (\is_string($last) && '  ' === \substr($last, -2)) {
+                    $chops[$n] = $last = \rtrim($last);
+                    $chops[] = ['br', false, [], -1, [' ', 2]];
+                    $value = \ltrim(\substr($chop, 1));
+                    continue;
+                }
+                // Collapse current line to the previous line
+                $chops[] = ' ';
+                $value = \substr($chop, 1);
+                continue;
+            }
+            if ('!' === $c && '[' === ($chop[1] ?? 0)) {
+                $lot['is']['image'] = 1;
+                $row = row(\substr($chop, 1), $lot)[0][0];
+                unset($lot['is']['image']);
+                if (\is_array($row) && 'a' === $row[0]) {
+                    $row[0] = 'img';
+                    if (\is_array($row[1])) {
+                        $alt = "";
+                        foreach ($row[1] as $v) {
+                            // <https://spec.commonmark.org/0.30#example-573>
+                            if (\is_array($v) && 'img' === $v[0]) {
+                                $alt .= $v[2]['alt'] ?? "";
+                                continue;
+                            }
+                            $alt .= \is_array($v) ? s($v) : $v;
+                        }
+                    } else {
+                        $alt = $row[1];
+                    }
+                    $row[1] = false;
+                    // <https://spec.commonmark.org/0.30#example-572>
+                    $row[2]['alt'] = \trim(\strip_tags($alt));
+                    $row[2]['src'] = $row[2]['href'];
+                    $row[4][1] = '!' . $row[4][1];
+                    unset($row[2]['href'], $row[2]['rel'], $row[2]['target']);
+                    $chops[] = $row;
+                    $value = \substr($chop, \strlen($last = $row[4][1]));
+                    continue;
+                }
+            }
+            if ('&' === $c) {
+                if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?>#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
+                    $chops[] = e($last = '&');
+                    $value = \substr($chop, 1);
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.30#example-26>
+                if ('&#0;' === $m[0]) {
+                    $m[0] = '&#xfffd;';
+                }
+                $chops[] = ['&', $m[0], [], -1];
+                $value = \substr($chop, \strlen($last = $m[0]));
+                continue;
+            }
+            if (\strlen($chop) > 2 && false !== \strpos('*_', $c)) {
+                $n = \strlen($last);
+                $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
+                if ('*' === $c) {
+                    $b = "";
+                    $i = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?!\s)(?>' . $contains . '|(?R))*?(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])[*](?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])[*])(?![*])';
+                    if (\preg_match('/' . $i . '/u', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                        $of = $m[0][0];
+                        if ($m[0][1] > $n) {
+                            $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
+                            $value = $chop = \substr($chop, $m[0][1] - $n);
+                        }
+                        $v = row(\substr($of, 1, -1), $lot)[0];
+                        $chops[] = ['em', $v, [], -1, [$c, 1]];
+                        $value = \substr($chop, \strlen($last = $of));
+                        continue;
+                    }
+                } else {
+                }
+                $chops[] = $last = $c;
+                $value = \substr($chop, 1);
+                continue;
+            }
+            if (\is_array($abbr = abbr($v = $chop, $lot))) {
+                $chops = \array_merge($chops, $abbr);
+            } else {
+                $chops[] = e($v);
+            }
+            $value = "";
+        }
+        if ("" !== $value) {
+            if (\is_array($abbr = abbr($v = $value, $lot))) {
+                $chops = \array_merge($chops, $abbr);
+            } else {
+                $chops[] = e($v);
+            }
+        }
+        return [m($chops), $lot];
+    }
+    function _row(?string $value, array &$lot = []) {
         if ("" === \trim($value ?? "")) {
             return [[], $lot];
         }
@@ -472,89 +607,6 @@ namespace x\markdown\from {
                     $chops[] = e($last);
                 }
                 $value = $chop;
-            }
-            if ($is_table && (0 === \strpos($chop, '![') || false !== \strpos('&*[_', $chop[0])) && false !== ($n = \strpos($chop, '|')) && "\\" !== \substr($chop, $n - 1, 1)) {
-                $chops[] = e($last = \substr($chop, 0, $n));
-                $value = \substr($chop, $n);
-                continue;
-            }
-            if (0 === \strpos($chop, "\\")) {
-                if ("\\" === \trim($chop)) {
-                    $chops[] = $last = "\\";
-                    $value = "";
-                    break;
-                }
-                // <https://spec.commonmark.org/0.30#example-644>
-                if ("\n" === \substr($chop, 1, 1)) {
-                    $chops[] = ['br', false, [], -1, ["\\", 1]];
-                    $value = \ltrim(\substr($chop, 2));
-                    $last = "\\\n";
-                    continue;
-                }
-                $chops[] = e($last = \substr($chop, 1, 1));
-                $value = \substr($chop, 2);
-                continue;
-            }
-            if (0 === \strpos($chop, "\n")) {
-                $last = $chops[$end = \count($chops) - 1] ?? [];
-                if (\is_string($last) && '  ' === \substr($last, -2)) {
-                    $chops[$end] = $last = \rtrim($last);
-                    $chops[] = ['br', false, [], -1, [' ', 2]];
-                    $value = \ltrim(\substr($chop, 1));
-                    continue;
-                }
-                $chops[] = ' ';
-                $value = \substr($chop, 1);
-                continue;
-            }
-            if (0 === \strpos($chop, '!')) {
-                if (1 === \strpos($chop, '[')) {
-                    $lot['is']['image'] = 1;
-                    $row = row(\substr($chop, 1), $lot)[0][0];
-                    unset($lot['is']['image']);
-                    if (\is_array($row) && 'a' === $row[0]) {
-                        $row[0] = 'img';
-                        if (\is_array($row[1])) {
-                            $alt = "";
-                            foreach ($row[1] as $v) {
-                                // <https://spec.commonmark.org/0.30#example-573>
-                                if (\is_array($v) && 'img' === $v[0]) {
-                                    $alt .= $v[2]['alt'] ?? "";
-                                    continue;
-                                }
-                                $alt .= \is_array($v) ? s($v) : $v;
-                            }
-                        } else {
-                            $alt = $row[1];
-                        }
-                        $row[1] = false;
-                        // <https://spec.commonmark.org/0.30#example-572>
-                        $row[2]['alt'] = \trim(\strip_tags($alt));
-                        $row[2]['src'] = $row[2]['href'];
-                        $row[4][1] = '!' . $row[4][1];
-                        unset($row[2]['href'], $row[2]['rel'], $row[2]['target']);
-                        $chops[] = $row;
-                        $value = \substr($chop, \strlen($last = $row[4][1]));
-                        continue;
-                    }
-                }
-                $chops[] = $last = '!';
-                $value = \substr($chop, 1);
-                continue;
-            }
-            if (0 === \strpos($chop, '&')) {
-                if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?>#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
-                    $chops[] = e($last = '&');
-                    $value = \substr($chop, 1);
-                    continue;
-                }
-                // <https://spec.commonmark.org/0.30#example-26>
-                if ('&#0;' === $m[0]) {
-                    $m[0] = '&#xfffd;';
-                }
-                $chops[] = ['&', $m[0], [], -1];
-                $value = \substr($chop, \strlen($last = $m[0]));
-                continue;
             }
             /**
              * NOTE: After making a couple of tweak(s) here and there, I can conclude that using regular expression(s)
