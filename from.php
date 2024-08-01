@@ -551,13 +551,20 @@ namespace x\markdown\from {
                 $value = \substr($chop, \strlen($last = $m[0]));
                 continue;
             }
+            // <https://spec.commonmark.org/0.31.2#emphasis-and-strong-emphasis>
             if (\strlen($chop) > 2 && false !== \strpos('*_', $c)) {
                 $n = \strlen($last);
                 $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
                 if ('*' === $c) {
-                    $b = "";
-                    $i = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?!\s)(?>' . $contains . '|(?R))*?(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])[*](?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])[*])(?![*])';
-                    if (\preg_match('/' . $i . '/u', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                    // <https://spec.commonmark.org/0.31.2#left-flanking-delimiter-run>
+                    // <https://spec.commonmark.org/0.31.2#right-flanking-delimiter-run>
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>[*])(?=[\p{P}\p{S}\p{Zs}])|(?<L>[*])(?![\p{P}\p{S}\p{Zs}])(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>[*])(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>[*]))';
+                    $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>[*][*])(?=[\p{P}\p{S}\p{Zs}])|(?<L>[*][*])(?![\p{P}\p{S}\p{Zs}])(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>[*][*])(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>[*][*]))';
+                    $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
+                    if (\preg_match('/(?>' . $s2 . '|' . $s1 . ')/Ju', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                         $of = $m[0][0];
                         if ($m[0][1] > $n) {
                             $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
