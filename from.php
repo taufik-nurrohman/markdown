@@ -456,10 +456,13 @@ namespace x\markdown\from {
         return $block ? rows($value) : row($value);
     }
     function row(?string $value, array &$lot = []) {
+        if ("" === \trim($value ?? "")) {
+            return [[], $lot];
+        }
         $chops = [];
         $is_image = isset($lot['is']['image']);
         $is_table = isset($lot['is']['table']);
-        $last = ""; // Capture the last token
+        $last = ""; // Capture the last chunk
         $notes = $lot['notes'] ?? [];
         while (false !== ($chop = \strpbrk($value, "\\" . '<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
             if ("" !== ($last = \strstr($value, $c = $chop[0], true))) {
@@ -557,11 +560,11 @@ namespace x\markdown\from {
                 $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
                 if ('*' === $c) {
                     $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>\*)(?=[\p{P}\p{S}\p{Zs}])|(?<L>\*)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*))';
-                    $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))+?)' . $right . ')';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*)(?!\*[\p{P}\p{S}\p{Zs}])(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*)(?!\*[^\p{P}\p{S}\p{Zs}]))';
+                    $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
                     $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>\*\*)(?=[\p{P}\p{S}\p{Zs}])|(?<L>\*\*)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*\*))';
-                    $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))+?)' . $right . ')';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*\*)(?!\*\*[\p{P}\p{S}\p{Zs}])(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*\*)(?!\*\*[^\p{P}\p{S}\p{Zs}]))';
+                    $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
                     if (\preg_match('/(?>' . $s2 . '|' . $s1 . ')/Ju', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                         $of = $m[0][0];
                         // echo '<pre style="border:1px solid">';
@@ -570,6 +573,13 @@ namespace x\markdown\from {
                         if ($m[0][1] > $n) {
                             $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
                             $value = $chop = \substr($chop, $m[0][1] - $n);
+                        }
+                        // <https://spec.commonmark.org/0.31.2#example-420>
+                        // <https://spec.commonmark.org/0.31.2#example-421>
+                        if (\strspn($of, $c) === ($n = \strlen($of))) {
+                            $chops[] = $last = $of;
+                            $value = \substr($chop, $n);
+                            continue;
                         }
                         $strong = 4 === \strlen($m['L'][0] . $m['R'][0]);
                         $v = row(\substr($of, $strong ? 2 : 1, $strong ? -2 : -1), $lot)[0];
@@ -589,6 +599,11 @@ namespace x\markdown\from {
                         if ($m[0][1] > $n) {
                             $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
                             $value = $chop = \substr($chop, $m[0][1] - $n);
+                        }
+                        if (\strspn($of, $c) === ($n = \strlen($of))) {
+                            $chops[] = $last = $of;
+                            $value = \substr($chop, $n);
+                            continue;
                         }
                         $strong = 4 === \strlen($m['L'][0] . $m['R'][0]);
                         $v = row(\substr($of, $strong ? 2 : 1, $strong ? -2 : -1), $lot)[0];
