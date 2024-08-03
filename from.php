@@ -560,11 +560,11 @@ namespace x\markdown\from {
                 $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
                 if ('*' === $c) {
                     $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>\*)(?=[\p{P}\p{S}\p{Zs}])|(?<L>\*)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*)(?!\*[\p{P}\p{S}\p{Zs}])(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*)(?!\*[^\p{P}\p{S}\p{Zs}]))';
-                    $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*))';
+                    $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?<!\s)\*\*(?!\s)|(?R))+?)' . $right . ')';
                     $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>\*\*)(?=[\p{P}\p{S}\p{Zs}])|(?<L>\*\*)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*\*)(?!\*\*[\p{P}\p{S}\p{Zs}])(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*\*)(?!\*\*[^\p{P}\p{S}\p{Zs}]))';
-                    $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*\*))';
+                    $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?<!\s)\*(?!\s)|(?R))+?)' . $right . ')';
                     if (\preg_match('/(?>' . $s2 . '|' . $s1 . ')/Ju', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                         $of = $m[0][0];
                         // echo '<pre style="border:1px solid">';

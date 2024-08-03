@@ -1,6 +1,6 @@
 <?php
 
-function walk($chop) {
+function _walk($chop) {
     $result = [];
     $c_prev = "";
     while ("" !== $chop) {
