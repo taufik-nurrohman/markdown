@@ -582,8 +582,8 @@ namespace x\markdown\from {
                         //     continue;
                         // }
                         if ($c === $m['L'][0] && ($n = \strspn($m['C'][0], $c)) > 0) {
-                            $chops[] = e($last = \substr($chops, 0, $n));
-                            $value = \substr($chop, $n);
+                            $chops[] = e($last = \substr($chop, 0, $n + 1));
+                            $value = \substr($chop, $n + 1);
                             continue;
                         }
                         $strong = 4 === \strlen($m['L'][0] . $m['R'][0]);
