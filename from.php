@@ -574,10 +574,15 @@ namespace x\markdown\from {
                             $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
                             $value = $chop = \substr($chop, $m[0][1] - $n);
                         }
-                        // <https://spec.commonmark.org/0.31.2#example-420>
-                        // <https://spec.commonmark.org/0.31.2#example-421>
-                        if (\strspn($of, $c) === ($n = \strlen($of))) {
-                            $chops[] = $last = $of;
+                        // // <https://spec.commonmark.org/0.31.2#example-420>
+                        // // <https://spec.commonmark.org/0.31.2#example-421>
+                        // if (\strspn($of, $c) === ($n = \strlen($of))) {
+                        //     $chops[] = $last = $of;
+                        //     $value = \substr($chop, $n);
+                        //     continue;
+                        // }
+                        if ($c === $m['L'][0] && ($n = \strspn($m['C'][0], $c)) > 0) {
+                            $chops[] = e($last = \substr($chops, 0, $n));
                             $value = \substr($chop, $n);
                             continue;
                         }
