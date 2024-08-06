@@ -559,46 +559,40 @@ namespace x\markdown\from {
                 $n = \strlen($last);
                 $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
                 if ('*' === $c) {
-                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>\*)(?=[\p{P}\p{S}\p{Zs}])|(?<L>\*)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*))';
-                    $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?<!\s)\*\*(?!\s)|(?R))+?)' . $right . ')';
-                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>\*\*)(?=[\p{P}\p{S}\p{Zs}])|(?<L>\*\*)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>\*\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>\*\*))';
-                    $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?<!\s)\*(?!\s)|(?R))+?)' . $right . ')';
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<l>\*)(?=[\p{P}\p{S}\p{Zs}])|(?<l>\*)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<r>\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<r>\*))';
+                    $s1 = '(?>' . $left . '(?<c>(?>' . $contains . '|(?R))+?)' . $right . ')';
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<l>\*\*)(?=[\p{P}\p{S}\p{Zs}])|(?<l>\*\*)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<r>\*\*)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<r>\*\*))';
+                    $s2 = '(?>' . $left . '(?<c>(?>' . $contains . '|(?R))+?)' . $right . ')';
                     if (\preg_match('/(?>' . $s2 . '|' . $s1 . ')/Ju', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                         $of = $m[0][0];
-                        // echo '<pre style="border:1px solid">';
-                        // echo json_encode($m['L'][0] . '-' . $m['R'][0], JSON_PRETTY_PRINT);
-                        // echo '</pre>';
                         if ($m[0][1] > $n) {
                             $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
                             $value = $chop = \substr($chop, $m[0][1] - $n);
                         }
-                        // // <https://spec.commonmark.org/0.31.2#example-420>
-                        // // <https://spec.commonmark.org/0.31.2#example-421>
-                        // if (\strspn($of, $c) === ($n = \strlen($of))) {
-                        //     $chops[] = $last = $of;
-                        //     $value = \substr($chop, $n);
-                        //     continue;
-                        // }
-                        if ($c === $m['L'][0] && ($n = \strspn($m['C'][0], $c)) > 0) {
-                            $chops[] = e($last = \substr($chop, 0, $n + 1));
-                            $value = \substr($chop, $n + 1);
-                            continue;
+                        $a = \strlen($m['l'][0]);
+                        $b = \strspn($m['c'][0], $c);
+                        if (\preg_match('/(?<=[^\p{P}\p{S}\p{Zs}\s])\*+(?=[^\p{P}\p{S}\p{Zs}\s])/u', \substr($m['c'][0], $b), $o)) {
+                            if ($b > 0 && 0 === (int) (($a + $b + \strlen($o[0])) % 3)) {
+                                $chops[] = \substr($chop, 0, $a + $b);
+                                $value = \substr($chop, $a + $b);
+                                continue;
+                            }
                         }
-                        $strong = 4 === \strlen($m['L'][0] . $m['R'][0]);
+                        $strong = 4 === \strlen($m['l'][0] . $m['r'][0]);
                         $v = row(\substr($of, $strong ? 2 : 1, $strong ? -2 : -1), $lot)[0];
                         $chops[] = [$strong ? 'strong' : 'em', $v, [], -1, [$c, $strong ? 2 : 1]];
                         $value = \substr($chop, \strlen($last = $of));
                         continue;
                     }
                 } else {
-                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>_)(?=[\p{P}\p{S}\p{Zs}])|(?<L>_)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>_)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>_))';
-                    $s1 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
-                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<L>__)(?=[\p{P}\p{S}\p{Zs}])|(?<L>__)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
-                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<R>__)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<R>__))';
-                    $s2 = '(?>' . $left . '(?<C>(?>' . $contains . '|(?R))*?)' . $right . ')';
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<l>_)(?=[\p{P}\p{S}\p{Zs}])|(?<l>_)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<r>_)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<r>_))';
+                    $s1 = '(?>' . $left . '(?<c>(?>' . $contains . '|(?R))*?)' . $right . ')';
+                    $left = '(?>(?<=^|\s|[\p{P}\p{S}\p{Zs}])(?<l>__)(?=[\p{P}\p{S}\p{Zs}])|(?<l>__)(?![\p{P}\p{S}\p{Zs}]))(?!\s)';
+                    $right = '(?<!\s)(?>(?<=[\p{P}\p{S}\p{Zs}])(?<r>__)(?=$|\s|[\p{P}\p{S}\p{Zs}])|(?<![\p{P}\p{S}\p{Zs}])(?<r>__))';
+                    $s2 = '(?>' . $left . '(?<c>(?>' . $contains . '|(?R))*?)' . $right . ')';
                     if (\preg_match('/(?>' . $s2 . '|' . $s1 . ')/Ju', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
                         $of = $m[0][0];
                         if ($m[0][1] > $n) {
@@ -610,7 +604,7 @@ namespace x\markdown\from {
                             $value = \substr($chop, $n);
                             continue;
                         }
-                        $strong = 4 === \strlen($m['L'][0] . $m['R'][0]);
+                        $strong = 4 === \strlen($m['l'][0] . $m['r'][0]);
                         $v = row(\substr($of, $strong ? 2 : 1, $strong ? -2 : -1), $lot)[0];
                         $chops[] = [$strong ? 'strong' : 'em', $v, [], -1, [$c, $strong ? 2 : 1]];
                         $value = \substr($chop, \strlen($last = $of));
