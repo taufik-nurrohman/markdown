@@ -440,17 +440,17 @@ namespace x\markdown\from {
         }
         return ['p', $row, [], $dent];
     }
-    function q(string $char = '"', $capture = false, string $before = "", string $x = ""): string {
+    function q(string $char = '"', $key = false, string $before = "", string $x = ""): string {
         $a = \preg_quote($char[0], '/');
         $b = \preg_quote($char[1] ?? $char[0], '/');
         $c = $a . ($b === $a ? "" : $b);
-        return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.)*+' . ($capture ? ')' : "") . $b . ')';
+        return '(?>' . $a . ($key ? '(' . (\is_string($key) ? '?<' . $key . '>' : "") : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.)*+' . ($key ? ')' : "") . $b . ')';
     }
-    function r(string $char = '[]', $capture = false, string $before = "", string $x = ""): string {
+    function r(string $char = '[]', $key = false, string $before = "", string $x = ""): string {
         $a = \preg_quote($char[0], '/');
         $b = \preg_quote($char[1] ?? $char[0], '/');
         $c = $a . ($b === $a ? "" : $b);
-        return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.|(?R))*+' . ($capture ? ')' : "") . $b . ')';
+        return '(?>' . $a . ($key ? '(' . (\is_string($key) ? '?<' . $key . '>' : "") : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.|(?R))*+' . ($key ? ')' : "") . $b . ')';
     }
     function raw(?string $value, $block = true): array {
         return $block ? rows($value) : row($value);
@@ -462,25 +462,24 @@ namespace x\markdown\from {
         $chops = [];
         $is_image = isset($lot['is']['image']);
         $is_table = isset($lot['is']['table']);
-        $last = ""; // Capture the last chunk
         $notes = $lot['notes'] ?? [];
         while (false !== ($chop = \strpbrk($value, "\\" . '<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
-            if ("" !== ($last = \strstr($value, $c = $chop[0], true))) {
-                if (\is_array($abbr = abbr($last, $lot))) {
+            if ("" !== ($v = \strstr($value, $c = $chop[0], true))) {
+                if (\is_array($abbr = abbr($v, $lot))) {
                     $chops = \array_merge($chops, $abbr);
                 } else {
-                    $chops[] = e($last);
+                    $chops[] = e($v);
                 }
                 $value = $chop;
             }
             if ($is_table && (0 === \strpos($chop, '![') || false !== \strpos('&*[_', $chop[0])) && false !== ($n = \strpos($chop, '|')) && "\\" !== \substr($chop, $n - 1, 1)) {
-                $chops[] = e($last = \substr($chop, 0, $n));
+                $chops[] = e(\substr($chop, 0, $n));
                 $value = \substr($chop, $n);
                 continue;
             }
             if ("\\" === $c) {
                 if ("\\" === \trim($chop)) {
-                    $chops[] = $last = "\\";
+                    $chops[] = "\\";
                     $value = "";
                     // A back-slash is not a hard break when it is at the end of a paragraph block
                     break;
@@ -489,18 +488,17 @@ namespace x\markdown\from {
                 if ("\n" === ($chop[1] ?? 0)) {
                     $chops[] = ['br', false, [], -1, ["\\", 1]];
                     $value = \ltrim(\substr($chop, 2));
-                    $last = "\\\n";
                     continue;
                 }
                 // Un-escape a character
-                $chops[] = e($last = \substr($chop, 1, 1));
+                $chops[] = e(\substr($chop, 1, 1));
                 $value = \substr($chop, 2);
                 continue;
             }
             if ("\n" === $c) {
-                $last = $chops[$n = \count($chops) - 1] ?? [];
-                if (\is_string($last) && '  ' === \substr($last, -2)) {
-                    $chops[$n] = $last = \rtrim($last);
+                $v = $chops[$n = \count($chops) - 1] ?? [];
+                if (\is_string($v) && '  ' === \substr($v, -2)) {
+                    $chops[$n] = \rtrim($v);
                     $chops[] = ['br', false, [], -1, [' ', 2]];
                     $value = \ltrim(\substr($chop, 1));
                     continue;
@@ -536,13 +534,13 @@ namespace x\markdown\from {
                     $row[4][1] = '!' . $row[4][1];
                     unset($row[2]['href'], $row[2]['rel'], $row[2]['target']);
                     $chops[] = $row;
-                    $value = \substr($chop, \strlen($last = $row[4][1]));
+                    $value = \substr($chop, \strlen($row[4][1]));
                     continue;
                 }
             }
             if ('&' === $c) {
                 if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?>#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
-                    $chops[] = e($last = '&');
+                    $chops[] = e('&');
                     $value = \substr($chop, 1);
                     continue;
                 }
@@ -551,7 +549,7 @@ namespace x\markdown\from {
                     $m[0] = '&#xfffd;';
                 }
                 $chops[] = ['&', $m[0], [], -1];
-                $value = \substr($chop, \strlen($last = $m[0]));
+                $value = \substr($chop, \strlen($m[0]));
                 continue;
             }
             if ('*' === $c) {
@@ -564,36 +562,36 @@ namespace x\markdown\from {
                     $n = \strlen($m[1][0]);
                     $bold = 2 === $n || 4 === $n;
                     $chops[] = [$bold ? 'strong' : 'em', row(\substr($m[0][0], $bold ? 2 : 1, $bold ? -2 : -1), $lot)[0], [], -1, [$c, $n]];
-                    $value = \substr($chop, \strlen($last = $m[0][0]));
+                    $value = \substr($chop, \strlen($m[0][0]));
                     continue;
                 }
-                $chops[] = $last = \substr($chop, 0, $n = \strspn($chop, $c));
+                $chops[] = \substr($chop, 0, $n = \strspn($chop, $c));
                 $value = \substr($chop, $n);
                 continue;
             }
             if ('<' === $c) {
                 // <https://spec.commonmark.org/0.31.2#processing-instruction>
                 if (0 === \strpos($chop, '<' . '?') && ($n = \strpos($chop, '?' . '>')) > 1) {
-                    $v = \strtr($last = \substr($chop, 0, $n += 2), "\n", ' ');
+                    $v = \strtr(\substr($chop, 0, $n += 2), "\n", ' ');
                     $chops[] = [false, $v, [], -1, [3, '?' . \trim(\strtok(\substr($v, 1), ' >'), '?')]];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#html-comment>
                 if (0 === \strpos($chop, '<!--') && ($n = \strpos($chop, '-->')) > 1) {
-                    $chops[] = [false, \strtr($last = \substr($chop, 0, $n += 3), "\n", ' '), [], -1, [2, '!--']];
+                    $chops[] = [false, \strtr(\substr($chop, 0, $n += 3), "\n", ' '), [], -1, [2, '!--']];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#cdata-section>
                 if (0 === \strpos($chop, '<![CDATA[') && ($n = \strpos($chop, ']]>')) > 8) {
-                    $chops[] = [false, \strtr($last = \substr($chop, 0, $n += 3), "\n", ' '), [], -1, [5, '![CDATA[']];
+                    $chops[] = [false, \strtr(\substr($chop, 0, $n += 3), "\n", ' '), [], -1, [5, '![CDATA[']];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#declaration>
                 if (0 === \strpos($chop, '<!') && ($n = \strpos($chop, '>')) > 2 && \preg_match('/^[a-z]/i', \substr($chop, 2))) {
-                    $v = \strtr($last = \substr($chop, 0, $n += 1), "\n", ' ');
+                    $v = \strtr(\substr($chop, 0, $n += 1), "\n", ' ');
                     $chops[] = [false, $v, [], -1, [4, \rtrim(\strtok(\substr($v, 1), ' >'), '/')]];
                     $value = \substr($chop, $n);
                     continue;
@@ -601,15 +599,14 @@ namespace x\markdown\from {
                 $test = (string) \strstr($chop, '>', true);
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
                 if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?(?>\.[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
-                    $last = $m[0];
                     // <https://spec.commonmark.org/0.30#example-605>
                     if (false !== \strpos($email = $m[1], '\\')) {
-                        $chops[] = e($last);
-                        $value = \substr($chop, \strlen($last));
+                        $chops[] = e($m[0]);
+                        $value = \substr($chop, \strlen($m[0]));
                         continue;
                     }
-                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $last]];
-                    $value = \substr($chop, \strlen($last));
+                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $m[0]]];
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
@@ -624,23 +621,23 @@ namespace x\markdown\from {
                         'href' => u($m[1]),
                         'rel' => $rel,
                         'target' => $target
-                    ], -1, [false, $last = $m[0]]];
-                    $value = \substr($chop, \strlen($last));
+                    ], -1, [false, $m[0]]];
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#closing-tag>
                 if ('/' === $chop[1] && \preg_match('/^<(\/[a-z][a-z\d-]*)\s*>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, [7, $m[1]]];
-                    $value = \substr($chop, \strlen($last = $m[0]));
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#open-tag>
                 if (\preg_match('/^<([a-z][a-z\d-]*)(\s+[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^' . ($is_table ? '|' : "") . '\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, [7, $m[1]]];
-                    $value = \substr($chop, \strlen($last = $m[0]));
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                $chops[] = e($last = '<');
+                $chops[] = e('<');
                 $value = \substr($chop, 1);
                 continue;
             }
@@ -650,40 +647,40 @@ namespace x\markdown\from {
                 $contains = '`[^`]+`';
                 // `[asdf]…`
                 if (\preg_match('/' . r('[]', true, $contains) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    $last = $m[0][0];
+                    $of = $m[0][0];
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $value = $chop = \substr($chop, $m[0][1]);
                     }
                     // <https://spec.commonmark.org/0.30#example-517>
-                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains) . '/', $last, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
-                        if (false !== \strpos($last, '](') || false !== \strpos($last, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
-                            $chops[] = e($last = \substr($last, 0, $n[0][1]));
-                            $value = \substr($chop, \strlen($last));
+                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains) . '/', $of, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
+                        if (false !== \strpos($of, '](') || false !== \strpos($of, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
+                            $chops[] = e($of = \substr($of, 0, $n[0][1]));
+                            $value = \substr($chop, \strlen($of));
                             continue;
                         }
                     }
-                    $value = $chop = \substr($chop, \strlen($last));
+                    $value = $chop = \substr($chop, \strlen($of));
                     // `[^asdf]`
                     if (0 === \strpos($m[1][0], '^') && ("" === $chop || false === \strpos('([', $chop[0]))) {
                         if (!isset($lot[2][$key = \trim(\substr($m[1][0], 1))])) {
-                            $chops[] = e($last);
+                            $chops[] = e($of);
                             continue;
                         }
                         $notes[$key] = ($notes[$key] ?? 0) + 1;
                         $chops[] = ['sup', [['a', (string) \count($notes), [
                             'href' => '#to:' . $key,
                             'role' => 'doc-noteref'
-                        ], -1, [false, $last]]], [
+                        ], -1, [false, $of]]], [
                             'id' => 'from:' . $key . ($notes[$key] > 1 ? '.' . $notes[$key] : "")
-                        ], -1, [$key, $last]];
+                        ], -1, [$key, $of]];
                         $lot['notes'] = $notes;
                         continue;
                     }
                     $row = row($m[1][0], $lot)[0];
                     // `…(asdf)`
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
-                        $last = $n[0][0];
+                        $of = $n[0][0];
                         if ($n[0][1] > 0) {
                             $chops[] = e($m[0][0] . \substr($chop, 0, $n[0][1]));
                             $value = \substr($chop, $n[0][1]);
@@ -739,15 +736,15 @@ namespace x\markdown\from {
                     // `…[]` or `…[asdf]`
                     } else if (0 === \strpos($chop, '[') && \preg_match('/' . r('[]', true, "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
                         $key = \trim(\strtolower("" === $n[1][0] ? $m[1][0] : $n[1][0]));
-                        $value = $chop = \substr($chop, \strlen($last = $n[0][0]));
+                        $value = $chop = \substr($chop, \strlen($of = $n[0][0]));
                         if (!isset($lot[0][$key])) {
-                            $chops[] = e($last = $m[0][0] . $n[0][0]);
+                            $chops[] = e($of = $m[0][0] . $n[0][0]);
                             continue;
                         }
                     }
                     $key = $key ?? \trim(\strtolower($m[1][0]));
                     if (\is_string($key) && !isset($lot[0][$key])) {
-                        $chops[] = e($last);
+                        $chops[] = e($of);
                         continue;
                     }
                     // …{asdf}
@@ -769,10 +766,10 @@ namespace x\markdown\from {
                     $chops[] = ['a', $row, \array_replace([
                         'href' => u(v($link)),
                         'title' => $title
-                    ], $data ?? []), -1, [$key, $last = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
+                    ], $data ?? []), -1, [$key, $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                     continue;
                 }
-                $chops[] = $last = '[';
+                $chops[] = '[';
                 $value = \substr($chop, 1);
                 continue;
             }
@@ -792,10 +789,10 @@ namespace x\markdown\from {
                     $n = \strlen($m[1][0]);
                     $bold = 2 === $n || 4 === $n;
                     $chops[] = [$bold ? 'strong' : 'em', row(\substr($m[0][0], $bold ? 2 : 1, $bold ? -2 : -1), $lot)[0], [], -1, [$c, $n]];
-                    $value = \substr($chop, \strlen($last = $m[0][0]));
+                    $value = \substr($chop, \strlen($m[0][0]));
                     continue;
                 }
-                $chops[] = $last = \substr($chop, 0, $n = \strspn($chop, $c));
+                $chops[] = \substr($chop, 0, $n = \strspn($chop, $c));
                 $value = \substr($chop, $n);
                 continue;
             }
@@ -807,10 +804,10 @@ namespace x\markdown\from {
                         $raw = \substr($raw, 1, -1);
                     }
                     $chops[] = ['code', e($raw), [], -1, [$c, \strlen($m[1])]];
-                    $value = \substr($chop, \strlen($last = $m[0]));
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                $chops[] = $last = \str_repeat($c, $n = \strspn($chop, $c));
+                $chops[] = \str_repeat($c, $n = \strspn($chop, $c));
                 $value = \substr($chop, $n);
                 continue;
             }
