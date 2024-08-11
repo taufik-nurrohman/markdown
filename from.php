@@ -555,24 +555,15 @@ namespace x\markdown\from {
                 continue;
             }
             if ('*' === $c) {
-                if (\preg_match('/(\*{1,4})(?!\s)((?>`[^`]+`|[^*\\\\]|\\\\.|(?R))+?)(?<!\s)\1(?!\*[^\p{P}\p{S}\p{Zs}\s])/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/(\*{1,4})(?!\s)((?>`[^`]+`|[^*\\\\]|\\\\.|(?R))+?)(?<!\s)\1(?!\*+[^\p{P}\p{S}\p{Zs}\s])/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = \substr($chop, 0, $m[0][1]);
                         $value = \substr($chop, $m[0][1]);
                         continue;
                     }
                     $n = \strlen($m[1][0]);
-                    if (4 === $n) {
-                        $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, [$c, $n]];
-                        $value = \substr($chop, \strlen($last = $m[0][0]));
-                        continue;
-                    }
-                    if (3 === $n) {
-                        $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, [$c, $n]];
-                        $value = \substr($chop, \strlen($last = $m[0][0]));
-                        continue;
-                    }
-                    $chops[] = [1 === $n ? 'em' : 'strong', row($m[2][0], $lot)[0], [], -1, [$c, $n]];
+                    $bold = 2 === $n || 4 === $n;
+                    $chops[] = [$bold ? 'strong' : 'em', row(\substr($m[0][0], $bold ? 2 : 1, $bold ? -2 : -1), $lot)[0], [], -1, [$c, $n]];
                     $value = \substr($chop, \strlen($last = $m[0][0]));
                     continue;
                 }
@@ -799,17 +790,8 @@ namespace x\markdown\from {
                         continue;
                     }
                     $n = \strlen($m[1][0]);
-                    if (4 === $n) {
-                        $chops[] = ['strong', row(\substr($m[0][0], 2, -2), $lot)[0], [], -1, [$c, $n]];
-                        $value = \substr($chop, \strlen($last = $m[0][0]));
-                        continue;
-                    }
-                    if (3 === $n) {
-                        $chops[] = ['em', row(\substr($m[0][0], 1, -1), $lot)[0], [], -1, [$c, $n]];
-                        $value = \substr($chop, \strlen($last = $m[0][0]));
-                        continue;
-                    }
-                    $chops[] = [1 === $n ? 'em' : 'strong', row($m[2][0], $lot)[0], [], -1, [$c, $n]];
+                    $bold = 2 === $n || 4 === $n;
+                    $chops[] = [$bold ? 'strong' : 'em', row(\substr($m[0][0], $bold ? 2 : 1, $bold ? -2 : -1), $lot)[0], [], -1, [$c, $n]];
                     $value = \substr($chop, \strlen($last = $m[0][0]));
                     continue;
                 }
@@ -849,120 +831,6 @@ namespace x\markdown\from {
                 $chops = \array_merge($chops, $abbr);
             } else {
                 $chops[] = e($v);
-            }
-        }
-        return [m($chops), $lot];
-    }
-    function _row(?string $value, array &$lot = []) {
-        if ("" === \trim($value ?? "")) {
-            return [[], $lot];
-        }
-        $chops = [];
-        $is_image = isset($lot['is']['image']);
-        $is_table = isset($lot['is']['table']);
-        $last = ""; // Capture the last chunk
-        $notes = $lot['notes'] ?? [];
-        while (false !== ($chop = \strpbrk($value, "\\" . '<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
-            if ("" !== ($last = \strstr($value, $chop[0], true))) {
-                if (\is_array($abbr = abbr($last, $lot))) {
-                    $chops = \array_merge($chops, $abbr);
-                } else {
-                    $chops[] = e($last);
-                }
-                $value = $chop;
-            }
-            /**
-             * NOTE: After making a couple of tweak(s) here and there, I can conclude that using regular expression(s)
-             * is completely wrong for parsing the emphasis-strong syntax according to the specification. However, I
-             * admit that my capabilit(y|ies) are still not up to the level of understanding how these specification(s)
-             * work. Anyone who wants to help me to improve this emphasis-strong parser can find out how to parse the
-             * delimiter character by character from these reference(s):
-             *
-             * <https://github.com/commonmark/commonmark.js/blob/3ef341bdd7f59e272badb40c17bc3958eea288e2/lib/inlines.js#L249>
-             * <https://github.com/commonmark/commonmark.js/blob/3ef341bdd7f59e272badb40c17bc3958eea288e2/lib/inlines.js#L372>
-             */
-            // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
-            if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
-                $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
-                $n = \strlen($last);
-                if ('*' === $c) {
-                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
-                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
-                } else {
-                    $contains .= '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])';
-                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
-                    $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_](?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
-                }
-                // Test the pattern against the last and current chop to verify if current chop has a left flank
-                // <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
-                if (\preg_match('/(?>' . $b . '|' . $i . ')/u', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    $of = $m[0][0];
-                    if ($m[0][1] > $n) {
-                        $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
-                        $value = $chop = \substr($chop, $m[0][1] - $n);
-                    }
-                    // <https://spec.commonmark.org/0.31.2#example-420>
-                    // <https://spec.commonmark.org/0.31.2#example-421>
-                    if (\strspn($of, $c) === ($n = \strlen($of))) {
-                        $chops[] = $last = $of;
-                        $value = \substr($chop, $n);
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.30#example-520>
-                    if (false !== ($n = \strpos($of, '[')) && (false === \strpos($of, ']') || !\preg_match('/' . r('[]') . '/', $of))) {
-                        $chops[] = e($last = \substr($chop, 0, $n));
-                        $value = \substr($chop, $n);
-                        continue;
-                    }
-                    $x = \min($n = \strspn($of, $c), \strspn(\strrev($of), $c));
-                    if (0 === (int) ($x % 2)) {
-                        $v = row(\substr($of, 2, -2), $lot)[0];
-                        // Hot fix for case `**asdf* asdf *asdf**`
-                        if (\is_array($v) && isset($v[0], $v[1]) && \is_string($v[0]) && \is_string($v[1])) {
-                            if ('*' === \substr($v[0], -1) && \preg_match('/^[\p{P}\p{S}\p{Zs}][\s\S]+?[\p{P}\p{S}\p{Zs}][*]$/u', $v[1])) {
-                                $v = row(\substr($of, 1, -1), $lot)[0];
-                                $chops[] = ['em', $v, [], -1, [$c, 1]];
-                                $value = \substr($chop, \strlen($last = $of));
-                                continue;
-                            }
-                        }
-                        // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
-                        if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
-                            $chops[] = $last = \substr($chop, 0, $n);
-                            $value = \substr($chop, $n);
-                            continue;
-                        }
-                        $chops[] = ['strong', $v, [], -1, [$c, 2]];
-                        $value = \substr($chop, \strlen($last = $of));
-                        continue;
-                    }
-                    $v = row(\substr($of, 1, -1), $lot)[0];
-                    // Hot fix for case `**asdf*asdf*` (case `*asdf*asdf**` works just fine)
-                    if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
-                        $chops[] = $last = \substr($chop, 0, $n);
-                        $value = \substr($chop, $n);
-                        continue;
-                    }
-                    $chops[] = ['em', $v, [], -1, [$c, 1]];
-                    $value = \substr($chop, \strlen($last = $of));
-                    continue;
-                }
-                $chops[] = $last = $c;
-                $value = \substr($chop, 1);
-                continue;
-            }
-            if (\is_array($abbr = abbr($last = $chop, $lot))) {
-                $chops = \array_merge($chops, $abbr);
-            } else {
-                $chops[] = e($last);
-            }
-            $value = "";
-        }
-        if ("" !== $value) {
-            if (\is_array($abbr = abbr($last = $value, $lot))) {
-                $chops = \array_merge($chops, $abbr);
-            } else {
-                $chops[] = e($last);
             }
         }
         return [m($chops), $lot];
