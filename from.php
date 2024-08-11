@@ -792,7 +792,7 @@ namespace x\markdown\from {
                     $value = \substr($chop, $n);
                     continue;
                 }
-                if (\preg_match('/(_{1,4})(?![_\s])((?>`[^`]+`|(?<!\s)_+(?!\s)|[^_\\\\]|\\\\.|(?R))+?)(?<![_\s])\1(?=\s|$)/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/(_{1,4})(?!\s)((?>`[^`]+`|(?<!\s)_+(?!\s)|[^_\\\\]|\\\\.|(?R))+?)(?<!\s)\1(?=\s|$)/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = \substr($chop, 0, $m[0][1]);
                         $value = \substr($chop, $m[0][1]);
