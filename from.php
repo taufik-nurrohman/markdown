@@ -647,6 +647,86 @@ namespace x\markdown\from {
                 $contains = '`[^`]+`';
                 // `[asdf]…`
                 if (\preg_match('/' . r('[]', true, $contains) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                    if ($m[0][1] > 0) {
+                        $chops[] = e(\substr($chop, 0, $m[0][1]));
+                        $value = $chop = \substr($chop, $m[0][1]);
+                    }
+                    $row = row($m[1][0], $lot)[0];
+                    $value = $chop = \substr($chop, \strlen($m[0][0]));
+                    // `…(asdf)`
+                    if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
+                        echo '<pre style="border:1px solid">';
+                        echo json_encode($n, JSON_PRETTY_PRINT);
+                        echo '</pre>';
+                        if ($n[0][1] > 0) {
+                            $chops[] = e(\substr($chop, 0, $n[0][1]));
+                            $value = \substr($chop, $n[0][1]);
+                            continue;
+                        }
+                        $test = \trim($n[1][0]);
+                        // `[asdf]()` or `[asdf](<>)`
+                        if ("" === $test || '<>' === $test) {
+                            $link = "";
+                        // `[asdf](<asdf>)`
+                        } else if ('<' === $test[0]) {
+                            if (false !== ($v = \strstr(\substr($test, 1), '>', true))) {
+                                $link = $v;
+                                $title = \trim(\substr($test, \strlen($v) + 2));
+                                $title = "" !== $title ? $title : null;
+                            } else {
+                                $link = $test;
+                            }
+                        // `[asdf](asdf …)`
+                        } else if (\strpos($test, ' ') > 0 || \strpos($test, "\n") > 0) {
+                            $link = \trim(\strtok($test, " \n"));
+                            $title = \trim(\strpbrk($test, " \n"));
+                        // `[asdf](asdf)`
+                        } else {
+                            $link = $test;
+                        }
+                        // <https://spec.commonmark.org/0.31.2#example-490>
+                        // <https://spec.commonmark.org/0.31.2#example-493>
+                        // <https://spec.commonmark.org/0.31.2#example-494>
+                        if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
+                            $chops[] = e(v(\strtr($m[0][0] . $n[0][0], "\n", ' ')));
+                            $value = \substr($chop, \strlen($n[0][0]));
+                            continue;
+                        }
+                        if (\is_string($title) && "" !== $title) {
+                            // `[asdf](asdf "asdf")` or `[asdf](asdf 'asdf')` or `[asdf](asdf (asdf))`
+                            $left = $title[0];
+                            $right = \substr($title, -1);
+                            if (('"' === $left && '"' === $right || "'" === $left && "'" === $right || '(' === $left && ')' === $right) && \preg_match('/^' . q($left . $right) . '$/', $title)) {
+                                $title = v(d(\substr($title, 1, -1)));
+                            // `[asdf](asdf asdf)`
+                            // <https://spec.commonmark.org/0.31.2#example-488>
+                            } else {
+                                $chops[] = e(v(\strtr($m[0][0] . $n[0][0], "\n", ' ')));
+                                $value = \substr($chop, \strlen($n[0][0]));
+                                continue;
+                            }
+                        }
+                        $chops[] = ['a', $row, [
+                            'href' => u(v($link)),
+                            'title' => $title
+                        ], -1, []];
+                        $value = \substr($chop, \strlen($n[0][0]));
+                        continue;
+                    }
+                    $chops[] = '[';
+                    $value = \substr($m[0][0], 1) . $value;
+                    continue;
+                }
+                $chops[] = '[';
+                $value = \substr($chop, 1);
+                continue;
+            }
+            if ('[x' === $c) {
+                $data = $key = $link = $title = null;
+                // <https://spec.commonmark.org/0.30#example-342>
+                $contains = '`[^`]+`';
+                // `[asdf]…`
+                if (\preg_match('/' . r('[]', true, $contains) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     $of = $m[0][0];
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
@@ -766,7 +846,7 @@ namespace x\markdown\from {
                     $chops[] = ['a', $row, \array_replace([
                         'href' => u(v($link)),
                         'title' => $title
-                    ], $data ?? []), -1, [$key, $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
+                    ], $data ?? []), -1, [$key, $of = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                     continue;
                 }
                 $chops[] = '[';
