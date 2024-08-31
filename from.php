@@ -553,7 +553,7 @@ namespace x\markdown\from {
                 continue;
             }
             if ('*' === $c) {
-                if (\preg_match('/(\*{1,2})(?=\1|[^\p{P}\p{S}\p{Zs}\s])((?>`[^`]+`|[^*\\\\]|\\\\.|(?R))+?)(?<=\1|[^\p{P}\p{S}\p{Zs}\s])\1(?!\1[^\p{P}\p{S}\p{Zs}\s])/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/(\*{1,2})(?!\s)((?>`[^`]+`|[^*\\\\]|\\\\.|(?R))+?)(?<!\s)\1(?!\1)/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = \substr($chop, 0, $m[0][1]);
                         $value = \substr($chop, $m[0][1]);
@@ -721,7 +721,7 @@ namespace x\markdown\from {
                 $value = \substr($chop, 1);
                 continue;
             }
-            if ('[x' === $c) {
+            if ('[xxx' === $c) {
                 $data = $key = $link = $title = null;
                 // <https://spec.commonmark.org/0.30#example-342>
                 $contains = '`[^`]+`';
@@ -860,7 +860,7 @@ namespace x\markdown\from {
                     $value = \substr($chop, $n);
                     continue;
                 }
-                if (\preg_match('/(_{1,2})(?=\1|[^\p{P}\p{S}\p{Zs}\s])((?>`[^`]+`|[^_\\\\]|\\\\.|(?R))+?)(?<=\1|[^\p{P}\p{S}\p{Zs}\s])\1(?!\1[^\p{P}\p{S}\p{Zs}\s])/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
+                if (\preg_match('/(_{1,2})((?>`[^`]+`|[^_\\\\]|\\\\.|(?R))+?)\1/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
                     if ($m[0][1] > 0) {
                         $chops[] = \substr($chop, 0, $m[0][1]);
                         $value = \substr($chop, $m[0][1]);
