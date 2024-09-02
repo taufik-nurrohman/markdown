@@ -553,16 +553,14 @@ namespace x\markdown\from {
                 continue;
             }
             if ('*' === $c) {
-                if (\preg_match('/(\*{1,2})(?!\s)((?>`[^`]+`|[^*\\\\]|\\\\.|(?R))+?)(?<!\s)\1(?!\1)/u', $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    if ($m[0][1] > 0) {
-                        $chops[] = \substr($chop, 0, $m[0][1]);
-                        $value = \substr($chop, $m[0][1]);
-                        continue;
-                    }
-                    $n = \strlen($m[1][0]);
-                    $bold = 2 === $n || 4 === $n;
-                    $chops[] = [$bold ? 'strong' : 'em', row(\substr($m[0][0], $bold ? 2 : 1, $bold ? -2 : -1), $lot)[0], [], -1, [$c, $n]];
-                    $value = \substr($chop, \strlen($m[0][0]));
+                if (\preg_match('/^\*\*(?!\s)((?>`[^`]+`|\\\\\*|[^*]|\*(?!\s)(?>`[^`]+`|\\\\\*|[^*])+?(?<!\s)\*|\B\*\*(?!\s)(?>`[^`]+`|\\\\\*|[^*])+?(?<!\s)\*\*\B)++)(?<!\s)\*\*/', $chop, $m)) {
+                    $chops[] = ['strong', row($m[1], $lot)[0], [], -1, [$c, 2]];
+                    $value = \substr($chop, \strlen($m[0]));
+                    continue;
+                }
+                if (\preg_match('/^\*(?!\s)((?>`[^`]+`|\\\\\*|[^*]|\*\*(?!\s)(?>`[^`]+`|\\\\\*|[^*])+?(?<!\s)\*\*|\B\*(?!\s)(?>`[^`]+`|\\\\\*|[^*])+?(?<!\s)\*\B)++)(?<!\s)\*/', $chop, $m)) {
+                    $chops[] = ['em', row($m[1], $lot)[0], [], -1, [$c, 1]];
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
                 $chops[] = \substr($chop, 0, $n = \strspn($chop, $c));
