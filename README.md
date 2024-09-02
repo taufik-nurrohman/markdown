@@ -184,11 +184,11 @@ Inline attributes always win over native syntax attributes and pre-defined attri
 
 ### Emphasis
 
-The CommonMark’s [emphasis and strong emphasis specifications][commonmark/em] almost drove me crazy! Implementing that
-level of strictness would slow the project down even more towards a stable release. I actually understand
+CommonMark’s [emphasis and strong emphasis specifications][commonmark/em] almost drove me crazy! Implementing that level
+of strictness would slow the project down even more towards a stable release. I actually understand
 [the parsing strategy][commonmark/appendix] very well, but turning it into a minimal PHP code just feels so hard for me.
 Using regular expression method alone does not do the trick, and the [source code][git/commonmark.js] of the JavaScript
-implementation for CommonMark gives me no clue other than telling me to write even more complicated emphasis parser.
+implementation for CommonMark gives me no clue other than telling me to implement even more complicated emphasis parser.
 
 [commonmark/appendix]: https://spec.commonmark.org/0.31.2#appendix-a-parsing-strategy
 [commonmark/em]: https://spec.commonmark.org/0.31.2#emphasis-and-strong-emphasis
