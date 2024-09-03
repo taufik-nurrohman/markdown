@@ -508,7 +508,12 @@ namespace x\markdown\from {
                 $value = \substr($chop, 1);
                 continue;
             }
-            if ('!' === $c && '[' === ($chop[1] ?? 0)) {
+            if ('!' === $c) {
+                if ('[' !== ($chop[1] ?? 0)) {
+                    $chops[] = $c;
+                    $value = \substr($chop, 1);
+                    continue;
+                }
                 $lot['is']['image'] = 1;
                 $row = row(\substr($chop, 1), $lot)[0][0];
                 unset($lot['is']['image']);
@@ -537,6 +542,9 @@ namespace x\markdown\from {
                     $value = \substr($chop, \strlen($row[4][1]));
                     continue;
                 }
+                $chops[] = $c;
+                $value = \substr($chop, 1);
+                continue;
             }
             if ('&' === $c) {
                 if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?>#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
@@ -660,9 +668,6 @@ namespace x\markdown\from {
                     $value = $chop = \substr($chop, \strlen($m[0][0]));
                     // `…(asdf)`
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
-                        echo '<pre style="border:1px solid">';
-                        echo json_encode($n, JSON_PRETTY_PRINT);
-                        echo '</pre>';
                         if ($n[0][1] > 0) {
                             $chops[] = e(\substr($chop, 0, $n[0][1]));
                             $value = \substr($chop, $n[0][1]);
@@ -717,6 +722,18 @@ namespace x\markdown\from {
                         ], -1, []];
                         $value = \substr($chop, \strlen($n[0][0]));
                         continue;
+                    }
+                    // `…[]` or `…[asdf]`
+                    if (0 === \strpos($chop, '[') && \preg_match('/' . r('[]', true, "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
+                        $key = \trim(\strtolower("" === $n[1][0] ? $m[1][0] : $n[1][0]));
+                        if (isset($lot[0][$key])) {
+                            $chops[] = ['a', $row, [
+                                'href' => u(v($lot[0][$key][0])),
+                                'title' => $lot[0][$key][1] ?? null
+                            ], -1, []];
+                            $value = \substr($chop, \strlen($n[0][0]));
+                            continue;
+                        }
                     }
                     $chops[] = '[';
                     $value = \substr($m[0][0], 1) . $value;

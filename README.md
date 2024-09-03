@@ -188,7 +188,8 @@ CommonMark’s [emphasis and strong emphasis specifications][commonmark/em] almo
 of strictness would slow the project down even more towards a stable release. I actually understand
 [the parsing strategy][commonmark/appendix] very well, but turning it into a minimal PHP code just feels so hard for me.
 Using regular expression method alone does not do the trick, and the [source code][git/commonmark.js] of the JavaScript
-implementation for CommonMark gives me no clue other than telling me to implement even more complicated emphasis parser.
+implementation for CommonMark gives me no clue other than telling me to implement an even more complicated emphasis
+parser.
 
 [commonmark/appendix]: https://spec.commonmark.org/0.31.2#appendix-a-parsing-strategy
 [commonmark/em]: https://spec.commonmark.org/0.31.2#emphasis-and-strong-emphasis
@@ -196,228 +197,278 @@ implementation for CommonMark gives me no clue other than telling me to implemen
 
 In order to speed up the completion of the project, I decided to reduce the strictness of the emphasis and strong
 emphasis specifications. This will not completely follow the CommonMark’s emphasis and strong emphasis specifications,
-but I promise that the HTML results will still make sense, especially to those who have never read the CommonMark
-specifications:
+but I promise that the HTML results will still make sense, especially to those who have never read the specifications.
 
- 1. The same type of emphasis can be nested only if one or both sides of the child emphasis begin and/or end with
-    white-space or punctuation.
+**Rule 1:** The same type of emphasis can be nested only if one or both sides of the child emphasis begin and/or end
+with white-space or punctuation.
 
-    These will create nested emphasis:
+These will create nested emphasis:
 
-    <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><pre><code>*asdf *asdf* asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>**asdf* asdf asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;em&gt;asdf&lt;/em&gt; asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf asdf *asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-      </tbody>
-    </table>
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>*asdf *asdf* asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>**asdf* asdf asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;em&gt;asdf&lt;/em&gt; asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf asdf *asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><pre><code>**asdf **asdf** asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf &lt;strong&gt;asdf&lt;/strong&gt; asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>****asdf** asdf asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;&lt;strong&gt;asdf&lt;/strong&gt; asdf asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>**asdf asdf **asdf****</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf asdf &lt;strong&gt;asdf&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-      </tbody>
-    </table>
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>**asdf **asdf** asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf &lt;strong&gt;asdf&lt;/strong&gt; asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>****asdf** asdf asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;&lt;strong&gt;asdf&lt;/strong&gt; asdf asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>**asdf asdf **asdf****</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf asdf &lt;strong&gt;asdf&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
-    These will not:
+These will not:
 
-    <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><pre><code>*asdf*asdf*asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf&lt;/em&gt;asdf&lt;em&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>**asdf*asdf asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;**asdf&lt;em&gt;asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf asdf*asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf&lt;/em&gt;asdf**&lt;/p&gt;</code></pre></td>
-        </tr>
-      </tbody>
-    </table>
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>*asdf*asdf*asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf&lt;/em&gt;asdf&lt;em&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>**asdf*asdf asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;**asdf&lt;em&gt;asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf asdf*asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf&lt;/em&gt;asdf**&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><pre><code>**asdf**asdf**asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf&lt;/strong&gt;asdf&lt;strong&gt;asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>****asdf**asdf asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;****asdf&lt;strong&gt;asdf asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>**asdf asdf**asdf****</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf asdf&lt;/strong&gt;asdf****&lt;/p&gt;</code></pre></td>
-        </tr>
-      </tbody>
-    </table>
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>**asdf**asdf**asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf&lt;/strong&gt;asdf&lt;strong&gt;asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>****asdf**asdf asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;****asdf&lt;strong&gt;asdf asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>**asdf asdf**asdf****</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf asdf&lt;/strong&gt;asdf****&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
- 2. For conditions where the emphasis types are different, the first rule does not apply.
+**Rule 2:** For conditions where the emphasis types are different, the first rule does not apply.
 
-    <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><pre><code>*asdf**asdf**asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf&lt;strong&gt;asdf&lt;/strong&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf **asdf** asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf &lt;strong&gt;asdf&lt;/strong&gt; asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>***asdf**asdf asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;strong&gt;asdf&lt;/strong&gt;asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>***asdf** asdf asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;strong&gt;asdf&lt;/strong&gt; asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf asdf**asdf***</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf&lt;strong&gt;asdf&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf asdf **asdf***</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf &lt;strong&gt;asdf&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-      </tbody>
-    </table>
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>*asdf**asdf**asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf&lt;strong&gt;asdf&lt;/strong&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf **asdf** asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf &lt;strong&gt;asdf&lt;/strong&gt; asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>***asdf**asdf asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;strong&gt;asdf&lt;/strong&gt;asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>***asdf** asdf asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;strong&gt;asdf&lt;/strong&gt; asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf asdf**asdf***</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf&lt;strong&gt;asdf&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf asdf **asdf***</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf &lt;strong&gt;asdf&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><pre><code>**asdf*asdf*asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf&lt;em&gt;asdf&lt;/em&gt;asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>**asdf *asdf* asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>***asdf*asdf asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;&lt;em&gt;asdf&lt;/em&gt;asdf asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>***asdf* asdf asdf**</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;&lt;em&gt;asdf&lt;/em&gt; asdf asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>**asdf asdf*asdf***</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf asdf&lt;em&gt;asdf&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>**asdf asdf *asdf***</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-      </tbody>
-    </table>
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>**asdf*asdf*asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf&lt;em&gt;asdf&lt;/em&gt;asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>**asdf *asdf* asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>***asdf*asdf asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;&lt;em&gt;asdf&lt;/em&gt;asdf asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>***asdf* asdf asdf**</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;&lt;em&gt;asdf&lt;/em&gt; asdf asdf&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>**asdf asdf*asdf***</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf asdf&lt;em&gt;asdf&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>**asdf asdf *asdf***</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;strong&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
- 3. For conditions where the emphasis markers are different, the first rule does not apply.
+**Rule 3:** For conditions where the emphasis markers are different, the first rule does not apply.
 
-    <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><pre><code>_asdf*asdf*asdf_</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf&lt;em&gt;asdf&lt;/em&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf_asdf_asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf_asdf_asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf _asdf_ asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>_*asdf*asdf asdf_</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;em&gt;asdf&lt;/em&gt;asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*_asdf_asdf asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;_asdf_asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*_asdf_ asdf asdf*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;em&gt;asdf&lt;/em&gt; asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>_asdf asdf*asdf*_</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf&lt;em&gt;asdf&lt;/em&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf asdf_asdf_*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf_asdf_&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-        <tr>
-          <td><pre><code>*asdf asdf _asdf_*</code></pre></td>
-          <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
-        </tr>
-      </tbody>
-    </table>
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>_asdf*asdf*asdf_</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf&lt;em&gt;asdf&lt;/em&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf_asdf_asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf_asdf_asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf _asdf_ asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>_*asdf*asdf asdf_</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;em&gt;asdf&lt;/em&gt;asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*_asdf_asdf asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;_asdf_asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*_asdf_ asdf asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;&lt;em&gt;asdf&lt;/em&gt; asdf asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>_asdf asdf*asdf*_</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf&lt;em&gt;asdf&lt;/em&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf asdf_asdf_*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf_asdf_&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf asdf _asdf_*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
+**Rule 4:** The opening delimiter must not be followed by a white-space and the closing delimiter must not be preceded
+by a white-space in order for it to be a valid emphasis token.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>*asdf*</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;em&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>* asdf *</code></pre></td>
+      <td><pre><code>&lt;ul&gt;&lt;li&gt;asdf *&lt;/li&gt;&lt;/ul&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>* asdf*</code></pre></td>
+      <td><pre><code>&lt;ul&gt;&lt;li&gt;asdf*&lt;/li&gt;&lt;/ul&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>*asdf *</code></pre></td>
+      <td><pre><code>&lt;p&gt;*asdf *&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
+**Rule 5:** The emphasis token cannot be empty.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>**</code></pre></td>
+      <td><pre><code>&lt;p&gt;**&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>****</code></pre></td>
+      <td><pre><code>&lt;hr /&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
 ### Links
 
