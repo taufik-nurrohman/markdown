@@ -553,12 +553,13 @@ namespace x\markdown\from {
                 continue;
             }
             if ('*' === $c) {
-                if (\preg_match('/^\*\*(?!\s)((?>`[^`]+`|\\\\\*|[^*]|\*(?!\s)(?>`[^`]+`|\\\\\*|[^*])+?(?<!\s)\*|\B\*\*(?!\s)(?>`[^`]+`|\\\\\*|[^*])+?(?<!\s)\*\*\B)++)(?<!\s)\*\*/', $chop, $m)) {
+                $contains = '`[^`]+`|\\\\.|[^*' . ($is_table ? '|' : "") . ']';
+                if (\preg_match('/^\*\*(?!\s)((?>' . $contains . '|\*(?!\s)(?>' . $contains . ')+?(?<!\s)\*|\B\*\*(?!\s)(?>' . $contains . ')+?(?<!\s)\*\*\B)++)(?<!\s)\*\*/', $chop, $m)) {
                     $chops[] = ['strong', row($m[1], $lot)[0], [], -1, [$c, 2]];
                     $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                if (\preg_match('/^\*(?!\s)((?>`[^`]+`|\\\\\*|[^*]|\*\*(?!\s)(?>`[^`]+`|\\\\\*|[^*])+?(?<!\s)\*\*|\B\*(?!\s)(?>`[^`]+`|\\\\\*|[^*])+?(?<!\s)\*\B)++)(?<!\s)\*/', $chop, $m)) {
+                if (\preg_match('/^\*(?!\s)((?>' . $contains . '|\*\*(?!\s)(?>' . $contains . ')+?(?<!\s)\*\*|\B\*(?!\s)(?>' . $contains . ')+?(?<!\s)\*\B)++)(?<!\s)\*/', $chop, $m)) {
                     $chops[] = ['em', row($m[1], $lot)[0], [], -1, [$c, 1]];
                     $value = \substr($chop, \strlen($m[0]));
                     continue;
@@ -852,18 +853,19 @@ namespace x\markdown\from {
                 continue;
             }
             if ('_' === $c) {
+                $contains = '`[^`]+`|\\\\.|[^_' . ($is_table ? '|' : "") . ']';
                 $last = $chops[\count($chops) - 1] ?? 0;
                 if ($last && \is_string($last) && \preg_match('/\S/', \substr($last, -1))) {
                     $chops[] = \substr($chop, 0, $n = \strspn($chop, $c));
                     $value = \substr($chop, $n);
                     continue;
                 }
-                if (\preg_match('/^__(?!\s)((?>`[^`]+`|\\\\_|[^_]|_(?!\s)(?>`[^`]+`|\\\\_|[^_])+?(?<!\s)_|\B__(?!\s)(?>`[^`]+`|\\\\_|[^_])+?(?<!\s)__\B)++)(?<!\s)__(?=\s|$)/', $chop, $m)) {
+                if (\preg_match('/^__(?!\s)((?>' . $contains . '|_(?!\s)(?>' . $contains . ')+?(?<!\s)_|\B__(?!\s)(?>' . $contains . ')+?(?<!\s)__\B)++)(?<!\s)__(?=\s|$)/', $chop, $m)) {
                     $chops[] = ['strong', row($m[1], $lot)[0], [], -1, [$c, 2]];
                     $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                if (\preg_match('/^_(?!\s)((?>`[^`]+`|\\\\_|[^_]|__(?!\s)(?>`[^`]+`|\\\\_|[^_])+?(?<!\s)__|\B_(?!\s)(?>`[^`]+`|\\\\_|[^_])+?(?<!\s)_\B)++)(?<!\s)_(?=\s|$)/', $chop, $m)) {
+                if (\preg_match('/^_(?!\s)((?>' . $contains . '|__(?!\s)(?>' . $contains . ')+?(?<!\s)__|\B_(?!\s)(?>' . $contains . ')+?(?<!\s)_\B)++)(?<!\s)_(?=\s|$)/', $chop, $m)) {
                     $chops[] = ['em', row($m[1], $lot)[0], [], -1, [$c, 1]];
                     $value = \substr($chop, \strlen($m[0]));
                     continue;
