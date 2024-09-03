@@ -878,11 +878,6 @@ namespace x\markdown\from {
                     continue;
                 }
                 if (\preg_match('/^_(?!\s)((?>' . $contains . ')+?)(?<!\s)_(?=\s|$)/', $chop, $m)) {
-                    echo '<pre style="border:1px solid">';
-                    echo $chop;
-                    echo '<br/>';
-                    echo $m[0];
-                    echo '</pre>';
                     $chops[] = ['em', row($m[1], $lot)[0], [], -1, [$c, 1]];
                     $value = \substr($chop, \strlen($m[0]));
                     continue;
