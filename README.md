@@ -187,17 +187,13 @@ Inline attributes always win over native syntax attributes and pre-defined attri
 CommonMark’s [emphasis and strong emphasis specifications][commonmark/em] almost drove me crazy! Implementing that level
 of strictness would slow the project down even more towards a stable release. I actually understand
 [the parsing strategy][commonmark/appendix] very well, but turning it into a minimal PHP code just feels so hard for me.
-Using regular expression method alone does not do the trick, and the [source code][git/commonmark.js] of the JavaScript
-implementation for CommonMark gives me no clue other than telling me to implement an even more complicated emphasis
-parser.
-
-[commonmark/appendix]: https://spec.commonmark.org/0.31.2#appendix-a-parsing-strategy
-[commonmark/em]: https://spec.commonmark.org/0.31.2#emphasis-and-strong-emphasis
-[git/commonmark.js]: https://github.com/commonmark/commonmark.js/blob/16ff08a7f86c2b958474bf94b515e4626a4fb8f3/lib/inlines.js#L245-L515
 
 In order to speed up the completion of the project, I decided to reduce the strictness of the emphasis and strong
 emphasis specifications. This will not completely follow the CommonMark’s emphasis and strong emphasis specifications,
 but I promise that the HTML results will still make sense, especially to those who have never read the specifications.
+
+[commonmark/appendix]: https://spec.commonmark.org/0.31.2#appendix-a-parsing-strategy
+[commonmark/em]: https://spec.commonmark.org/0.31.2#emphasis-and-strong-emphasis
 
 **Rule 1:** The same type of emphasis can be nested only if one or both sides of the child emphasis begin and/or end
 with white-space or punctuation.
@@ -298,7 +294,7 @@ These will not:
   </tbody>
 </table>
 
-**Rule 2:** For conditions where the emphasis types are different, the first rule does not apply.
+**Rule 2:** For conditions where the emphasis types are different, **Rule 1** does not apply.
 
 <table>
   <thead>
@@ -370,7 +366,7 @@ These will not:
   </tbody>
 </table>
 
-**Rule 3:** For conditions where the emphasis markers are different, the first rule does not apply.
+**Rule 3:** For conditions where the emphasis markers are different, **Rule 1** does not apply.
 
 <table>
   <thead>
