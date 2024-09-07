@@ -641,7 +641,7 @@ Here’s how the code block results compare across each Markdown converter:
 CommonMark doesn’t care about the DOM and therefore also doesn’t care if a HTML element is perfectly balanced or not.
 Unlike the original Markdown syntax specification which doesn’t allow you to convert Markdown syntax inside a HTML
 block, the CommonMark specification doesn’t limit such a case. It cares about blank lines around the lines that look
-like a HTML block tag, as specified in [Section 4.6](https://spec.commonmark.org/0.30#html-blocks), type 6.
+like a HTML block tag, as specified in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), type 6.
 
 Any text that comes after the opening and/or closing of a HTML block is treated as raw text and is not processed as
 Markdown syntax. A blank line is required to end the raw HTML block state:
@@ -765,7 +765,7 @@ HTML block tag and before the closing HTML block tag, you should be okay.
 </table>
 
 Opening an inline HTML element will not trigger the raw HTML block state unless the opening and closing tags stand alone
-on a single line. This is explained in [Section 4.6](https://spec.commonmark.org/0.30#html-blocks), type 7:
+on a single line. This is explained in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), type 7:
 
 <table>
   <thead>
@@ -919,9 +919,9 @@ XSS
 ---
 
 This converter is intended only to convert Markdown syntax to HTML based on the
-[CommonMark](https://spec.commonmark.org/0.30) specification. It doesn’t care about your user input. I have no intention
-of adding any special security features in the future, sorry. The attribute syntax feature may be a security risk for
-you if you want to use this converter on your comment entries, for example:
+[CommonMark](https://spec.commonmark.org/0.31.2) specification. It doesn’t care about your user input. I have no
+intention of adding any special security features in the future, sorry. The attribute syntax feature may be a security
+risk for you if you want to use this converter on your comment entries, for example:
 
 <table>
   <thead>
@@ -1041,7 +1041,7 @@ echo $value;
 
 By inserting abbreviations, notes, and references at the end of the Markdown content, it will be as if you had
 pre-defined abbreviations, notes, and references feature. This should be placed at the end of the Markdown content,
-because according to the [link reference definitions](https://spec.commonmark.org/0.30#example-204) specification, the
+because according to the [link reference definitions](https://spec.commonmark.org/0.31.2#example-204) specification, the
 first declared reference always takes precedence:
 
 ~~~ php
@@ -1157,7 +1157,7 @@ echo $value;
 
 ### Idea: Embed Syntax
 
-The [CommonMark specification for automatic links](https://spec.commonmark.org/0.30#autolinks) doesn’t limit specific
+The [CommonMark specification for automatic links](https://spec.commonmark.org/0.31.2#autolinks) doesn’t limit specific
 types of URL protocols. It just specifies the pattern so we can take advantage of the automatic link syntax to render it
 as a kind of “embed” syntax, which you can then turn it into a chunk of HTML elements.
 
