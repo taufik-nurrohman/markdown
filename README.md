@@ -109,7 +109,7 @@ from(?string $value, bool $block = true): ?string;
  * Convert HTML string to Markdown string.
  *
  * @param null|string $value Your HTML string.
- * @param bool $block If this option is set to `false`, HTML block syntax will be stripped off.
+ * @param bool $block If this option is set to `false`, HTML block syntax will be stripped out.
  * @return null|string
  */
 to(?string $value, bool $block = true): ?string;
