@@ -232,9 +232,6 @@ foreach ($files as $v) {
         $start = microtime(true);
         $content = x\markdown\from($raw) ?? "";
         $end = microtime(true);
-        if (!empty($_GET['n'])) {
-            $content = trim(preg_replace('/<\/(?>blockquote|[dou]l|figure|h[123456r]|li|p|pre|table|tr)>/', '$0' . "\n\n", $content), "\n");
-        }
         $a .= strtr(htmlspecialchars($content), [
             "\t" => '<span class="char-tab">' . "\t" . '</span>',
             ' ' => '<span class="char-space"> </span>'
