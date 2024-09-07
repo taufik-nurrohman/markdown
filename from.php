@@ -562,23 +562,23 @@ namespace x\markdown\from {
             }
             if ('*' === $c) {
                 $contains = '`[^`]+`|\\\\.|[^*' . ($is_table ? '|' : "") . ']';
-                // Prefer `<em><strong>…</strong></em>`
-                if (\preg_match('/^\*(\*\*(?!\s)(?>' . $contains . ')++(?<!\s)\*\*)\*/', $chop, $m)) {
-                    $chops[] = ['em', row($m[1], $lot)[0], [], -1, [$c, 1]];
+                if (
+                    // Prefer `<em><strong>…</strong></em>`
+                    \preg_match('/^((\*)((\*\*)(?!\s)(?>' . $contains . ')++(?<!\s)\4)\2)/', $chop, $m) ||
+                    \preg_match('/^((\*\*)(?!\s)((?>' . $contains . '|(\*)(?!\s)(?>' . $contains . ')+?(?<!\s)\4|\B\2(?!\s)(?>' . $contains . ')+?(?<!\s)\2\B)++)(?<!\s)\2)/', $chop, $m) ||
+                    \preg_match('/^((\*)(?!\s)((?>' . $contains . '|(\*\*)(?!\s)(?>' . $contains . ')+?(?<!\s)\4|\B\2(?!\s)(?>' . $contains . ')+?(?<!\s)\2\B)++)(?<!\s)\2)/', $chop, $m)
+                ) {
+                    // <https://spec.commonmark.org/0.31.2#example-521>
+                    if (false !== ($n = \strpos($m[0], '[')) && (false === \strpos($m[0], ']') || !\preg_match('/' . r('[]') . '/', $m[0]))) {
+                        $chops[] = e(\substr($chop, 0, $n));
+                        $value = \substr($chop, $n);
+                        continue;
+                    }
+                    $chops[] = [1 === ($n = \strlen($m[2])) ? 'em' : 'strong', row($m[3], $lot)[0], [], -1, [$c, $n]];
                     $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                if (\preg_match('/^\*\*(?!\s)((?>' . $contains . '|\*(?!\s)(?>' . $contains . ')+?(?<!\s)\*|\B\*\*(?!\s)(?>' . $contains . ')+?(?<!\s)\*\*\B)++)(?<!\s)\*\*/', $chop, $m)) {
-                    $chops[] = ['strong', row($m[1], $lot)[0], [], -1, [$c, 2]];
-                    $value = \substr($chop, \strlen($m[0]));
-                    continue;
-                }
-                if (\preg_match('/^\*(?!\s)((?>' . $contains . '|\*\*(?!\s)(?>' . $contains . ')+?(?<!\s)\*\*|\B\*(?!\s)(?>' . $contains . ')+?(?<!\s)\*\B)++)(?<!\s)\*/', $chop, $m)) {
-                    $chops[] = ['em', row($m[1], $lot)[0], [], -1, [$c, 1]];
-                    $value = \substr($chop, \strlen($m[0]));
-                    continue;
-                }
-                $chops[] = \substr($chop, 0, $n = \strspn($chop, $c));
+                $chops[] = e(\substr($chop, 0, $n = \strspn($chop, $c)));
                 $value = \substr($chop, $n);
                 continue;
             }
@@ -878,28 +878,28 @@ namespace x\markdown\from {
             if ('_' === $c) {
                 $contains = '`[^`]+`|\\\\.|[' . ($is_table ? '^|' : '\s\S') . ']';
                 $last = $chops[\count($chops) - 1] ?? 0;
-                if ($last && \is_string($last) && \preg_match('/\S/', \substr($last, -1))) {
-                    $chops[] = \substr($chop, 0, $n = \strspn($chop, $c));
+                if ($last && \is_string($last) && \preg_match('/\b/', \substr($last, -1))) {
+                    $chops[] = e(\substr($chop, 0, $n = \strspn($chop, $c)));
                     $value = \substr($chop, $n);
                     continue;
                 }
-                // Prefer `<em><strong>…</strong></em>`
-                if (\preg_match('/^_(__(?![_\s])(?>' . $contains . ')+?(?<![_\s])__)_/', $chop, $m)) {
-                    $chops[] = ['em', row($m[1], $lot)[0], [], -1, [$c, 1]];
+                if (
+                    // Prefer `<em><strong>…</strong></em>`
+                    \preg_match('/^(_)((__)(?![_\s])(?>' . $contains . ')+?(?<![_\s])4)\1/', $chop, $m) ||
+                    \preg_match('/^(__)(?!\s)((?>' . $contains . ')+?)(?<!\s)\1\b/', $chop, $m) ||
+                    \preg_match('/^(_)(?!\s)((?>' . $contains . ')+?)(?<!\s)\1\b/', $chop, $m)
+                ) {
+                    // <https://spec.commonmark.org/0.31.2#example-521>
+                    if (false !== ($n = \strpos($m[0], '[')) && (false === \strpos($m[0], ']') || !\preg_match('/' . r('[]') . '/', $m[0]))) {
+                        $chops[] = e(\substr($chop, 0, $n));
+                        $value = \substr($chop, $n);
+                        continue;
+                    }
+                    $chops[] = [1 === ($n = \strlen($m[1])) ? 'em' : 'strong', row($m[2], $lot)[0], [], -1, [$c, $n]];
                     $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                if (\preg_match('/^__(?!\s)((?>' . $contains . ')+?)(?<!\s)__(?=\s|$)/', $chop, $m)) {
-                    $chops[] = ['strong', row($m[1], $lot)[0], [], -1, [$c, 2]];
-                    $value = \substr($chop, \strlen($m[0]));
-                    continue;
-                }
-                if (\preg_match('/^_(?!\s)((?>' . $contains . ')+?)(?<!\s)_(?=\s|$)/', $chop, $m)) {
-                    $chops[] = ['em', row($m[1], $lot)[0], [], -1, [$c, 1]];
-                    $value = \substr($chop, \strlen($m[0]));
-                    continue;
-                }
-                $chops[] = \substr($chop, 0, $n = \strspn($chop, $c));
+                $chops[] = e(\substr($chop, 0, $n = \strspn($chop, $c)));
                 $value = \substr($chop, $n);
                 continue;
             }
