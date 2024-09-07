@@ -184,13 +184,15 @@ Inline attributes always win over native syntax attributes and pre-defined attri
 
 ### Emphasis
 
-CommonMark’s [emphasis and strong emphasis specifications][commonmark/em] almost drove me crazy! Implementing that level
-of strictness would slow the project down even more towards a stable release. I actually understand
-[the parsing strategy][commonmark/appendix] very well, but turning it into a minimal PHP code just feels so hard for me.
+CommonMark’s [emphasis (and strong emphasis) specifications][commonmark/em] almost drove me crazy! 🤯
 
-In order to speed up the completion of the project, I decided to reduce the strictness of the emphasis and strong
-emphasis specifications. This will not completely follow the CommonMark’s emphasis and strong emphasis specifications,
-but I promise that the HTML results will still make sense, especially to those who have never read the specifications.
+Implementing that level of strictness would slow the project down even more towards a stable release. I actually
+understand [the parsing strategy][commonmark/appendix] very well, but turning it into a minimal PHP code just feels so
+hard for me. In order to speed up the completion of the project, I decided to reduce the strictness of the emphasis and
+strong emphasis specifications.
+
+They will not completely follow the CommonMark’s emphasis (and strong emphasis) specifications, but I promise that the
+HTML results will still make sense, especially for those who have never read the specifications.
 
 [commonmark/appendix]: https://spec.commonmark.org/0.31.2#appendix-a-parsing-strategy
 [commonmark/em]: https://spec.commonmark.org/0.31.2#emphasis-and-strong-emphasis
@@ -198,7 +200,7 @@ but I promise that the HTML results will still make sense, especially to those w
 **Rule 1:** The same type of emphasis can be nested only if one or both sides of the child emphasis begin and/or end
 with white-space or punctuation.
 
-These will create nested emphasis:
+This will create nested emphasis:
 
 <table>
   <thead>
@@ -246,7 +248,7 @@ These will create nested emphasis:
   </tbody>
 </table>
 
-These will not:
+This will not:
 
 <table>
   <thead>
