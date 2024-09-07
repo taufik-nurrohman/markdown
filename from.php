@@ -440,17 +440,17 @@ namespace x\markdown\from {
         }
         return ['p', $row, [], $dent];
     }
-    function q(string $char = '"', $capture = false, string $before = "", string $x = ""): string {
+    function q(string $char = '"', $key = false, string $before = "", string $x = ""): string {
         $a = \preg_quote($char[0], '/');
         $b = \preg_quote($char[1] ?? $char[0], '/');
         $c = $a . ($b === $a ? "" : $b);
-        return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.)*+' . ($capture ? ')' : "") . $b . ')';
+        return '(?>' . $a . ($key ? '(' . (\is_string($key) ? '?<' . $key . '>' : "") : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.)*+' . ($key ? ')' : "") . $b . ')';
     }
-    function r(string $char = '[]', $capture = false, string $before = "", string $x = ""): string {
+    function r(string $char = '[]', $key = false, string $before = "", string $x = ""): string {
         $a = \preg_quote($char[0], '/');
         $b = \preg_quote($char[1] ?? $char[0], '/');
         $c = $a . ($b === $a ? "" : $b);
-        return '(?>' . $a . ($capture ? '(' : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.|(?R))*+' . ($capture ? ')' : "") . $b . ')';
+        return '(?>' . $a . ($key ? '(' . (\is_string($key) ? '?<' . $key . '>' : "") : "") . '(?>' . ($before ? $before . '|' : "") . '[^' . $c . $x . '\\\\]|\\\\.|(?R))*+' . ($key ? ')' : "") . $b . ')';
     }
     function raw(?string $value, $block = true): array {
         return $block ? rows($value) : row($value);
@@ -462,89 +462,93 @@ namespace x\markdown\from {
         $chops = [];
         $is_image = isset($lot['is']['image']);
         $is_table = isset($lot['is']['table']);
-        $last = ""; // Capture the last chunk
         $notes = $lot['notes'] ?? [];
         while (false !== ($chop = \strpbrk($value, "\\" . '<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
-            if ("" !== ($last = \strstr($value, $chop[0], true))) {
-                if (\is_array($abbr = abbr($last, $lot))) {
+            if ("" !== ($v = \strstr($value, $c = $chop[0], true))) {
+                if (\is_array($abbr = abbr($v, $lot))) {
                     $chops = \array_merge($chops, $abbr);
                 } else {
-                    $chops[] = e($last);
+                    $chops[] = e($v);
                 }
                 $value = $chop;
             }
             if ($is_table && (0 === \strpos($chop, '![') || false !== \strpos('&*[_', $chop[0])) && false !== ($n = \strpos($chop, '|')) && "\\" !== \substr($chop, $n - 1, 1)) {
-                $chops[] = e($last = \substr($chop, 0, $n));
+                $chops[] = e(\substr($chop, 0, $n));
                 $value = \substr($chop, $n);
                 continue;
             }
-            if (0 === \strpos($chop, "\\")) {
+            if ("\\" === $c) {
                 if ("\\" === \trim($chop)) {
-                    $chops[] = $last = "\\";
+                    $chops[] = "\\";
                     $value = "";
+                    // A back-slash is not a hard break when it is at the end of a paragraph block
                     break;
                 }
-                // <https://spec.commonmark.org/0.30#example-644>
-                if ("\n" === \substr($chop, 1, 1)) {
+                // <https://spec.commonmark.org/0.31.2#example-644>
+                if ("\n" === ($chop[1] ?? 0)) {
                     $chops[] = ['br', false, [], -1, ["\\", 1]];
                     $value = \ltrim(\substr($chop, 2));
-                    $last = "\\\n";
                     continue;
                 }
-                $chops[] = e($last = \substr($chop, 1, 1));
+                // Un-escape a character
+                $chops[] = e(\substr($chop, 1, 1));
                 $value = \substr($chop, 2);
                 continue;
             }
-            if (0 === \strpos($chop, "\n")) {
-                $last = $chops[$end = \count($chops) - 1] ?? [];
-                if (\is_string($last) && '  ' === \substr($last, -2)) {
-                    $chops[$end] = $last = \rtrim($last);
+            if ("\n" === $c) {
+                $v = $chops[$n = \count($chops) - 1] ?? [];
+                if (\is_string($v) && '  ' === \substr($v, -2)) {
+                    $chops[$n] = \rtrim($v);
                     $chops[] = ['br', false, [], -1, [' ', 2]];
                     $value = \ltrim(\substr($chop, 1));
                     continue;
                 }
+                // Collapse current line to the previous line
                 $chops[] = ' ';
                 $value = \substr($chop, 1);
                 continue;
             }
-            if (0 === \strpos($chop, '!')) {
-                if (1 === \strpos($chop, '[')) {
-                    $lot['is']['image'] = 1;
-                    $row = row(\substr($chop, 1), $lot)[0][0];
-                    unset($lot['is']['image']);
-                    if (\is_array($row) && 'a' === $row[0]) {
-                        $row[0] = 'img';
-                        if (\is_array($row[1])) {
-                            $alt = "";
-                            foreach ($row[1] as $v) {
-                                // <https://spec.commonmark.org/0.30#example-573>
-                                if (\is_array($v) && 'img' === $v[0]) {
-                                    $alt .= $v[2]['alt'] ?? "";
-                                    continue;
-                                }
-                                $alt .= \is_array($v) ? s($v) : $v;
-                            }
-                        } else {
-                            $alt = $row[1];
-                        }
-                        $row[1] = false;
-                        // <https://spec.commonmark.org/0.30#example-572>
-                        $row[2]['alt'] = \trim(\strip_tags($alt));
-                        $row[2]['src'] = $row[2]['href'];
-                        $row[4][1] = '!' . $row[4][1];
-                        unset($row[2]['href'], $row[2]['rel'], $row[2]['target']);
-                        $chops[] = $row;
-                        $value = \substr($chop, \strlen($last = $row[4][1]));
-                        continue;
-                    }
+            if ('!' === $c) {
+                if ('[' !== ($chop[1] ?? 0)) {
+                    $chops[] = $c;
+                    $value = \substr($chop, 1);
+                    continue;
                 }
-                $chops[] = $last = '!';
+                $lot['is']['image'] = 1;
+                $row = row(\substr($chop, 1), $lot)[0][0];
+                unset($lot['is']['image']);
+                if (\is_array($row) && 'a' === $row[0]) {
+                    $row[0] = 'img';
+                    if (\is_array($row[1])) {
+                        $alt = "";
+                        foreach ($row[1] as $v) {
+                            // <https://spec.commonmark.org/0.30#example-573>
+                            if (\is_array($v) && 'img' === $v[0]) {
+                                $alt .= $v[2]['alt'] ?? "";
+                                continue;
+                            }
+                            $alt .= \is_array($v) ? s($v) : $v;
+                        }
+                    } else {
+                        $alt = $row[1];
+                    }
+                    $row[1] = false;
+                    // <https://spec.commonmark.org/0.30#example-572>
+                    $row[2]['alt'] = \trim(\strip_tags($alt));
+                    $row[2]['src'] = $row[2]['href'];
+                    $row[4][1] = '!' . $row[4][1];
+                    unset($row[2]['href'], $row[2]['rel'], $row[2]['target']);
+                    $chops[] = $row;
+                    $value = \substr($chop, \strlen($row[4][1]));
+                    continue;
+                }
+                $chops[] = $c;
                 $value = \substr($chop, 1);
                 continue;
             }
-            if (0 === \strpos($chop, '&')) {
+            if ('&' === $c) {
                 if (false === ($n = \strpos($chop, ';')) || $n < 2 || !\preg_match('/^&(?>#x[a-f\d]{1,6}|#\d{1,7}|[a-z][a-z\d]{1,31});/i', $chop, $m)) {
-                    $chops[] = e($last = '&');
+                    $chops[] = e('&');
                     $value = \substr($chop, 1);
                     continue;
                 }
@@ -553,233 +557,161 @@ namespace x\markdown\from {
                     $m[0] = '&#xfffd;';
                 }
                 $chops[] = ['&', $m[0], [], -1];
-                $value = \substr($chop, \strlen($last = $m[0]));
+                $value = \substr($chop, \strlen($m[0]));
                 continue;
             }
-            /**
-             * NOTE: After making a couple of tweak(s) here and there, I can conclude that using regular expression(s)
-             * is completely wrong for parsing the emphasis-strong syntax according to the specification. However, I
-             * admit that my capabilit(y|ies) are still not up to the level of understanding how these specification(s)
-             * work. Anyone who wants to help me to improve this emphasis-strong parser can find out how to parse the
-             * delimiter character by character from these reference(s):
-             *
-             * <https://github.com/commonmark/commonmark.js/blob/3ef341bdd7f59e272badb40c17bc3958eea288e2/lib/inlines.js#L249>
-             * <https://github.com/commonmark/commonmark.js/blob/3ef341bdd7f59e272badb40c17bc3958eea288e2/lib/inlines.js#L372>
-             */
-            // <https://spec.commonmark.org/0.30#emphasis-and-strong-emphasis>
-            if (\strlen($chop) > 2 && false !== \strpos('*_', $c = $chop[0])) {
-                $contains = '`[^`]+`|[^' . $c . '\\\\]|\\\\.';
-                $n = \strlen($last);
-                if ('*' === $c) {
-                    $b = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*]{2}(?=[\p{P}\p{S}\p{Zs}])|[*]{2}(?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*]{2}(?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*]{2}(?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
-                    $i = '(?>(?<=^|[\p{P}\p{S}\p{Zs}])[*](?=[\p{P}\p{S}\p{Zs}])|[*](?![\p{P}\p{S}\p{Zs}]))(?>' . $contains . '|(?R))*?(?>(?<![\p{P}\p{S}\p{Zs}])[*](?![*]+[^\p{P}\p{S}\p{Zs}])|(?<=[\p{P}\p{S}\p{Zs}])[*](?![*])(?=[\p{P}\p{S}\p{Zs}]|$))';
-                } else {
-                    $contains .= '|(?<![\p{P}\p{S}\p{Zs}])[_]+(?![\p{P}\p{S}\p{Zs}])';
-                    $b = '(?<=^|[\p{P}\p{S}\p{Zs}])[_]{2}(?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_]{2}(?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
-                    $i = '(?<=^|[\p{P}\p{S}\p{Zs}])[_](?![\p{Zs}])(?>' . $contains . '|(?R))*?(?<![\p{Zs}])[_](?![_]+[^\p{P}\p{S}\p{Zs}])(?=[\p{P}\p{S}\p{Zs}]|$)';
-                }
-                // Test the pattern against the last and current chop to verify if current chop has a left flank
-                // <https://spec.commonmark.org/0.30#left-flanking-delimiter-run>
-                if (\preg_match('/(?>' . $b . '|' . $i . ')/u', $last . $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    $of = $m[0][0];
-                    if ($m[0][1] > $n) {
-                        $chops[] = e($last = \substr($chop, 0, $m[0][1] - $n));
-                        $value = $chop = \substr($chop, $m[0][1] - $n);
-                    }
-                    // <https://spec.commonmark.org/0.31.2#example-420>
-                    // <https://spec.commonmark.org/0.31.2#example-421>
-                    if (\strspn($of, $c) === ($n = \strlen($of))) {
-                        $chops[] = $last = $of;
+            if ('*' === $c) {
+                $contains = '`[^`]+`|\\\\.|[^*' . ($is_table ? '|' : "") . ']';
+                if (
+                    // Prefer `<em><strong>…</strong></em>`
+                    \preg_match('/^((\*)((\*\*)(?!\s)(?>' . $contains . ')++(?<!\s)\4)\2)/', $chop, $m) ||
+                    \preg_match('/^((\*\*)(?!\s)((?>' . $contains . '|(\*)(?!\s)(?>' . $contains . ')+?(?<!\s)\4|\B\2(?!\s)(?>' . $contains . ')+?(?<!\s)\2\B)++)(?<!\s)\2)/', $chop, $m) ||
+                    \preg_match('/^((\*)(?!\s)((?>' . $contains . '|(\*\*)(?!\s)(?>' . $contains . ')+?(?<!\s)\4|\B\2(?!\s)(?>' . $contains . ')+?(?<!\s)\2\B)++)(?<!\s)\2)/', $chop, $m)
+                ) {
+                    // <https://spec.commonmark.org/0.31.2#example-521>
+                    if (false !== ($n = \strpos($m[0], '[')) && (false === \strpos($m[0], ']') || !\preg_match('/' . r('[]') . '/', $m[0]))) {
+                        $chops[] = e(\substr($chop, 0, $n));
                         $value = \substr($chop, $n);
                         continue;
                     }
-                    // <https://spec.commonmark.org/0.30#example-520>
-                    if (false !== ($n = \strpos($of, '[')) && (false === \strpos($of, ']') || !\preg_match('/' . r('[]') . '/', $of))) {
-                        $chops[] = e($last = \substr($chop, 0, $n));
-                        $value = \substr($chop, $n);
-                        continue;
-                    }
-                    $x = \min($n = \strspn($of, $c), \strspn(\strrev($of), $c));
-                    if (0 === (int) ($x % 2)) {
-                        $v = row(\substr($of, 2, -2), $lot)[0];
-                        // Hot fix for case `**asdf* asdf *asdf**`
-                        if (\is_array($v) && isset($v[0], $v[1]) && \is_string($v[0]) && \is_string($v[1])) {
-                            if ('*' === \substr($v[0], -1) && \preg_match('/^[\p{P}\p{S}\p{Zs}][\s\S]+?[\p{P}\p{S}\p{Zs}][*]$/u', $v[1])) {
-                                $v = row(\substr($of, 1, -1), $lot)[0];
-                                $chops[] = ['em', $v, [], -1, [$c, 1]];
-                                $value = \substr($chop, \strlen($last = $of));
-                                continue;
-                            }
-                        }
-                        // Hot fix for case `****asdf**asdf**` (case `**asdf**asdf****` works just fine)
-                        if (isset($v[0][0], $v[1][0]) && 'strong' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
-                            $chops[] = $last = \substr($chop, 0, $n);
-                            $value = \substr($chop, $n);
-                            continue;
-                        }
-                        $chops[] = ['strong', $v, [], -1, [$c, 2]];
-                        $value = \substr($chop, \strlen($last = $of));
-                        continue;
-                    }
-                    $v = row(\substr($of, 1, -1), $lot)[0];
-                    // Hot fix for case `**asdf*asdf*` (case `*asdf*asdf**` works just fine)
-                    if (isset($v[0][0], $v[1][0]) && 'em' === $v[0][0] && \is_string($v[1][0]) && !\preg_match('/[\p{P}\p{S}\p{Zs}]/u', $v[1][0])) {
-                        $chops[] = $last = \substr($chop, 0, $n);
-                        $value = \substr($chop, $n);
-                        continue;
-                    }
-                    $chops[] = ['em', $v, [], -1, [$c, 1]];
-                    $value = \substr($chop, \strlen($last = $of));
+                    $chops[] = [1 === ($n = \strlen($m[2])) ? 'em' : 'strong', row($m[3], $lot)[0], [], -1, [$c, $n]];
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                $chops[] = $last = $c;
-                $value = \substr($chop, 1);
+                $chops[] = e(\substr($chop, 0, $n = \strspn($chop, $c)));
+                $value = \substr($chop, $n);
                 continue;
             }
-            if (0 === \strpos($chop, '<')) {
+            if ('<' === $c) {
                 // <https://spec.commonmark.org/0.31.2#processing-instruction>
                 if (0 === \strpos($chop, '<' . '?') && ($n = \strpos($chop, '?' . '>')) > 1) {
-                    $v = \strtr($last = \substr($chop, 0, $n += 2), "\n", ' ');
+                    $v = \strtr(\substr($chop, 0, $n += 2), "\n", ' ');
                     $chops[] = [false, $v, [], -1, [3, '?' . \trim(\strtok(\substr($v, 1), ' >'), '?')]];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#html-comment>
                 if (0 === \strpos($chop, '<!--') && ($n = \strpos($chop, '-->')) > 1) {
-                    $chops[] = [false, \strtr($last = \substr($chop, 0, $n += 3), "\n", ' '), [], -1, [2, '!--']];
+                    $chops[] = [false, \strtr(\substr($chop, 0, $n += 3), "\n", ' '), [], -1, [2, '!--']];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#cdata-section>
                 if (0 === \strpos($chop, '<![CDATA[') && ($n = \strpos($chop, ']]>')) > 8) {
-                    $chops[] = [false, \strtr($last = \substr($chop, 0, $n += 3), "\n", ' '), [], -1, [5, '![CDATA[']];
-                    $value = \substr($chop, $n);
-                    continue;
-                }
-                // <https://spec.commonmark.org/0.31.2#declaration>
-                if (0 === \strpos($chop, '<!') && ($n = \strpos($chop, '>')) > 2 && \preg_match('/^[a-z]/i', \substr($chop, 2))) {
-                    $v = \strtr($last = \substr($chop, 0, $n += 1), "\n", ' ');
-                    $chops[] = [false, $v, [], -1, [4, \rtrim(\strtok(\substr($v, 1), ' >'), '/')]];
+                    $chops[] = [false, \strtr(\substr($chop, 0, $n += 3), "\n", ' '), [], -1, [5, '![CDATA[']];
                     $value = \substr($chop, $n);
                     continue;
                 }
                 $test = (string) \strstr($chop, '>', true);
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L73>
                 if (\strpos($test, '@') > 0 && \preg_match('/^<([a-z\d!#$%&\'*+.\/=?^_`{|}~-]+@[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?(?>\.[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?)*)>/i', $chop, $m)) {
-                    $last = $m[0];
                     // <https://spec.commonmark.org/0.30#example-605>
                     if (false !== \strpos($email = $m[1], '\\')) {
-                        $chops[] = e($last);
-                        $value = \substr($chop, \strlen($last));
+                        $chops[] = e($m[0]);
+                        $value = \substr($chop, \strlen($m[0]));
                         continue;
                     }
-                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $last]];
-                    $value = \substr($chop, \strlen($last));
+                    $chops[] = ['a', e($m[1]), ['href' => u('mailto:' . $email)], -1, [false, $m[0]]];
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
                 // <https://github.com/commonmark/commonmark.js/blob/df3ea1e80d98fce5ad7c72505f9230faa6f23492/lib/inlines.js#L75>
-                if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:[^' . ($is_table ? '|' : "") . '<>\x00-\x20]*)>/i', $chop, $m)) {
-                    if (l($m[1])) {
-                        $rel = $target = null;
-                    } else {
+                if (\strpos($test, ':') > 1 && \preg_match('/^<([a-z][a-z\d.+-]{1,31}:(?>' . ($is_table ? '\\\\\||[^|' : '[^') . '<>\x00-\x20])*)>/i', $chop, $m)) {
+                    $rel = $target = null;
+                    if (!l($link = $is_table ? \strtr($m[1], ["\\|" => '|']) : $m[1])) {
                         $rel = 'nofollow';
                         $target = '_blank';
                     }
-                    $chops[] = ['a', e($m[1]), [
-                        'href' => u($m[1]),
+                    $chops[] = ['a', e($link), [
+                        'href' => u($link),
                         'rel' => $rel,
                         'target' => $target
-                    ], -1, [false, $last = $m[0]]];
-                    $value = \substr($chop, \strlen($last));
+                    ], -1, [false, $m[0]]];
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#closing-tag>
                 if ('/' === $chop[1] && \preg_match('/^<(\/[a-z][a-z\d-]*)\s*>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, [7, $m[1]]];
-                    $value = \substr($chop, \strlen($last = $m[0]));
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#open-tag>
                 if (\preg_match('/^<([a-z][a-z\d-]*)(\s+[a-z:_][\w.:-]*(\s*=\s*(?>"[^"]*"|\'[^\']*\'|[^' . ($is_table ? '|' : "") . '\s"\'<=>`]+)?)?)*\s*\/?>/i', $chop, $m)) {
                     $chops[] = [false, $m[0], [], -1, [7, $m[1]]];
-                    $value = \substr($chop, \strlen($last = $m[0]));
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                $chops[] = e($last = '<');
+                $chops[] = e('<');
                 $value = \substr($chop, 1);
                 continue;
             }
-            if (0 === \strpos($chop, '[')) {
-                $data = $key = $link = $title = null;
-                // <https://spec.commonmark.org/0.30#example-342>
+            if ('[' === $c) {
                 $contains = '`[^`]+`';
+                $data = $key = $link = $title = null;
                 // `[asdf]…`
                 if (\preg_match('/' . r('[]', true, $contains) . '/', $chop, $m, \PREG_OFFSET_CAPTURE)) {
-                    $last = $m[0][0];
                     if ($m[0][1] > 0) {
                         $chops[] = e(\substr($chop, 0, $m[0][1]));
                         $value = $chop = \substr($chop, $m[0][1]);
                     }
-                    // <https://spec.commonmark.org/0.30#example-517>
-                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains) . '/', $last, $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
-                        if (false !== \strpos($last, '](') || false !== \strpos($last, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
-                            $chops[] = e($last = \substr($last, 0, $n[0][1]));
-                            $value = \substr($chop, \strlen($last));
+                    // <https://spec.commonmark.org/0.31.2#example-518>
+                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains) . '/', $v = $m[0][0], $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
+                        if (false !== \strpos($v, '](') || false !== \strpos($v, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
+                            $chops[] = e($v = \substr($v, 0, $n[0][1]));
+                            $value = \substr($chop, \strlen($v));
                             continue;
                         }
                     }
-                    $value = $chop = \substr($chop, \strlen($last));
+                    $value = $chop = \substr($chop, \strlen($m[0][0]));
                     // `[^asdf]`
                     if (0 === \strpos($m[1][0], '^') && ("" === $chop || false === \strpos('([', $chop[0]))) {
                         if (!isset($lot[2][$key = \trim(\substr($m[1][0], 1))])) {
-                            $chops[] = e($last);
+                            $chops[] = e($m[0][0]);
                             continue;
                         }
                         $notes[$key] = ($notes[$key] ?? 0) + 1;
                         $chops[] = ['sup', [['a', (string) \count($notes), [
                             'href' => '#to:' . $key,
                             'role' => 'doc-noteref'
-                        ], -1, [false, $last]]], [
+                        ], -1, [false, $m[0][0]]]], [
                             'id' => 'from:' . $key . ($notes[$key] > 1 ? '.' . $notes[$key] : "")
-                        ], -1, [$key, $last]];
+                        ], -1, [$key, $m[0][0]]];
                         $lot['notes'] = $notes;
                         continue;
                     }
                     $row = row($m[1][0], $lot)[0];
                     // `…(asdf)`
                     if (0 === \strpos($chop, '(') && \preg_match('/' . r('()', true, q('<>')) . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
-                        $last = $n[0][0];
                         if ($n[0][1] > 0) {
-                            $chops[] = e($m[0][0] . \substr($chop, 0, $n[0][1]));
+                            $chops[] = e(\substr($chop, 0, $n[0][1]));
                             $value = \substr($chop, $n[0][1]);
                             continue;
                         }
-                        // `[asdf]()`
-                        if ("" === ($n[1][0] = \trim($n[1][0] ?? ""))) {
-                            $link = "";
-                        // `[asdf](<>)`
-                        } else if ('<>' === $n[1][0]) {
+                        $test = \trim($n[1][0]);
+                        // `[asdf]()` or `[asdf](<>)`
+                        if ("" === $test || '<>' === $test) {
                             $link = "";
                         // `[asdf](<asdf>)`
-                        } else if ('<' === $n[1][0][0]) {
-                            if (false !== ($v = \strstr(\substr($n[1][0], 1), '>', true))) {
+                        } else if ('<' === $test[0]) {
+                            if (false !== ($v = \strstr(\substr($test, 1), '>', true))) {
                                 $link = $v;
-                                $title = \trim(\substr($n[1][0], \strlen($v) + 2));
+                                $title = \trim(\substr($test, \strlen($v) + 2));
                                 $title = "" !== $title ? $title : null;
                             } else {
-                                $link = $n[1][0];
+                                $link = $test;
                             }
                         // `[asdf](asdf …)`
-                        } else if (\strpos($n[1][0], ' ') > 0 || \strpos($n[1][0], "\n") > 0) {
-                            $link = \trim(\strtok($n[1][0], " \n"));
-                            $title = \trim(\strpbrk($n[1][0], " \n"));
+                        } else if (\strpos($test, ' ') > 0 || \strpos($test, "\n") > 0) {
+                            $link = \trim(\strtok($test, " \n"));
+                            $title = \trim(\strpbrk($test, " \n"));
                         // `[asdf](asdf)`
                         } else {
-                            $link = $n[1][0];
+                            $link = $test;
                         }
-                        // <https://spec.commonmark.org/0.30#example-490>
-                        // <https://spec.commonmark.org/0.30#example-492>
-                        // <https://spec.commonmark.org/0.30#example-493>
+                        // <https://spec.commonmark.org/0.31.2#example-490>
+                        // <https://spec.commonmark.org/0.31.2#example-493>
+                        // <https://spec.commonmark.org/0.31.2#example-494>
                         if (false !== \strpos($link, "\n") || '\\' === \substr($link, -1) || 0 === \strpos($link, '<')) {
                             $chops[] = e(v(\strtr($m[0][0] . $n[0][0], "\n", ' ')));
                             $value = \substr($chop, \strlen($n[0][0]));
@@ -792,7 +724,7 @@ namespace x\markdown\from {
                             if (('"' === $a && '"' === $b || "'" === $a && "'" === $b || '(' === $a && ')' === $b) && \preg_match('/^' . q($a . $b) . '$/', $title)) {
                                 $title = v(d(\substr($title, 1, -1)));
                             // `[asdf](asdf asdf)`
-                            // <https://spec.commonmark.org/0.30#example-487>
+                            // <https://spec.commonmark.org/0.31.2#example-488>
                             } else {
                                 $chops[] = e(v(\strtr($m[0][0] . $n[0][0], "\n", ' ')));
                                 $value = \substr($chop, \strlen($n[0][0]));
@@ -803,16 +735,15 @@ namespace x\markdown\from {
                         $value = $chop = \substr($chop, \strlen($n[0][0]));
                     // `…[]` or `…[asdf]`
                     } else if (0 === \strpos($chop, '[') && \preg_match('/' . r('[]', true, "") . '/', $chop, $n, \PREG_OFFSET_CAPTURE)) {
-                        $key = \trim(\strtolower("" === $n[1][0] ? $m[1][0] : $n[1][0]));
-                        $value = $chop = \substr($chop, \strlen($last = $n[0][0]));
-                        if (!isset($lot[0][$key])) {
-                            $chops[] = e($last = $m[0][0] . $n[0][0]);
+                        $value = $chop = \substr($chop, \strlen($n[0][0]));
+                        if (!isset($lot[0][$key = \trim(\strtolower("" === $n[1][0] ? $m[1][0] : $n[1][0]))])) {
+                            $chops[] = e($m[0][0] . $n[0][0]);
                             continue;
                         }
                     }
                     $key = $key ?? \trim(\strtolower($m[1][0]));
                     if (\is_string($key) && !isset($lot[0][$key])) {
-                        $chops[] = e($last);
+                        $chops[] = e($m[0][0]);
                         continue;
                     }
                     // …{asdf}
@@ -834,45 +765,73 @@ namespace x\markdown\from {
                     $chops[] = ['a', $row, \array_replace([
                         'href' => u(v($link)),
                         'title' => $title
-                    ], $data ?? []), -1, [$key, $last = $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
+                    ], $data ?? []), -1, [$key, $m[0][0] . ($n[0][0] ?? "") . ($o[0] ?? "")]];
                     continue;
                 }
-                $chops[] = $last = '[';
+                $chops[] = '[';
                 $value = \substr($chop, 1);
                 continue;
             }
-            if (0 === \strpos($chop, $c = '`')) {
-                if (\preg_match('/^(`+)(?![`])(.+?)(?<![`])\1(?![`])/s', $chop, $m)) {
+            if ('_' === $c) {
+                $contains = '`[^`]+`|\\\\.|[' . ($is_table ? '^|' : '\s\S') . ']';
+                $last = $chops[\count($chops) - 1] ?? 0;
+                if ($last && \is_string($last) && \preg_match('/\b/', \substr($last, -1))) {
+                    $chops[] = e(\substr($chop, 0, $n = \strspn($chop, $c)));
+                    $value = \substr($chop, $n);
+                    continue;
+                }
+                if (
+                    // Prefer `<em><strong>…</strong></em>`
+                    \preg_match('/^(_)((__)(?![_\s])(?>' . $contains . ')+?(?<![_\s])\3)\1/', $chop, $m) ||
+                    \preg_match('/^(__)(?!\s)((?>' . $contains . ')+?)(?<!\s)\1\b/', $chop, $m) ||
+                    \preg_match('/^(_)(?!\s)((?>' . $contains . ')+?)(?<!\s)\1\b/', $chop, $m)
+                ) {
+                    // <https://spec.commonmark.org/0.31.2#example-521>
+                    if (false !== ($n = \strpos($m[0], '[')) && (false === \strpos($m[0], ']') || !\preg_match('/' . r('[]') . '/', $m[0]))) {
+                        $chops[] = e(\substr($chop, 0, $n));
+                        $value = \substr($chop, $n);
+                        continue;
+                    }
+                    $chops[] = [1 === ($n = \strlen($m[1])) ? 'em' : 'strong', row($m[2], $lot)[0], [], -1, [$c, $n]];
+                    $value = \substr($chop, \strlen($m[0]));
+                    continue;
+                }
+                $chops[] = e(\substr($chop, 0, $n = \strspn($chop, $c)));
+                $value = \substr($chop, $n);
+                continue;
+            }
+            if ('`' === $c) {
+                if (\preg_match('/^(`+)(?!`)(.+?)(?<!`)\1(?!`)/s', $chop, $m)) {
                     // <https://spec.commonmark.org/0.31.2#code-spans>
                     $raw = \strtr($m[2], "\n", ' ');
                     if ("" !== \trim($raw) && ' ' === $raw[0] && ' ' === \substr($raw, -1)) {
                         $raw = \substr($raw, 1, -1);
                     }
                     $chops[] = ['code', e($raw), [], -1, [$c, \strlen($m[1])]];
-                    $value = \substr($chop, \strlen($last = $m[0]));
+                    $value = \substr($chop, \strlen($m[0]));
                     continue;
                 }
-                $chops[] = $last = \str_repeat($c, $n = \strspn($chop, $c));
+                $chops[] = \str_repeat($c, $n = \strspn($chop, $c));
                 $value = \substr($chop, $n);
                 continue;
             }
-            if ($is_table && 0 === \strpos($chop, '|')) {
-                $chops[] = [false, '|', [], -1];
+            if ($is_table && '|' === $c) {
+                $chops[] = [false, $c, [], -1];
                 $value = \substr($chop, 1);
                 continue;
             }
-            if (\is_array($abbr = abbr($last = $chop, $lot))) {
+            if (\is_array($abbr = abbr($v = $chop, $lot))) {
                 $chops = \array_merge($chops, $abbr);
             } else {
-                $chops[] = e($last);
+                $chops[] = e($v);
             }
             $value = "";
         }
         if ("" !== $value) {
-            if (\is_array($abbr = abbr($last = $value, $lot))) {
+            if (\is_array($abbr = abbr($v = $value, $lot))) {
                 $chops = \array_merge($chops, $abbr);
             } else {
-                $chops[] = e($last);
+                $chops[] = e($v);
             }
         }
         return [m($chops), $lot];
