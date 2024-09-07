@@ -188,8 +188,8 @@ CommonMark’s [emphasis (and strong emphasis) specifications][commonmark/em] al
 
 Implementing that level of strictness would slow the project down even more towards a stable release. I actually
 understand [the parsing strategy][commonmark/appendix] very well, but turning it into a minimal PHP code just feels so
-hard for me. In order to speed up the completion of the project, I decided to reduce the strictness of the emphasis and
-strong emphasis specifications.
+hard for me. In order to speed up the completion of the project, I decided to reduce the strictness of the emphasis (and
+strong emphasis) specifications.
 
 They will not completely follow the CommonMark’s emphasis (and strong emphasis) specifications, but I promise that the
 HTML results will still make sense, especially for those who have never read the specifications.
