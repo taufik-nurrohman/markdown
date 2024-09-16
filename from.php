@@ -460,7 +460,7 @@ namespace x\markdown\from {
             return [[], $lot];
         }
         $chops = [];
-        $is_image = isset($lot['is']['image']);
+        $is_img = isset($lot['is']['img']);
         $is_table = isset($lot['is']['table']);
         $notes = $lot['notes'] ?? [];
         while (false !== ($chop = \strpbrk($value, "\\" . '<`' . ($is_table ? '|' : "") . '*_![&' . "\n"))) {
@@ -509,9 +509,9 @@ namespace x\markdown\from {
                     $value = \substr($chop, 1);
                     continue;
                 }
-                $lot['is']['image'] = 1;
+                $lot['is']['img'] = 1;
                 $test = row(\substr($chop, 1), $lot)[0][0];
-                unset($lot['is']['image']);
+                unset($lot['is']['img']);
                 if (\is_array($test) && 'a' === $test[0]) {
                     $test[0] = 'img';
                     if (\is_array($test[1])) {
@@ -651,7 +651,7 @@ namespace x\markdown\from {
                         $value = $chop = \substr($chop, $m[0][1]);
                     }
                     // <https://spec.commonmark.org/0.31.2#example-518>
-                    if (!$is_image && \preg_match('/(?<!!)' . q('[]', true, $contains, $is_table ? '|' : "") . '/', $v = $m[0][0], $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
+                    if (!$is_img && \preg_match('/(?<!!)' . q('[]', true, $contains, $is_table ? '|' : "") . '/', $v = $m[0][0], $n, \PREG_OFFSET_CAPTURE) && $n[0][1] > 0) {
                         if (false !== \strpos($v, '](') || false !== \strpos($v, '][') || isset($lot[0][\trim(\strtolower($n[1][0]))])) {
                             $chops[] = e($v = \substr($v, 0, $n[0][1]));
                             $value = \substr($chop, \strlen($v));
