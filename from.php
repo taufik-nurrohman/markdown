@@ -1704,8 +1704,9 @@ namespace x\markdown\from {
                 continue;
             }
             if (\is_string($v[1])) {
-                $v[1] = m(row(\rtrim($v[1]), $lot)[0]);
+                $v[1] = row(\rtrim($v[1]), $lot)[0];
             }
+            $v[1] = m($v[1]);
         }
         foreach ($blocks as &$v) {
             // Late definition list parsing
