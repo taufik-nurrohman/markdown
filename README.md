@@ -28,7 +28,7 @@ longer made as a single class file. It’s broken down into components. The goal
 functionality without breaking what’s already in the core. For others, it may be of great use, but I see it as a form of
 similarity to the features provided by
 [CommonMark](https://github.com/thephpleague/commonmark/blob/2.4/docs/2.4/customization/extensions.md). Because of that,
-if I want to update, it might be more optimal to just switch to CommonMark.
+if I want to upgrade, it might be more optimal to just switch to CommonMark.
 
 I’m not into things like that. As someone who needs a function to convert Markdown syntax to HTML, that kind of
 flexibility is completely unnecessary to me. I just want to convert Markdown syntax to HTML for once and then move on.
