@@ -41,11 +41,9 @@ $out .= 'Markdown to HTML';
 $out .= '</title>';
 $out .= '<style>';
 $out .= <<<CSS
-
 body > div > div a {
   text-decoration: none;
 }
-
 body > div > div blockquote {
   border-left: 4px solid #eee;
   margin-left: 0;
@@ -53,16 +51,13 @@ body > div > div blockquote {
   padding-left: 1.25em;
   padding-right: 1.25em;
 }
-
 body > div > div figure {
   text-align: center;
 }
-
 body > div > div figure img {
   display: block;
   margin: 0 auto;
 }
-
 body > div > div caption,
 body > div > div figcaption {
   caption-side: bottom;
@@ -70,33 +65,27 @@ body > div > div figcaption {
   margin-top: 0.5em;
   text-align: center;
 }
-
 body > div > div dt {
   font-weight: bold;
 }
-
 body > div > div img[src$='.gif'] {
   display: inline-block;
   vertical-align: middle;
 }
-
 body > div > div pre {
   background: #000;
   color: #fff;
   overflow: auto;
   padding: 1em 1.25em;
 }
-
 body > div > div table {
   border-collapse: collapse;
   table-layout: fixed;
   width: 100%;
 }
-
 body > div > div table + table {
   margin-top: 1em;
 }
-
 body > div > div td,
 body > div > div th {
   border: 1px solid;
@@ -104,25 +93,20 @@ body > div > div th {
   text-align: left;
   vertical-align: top;
 }
-
 body > div > div > :first-child {
   margin-top: 0;
 }
-
 body > div > div > :last-child {
   margin-bottom: 0;
 }
-
 body > div > div :target {
   background: #ff0;
 }
-
 .char-space,
 .char-tab {
   opacity: 0.5;
   position: relative;
 }
-
 .char-space::before {
   bottom: 0;
   content: '·';
@@ -132,7 +116,6 @@ body > div > div :target {
   text-align: center;
   top: 0;
 }
-
 .char-tab::before {
   bottom: 0;
   content: '→';
@@ -142,7 +125,6 @@ body > div > div :target {
   text-align: center;
   top: 0;
 }
-
 CSS;
 $out .= '</style>';
 $out .= '</head>';
@@ -197,10 +179,16 @@ $out .= '</fieldset>';
 
 $out .= '</form>';
 
+$dent = (int) ($_GET['dent'] ?? 0);
 $error_count = 0;
 foreach ($files as $v) {
     $error = false;
     $raw = file_get_contents($v);
+    // Add indent level to the Markdown string to see if indent level less than 4 breaks the parser
+    if ($dent) {
+        $raw = str_repeat(' ', $dent) . strtr($raw, ["\n" => "\n" . str_repeat(' ', $dent)]);
+        $raw = preg_replace('/^[ \t]+$/m', "", $raw);
+    }
     $out .= '<h1 id="' . ($n = basename(dirname($v)) . ':' . basename($v, '.md')) . '"><a aria-hidden="true" href="#' . $n . '">&sect;</a> ' . strtr($v, [PATH . D => '.' . D]) . '</h1>';
     $out .= '<div style="display:flex;gap:1em;margin:1em 0 0;">';
     $out .= '<pre style="background:#ccc;border:1px solid rgba(0,0,0,.25);color:#000;flex:1;font:normal normal 100%/1.25 monospace;margin:0;min-width:0;padding:.5em;tab-size:4;white-space:pre-wrap;word-wrap:break-word;">';

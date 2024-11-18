@@ -1502,7 +1502,7 @@ namespace x\markdown\from {
                 $list = \preg_split('/\n+(?=\d+[).](\s|$))/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
-                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $n = \strspn($vv, '0123456789') + 2) => "\n"]), $n); // Remove indent(s)
+                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', ($n = \strspn($vv, '0123456789') + 2) + $v[3]) => "\n"]), $n); // Remove indent(s)
                     if (($n = \strspn($vv, ' ')) < 4) {
                         $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $n) => "\n"]), $n);
                     }
@@ -1510,7 +1510,11 @@ namespace x\markdown\from {
                     if ($list_is_tight && \is_array($vv)) {
                         foreach ($vv as &$vvv) {
                             if (\is_array($vvv) && 'p' === $vvv[0]) {
-                                $vvv[0] = false; // TODO
+                                if (\is_string($vvv[1])) {
+                                    $vvv = $vvv[1];
+                                } else {
+                                    $vvv[0] = false;
+                                }
                             }
                         }
                         unset($vvv);
@@ -1683,7 +1687,7 @@ namespace x\markdown\from {
                 $list = \preg_split('/\n+(?=[*+-](\s|$))/', $v[1]);
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
-                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $n = 2) => "\n"]), $n); // Remove indent(s)
+                    $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', ($n = 2) + $v[3]) => "\n"]), $n); // Remove indent(s)
                     if (($n = \strspn($vv, ' ')) < 4) {
                         $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $n) => "\n"]), $n);
                     }
@@ -1691,7 +1695,11 @@ namespace x\markdown\from {
                     if ($list_is_tight && \is_array($vv)) {
                         foreach ($vv as &$vvv) {
                             if (\is_array($vvv) && 'p' === $vvv[0]) {
-                                $vvv[0] = false; // TODO
+                                if (\is_string($vvv[1])) {
+                                    $vvv = $vvv[1];
+                                } else {
+                                    $vvv[0] = false;
+                                }
                             }
                         }
                         unset($vvv);
@@ -1715,7 +1723,7 @@ namespace x\markdown\from {
                 $list_is_tight = false === \strpos($v[1], "\n\n");
                 foreach ($list as &$vv) {
                     if (\strlen($vv) > 2 && ':' === $vv[0] && ' ' === $vv[1]) {
-                        $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $n = 2) => "\n"]), $n); // Remove indent(s)
+                        $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', ($n = 2) + $v[3]) => "\n"]), $n); // Remove indent(s)
                         if (($n = \strspn($vv, ' ')) < 4) {
                             $vv = \substr(\strtr($vv, ["\n" . \str_repeat(' ', $n) => "\n"]), $n);
                         }
@@ -1723,7 +1731,11 @@ namespace x\markdown\from {
                         if ($list_is_tight && \is_array($vv)) {
                             foreach ($vv as &$vvv) {
                                 if (\is_array($vvv) && 'p' === $vvv[0]) {
-                                    $vvv[0] = false; // TODO
+                                    if (\is_string($vvv[1])) {
+                                        $vvv = $vvv[1];
+                                    } else {
+                                        $vvv[0] = false;
+                                    }
                                 }
                             }
                             unset($vvv);
