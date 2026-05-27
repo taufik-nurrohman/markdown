@@ -1,5 +1,7 @@
 <?php namespace x\markdown;
 
+function from(?string $value, $block = true): ?string {}
+
 function n($text) {
     if ($t = \strspn($text, ' ')) {
         $text = \substr($text, $t > 4 ? 4 : $t);
@@ -7,16 +9,16 @@ function n($text) {
     return [$text, $t];
 }
 
-function row($text) {}
+function row($text, $lot) {}
 
-function rows($text) {
-    static $blocks_1 = [
+function rows($text, $lot) {
+    static $nodes_1 = [
         'pre' => 1,
         'script' => 1,
         'style' => 1,
         'textarea' => 1
     ];
-    static $blocks_6 = [
+    static $nodes_6 = [
         'address' => 1,
         'article' => 1,
         'aside' => 1,
@@ -90,7 +92,7 @@ function rows($text) {
         [$row, $t] = n($raw);
         if (false === $r[0]) {
             // HTML block type 1
-            if (isset($blocks_1[$r[4][1]]) && false !== \stripos($row, '</' . $r[4][1] . '>')) {
+            if (isset($nodes_1[$r[4][1]]) && false !== \stripos($row, '</' . $r[4][1] . '>')) {
                 $r[1] .= $row . "\n";
                 $rows[] = $r;
                 $r = ['p', "", [], 0];
@@ -109,7 +111,7 @@ function rows($text) {
                 continue;
             }
             // HTML block type 6
-            if (isset($blocks_6[$r[4][1]]) && "" === \trim($row)) {
+            if (isset($nodes_6[$r[4][1]]) && "" === \trim($row)) {
                 $rows[] = $r;
                 $r = ['p', "", [], 0];
                 continue;
@@ -170,13 +172,13 @@ function rows($text) {
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#html-block>
-        if ('<' === ($row[0] ?? '%') && ($block = \substr($row, 1, \strcspn($row, " \t>", 1)))) {
-            if ('!' === ($block[0] ?? '%') && '>' !== ($block[1] ?? '%')) {
+        if ('<' === ($row[0] ?? '%') && ($node = \substr($row, 1, \strcspn($row, " \t>", 1)))) {
+            if ('!' === ($node[0] ?? '%') && '>' !== ($node[1] ?? '%')) {
                 if ("" !== $r[1]) {
                     // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
                     $rows[] = $r;
                 }
-                if ('--' === \substr($block, 1, 2)) {
+                if ('--' === \substr($node, 1, 2)) {
                     $r = [false, $row . "\n", [], $t, [2, null]];
                     if (false !== \strpos($row, '-->')) {
                         // Ends on its own line
@@ -185,7 +187,7 @@ function rows($text) {
                     }
                     continue;
                 }
-                if ('[CDATA[' === \substr($block, 1, 7)) {
+                if ('[CDATA[' === \substr($node, 1, 7)) {
                     $r = [false, $row . "\n", [], $t, [5, null]];
                     if (false !== \strpos($row, ']]>')) {
                         // Ends on its own line
@@ -202,7 +204,7 @@ function rows($text) {
                 }
                 continue;
             }
-            if ('?' === ($block[0] ?? '%') && '>' !== ($block[1] ?? '%')) {
+            if ('?' === ($node[0] ?? '%') && '>' !== ($node[1] ?? '%')) {
                 if ("" !== $r[1]) {
                     // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
                     $rows[] = $r;
@@ -216,14 +218,14 @@ function rows($text) {
                 continue;
             }
             // The initial tag doesn’t need to be a valid tag, as long as it starts like one
-            $block = \strtolower($block);
-            if (isset($blocks_1[$block])) {
+            $node = \strtolower($node);
+            if (isset($nodes_1[$node])) {
                 if ("" !== $r[1]) {
                     // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
                     $rows[] = $r;
                 }
-                $r = [false, $row . "\n", [], $t, [1, $block]];
-                if (false !== \stripos($row, '</' . $block . '>')) {
+                $r = [false, $row . "\n", [], $t, [1, $node]];
+                if (false !== \stripos($row, '</' . $node . '>')) {
                     // Ends on its own line
                     $rows[] = $r;
                     $r = ['p', "", [], 0];
@@ -231,18 +233,48 @@ function rows($text) {
                 continue;
             }
             // HTML block(s) type 6 does not care whether it is an open or close tag
-            if (isset($blocks_6[$block_6 = \trim($block, '/')])) {
+            if (isset($nodes_6[$node_6 = \trim($node, '/')])) {
                 if ("" !== $r[1]) {
                     // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
                     $rows[] = $r;
                 }
-                $r = [false, $row . "\n", [], $t, [6, $block]];
+                $r = [false, $row . "\n", [], $t, [6, $node_6]];
                 continue;
             }
             $r[1] .= $row . "\n";
             if (0 === $r[3]) {
                 $r[3] = $t;
             }
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#example-80>
+        if ('-' === ($row[0] ?? '%') && \strspn($row, '-') === \strlen($row) && "" !== $r[1]) {
+            $r[0] = 'h2';
+            $r[4] = [2, '-'];
+            $rows[] = $r;
+            $r = ['p', "", [], 0];
+            continue;
+        }
+        if ('=' === ($row[0] ?? '%') && \strspn($row, '=') === \strlen($row) && "" !== $r[1]) {
+            $r[0] = 'h1';
+            $r[4] = [1, '='];
+            $rows[] = $r;
+            $r = ['p', "", [], 0];
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#thematic-break>
+        // NOTE: This thematic break parser must come after the `<h2>`’s “setext” heading parser
+        // because the `-` character is used as the “setext” marker for `<h2>` as well
+        if (($test = \strtr($row, ["\t" => "", ' ' => ""])) && (
+            '*' === $test[0] ||
+            '-' === $test[0] ||
+            '_' === $test[0]
+        ) && \strspn($test, $test[0]) === \strlen($test)) {
+            if ("" !== $r[1]) {
+                $rows[] = $r;
+            }
+            $rows[] = ['hr', false, [], $t, [$test[0]]];
+            $r = ['p', "", [], 0];
             continue;
         }
         // <https://spec.commonmark.org/0.31.2/#bullet-list>
@@ -284,13 +316,40 @@ function rows($text) {
         }
         $rows[] = $r;
     }
-    return $rows;
+    $lot[0] = $lot[0] ?? []; // Reference(s)
+    $lot[1] = $lot[1] ?? []; // Abbreviation(s)
+    $lot[2] = $lot[2] ?? []; // Note(s)
+    return [$rows, $lot];
 }
 
 
 
 
 foreach ([
+
+    // hr
+    "***\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n***\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n***",
+
+    // hr
+    "---\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n---\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n---",
+
+    // hr
+    "___\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n___\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n___",
+
+    // h2
+    "-\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n-\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n-",
+    // h2
+    "--------------------\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n--------------------\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n--------------------",
 
     // p
     "asdf asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
@@ -367,7 +426,7 @@ foreach ([
     echo \htmlspecialchars($text);
     echo '</pre>';
     echo '<pre style="border:2px solid #00f;font:normal normal 12px/1.25 monospace;overflow:auto;padding:0 0.25em;">';
-    echo \htmlspecialchars(\json_encode(rows($text), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+    echo \htmlspecialchars(\json_encode(rows($text, [])[0], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
     echo '</pre>';
     echo '<hr>';
 }
