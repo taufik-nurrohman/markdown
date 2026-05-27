@@ -1,4 +1,4 @@
-<?php
+<?php namespace x\markdown;
 
 function n($text) {
     if ($t = \strspn($text, ' ')) {
@@ -10,6 +10,76 @@ function n($text) {
 function row($text) {}
 
 function rows($text) {
+    static $blocks_1 = [
+        'pre' => 1,
+        'script' => 1,
+        'style' => 1,
+        'textarea' => 1
+    ];
+    static $blocks_6 = [
+        'address' => 1,
+        'article' => 1,
+        'aside' => 1,
+        'base' => 1,
+        'basefont' => 1,
+        'blockquote' => 1,
+        'body' => 1,
+        'caption' => 1,
+        'center' => 1,
+        'col' => 1,
+        'colgroup' => 1,
+        'dd' => 1,
+        'details' => 1,
+        'dialog' => 1,
+        'dir' => 1,
+        'div' => 1,
+        'dl' => 1,
+        'dt' => 1,
+        'fieldset' => 1,
+        'figcaption' => 1,
+        'figure' => 1,
+        'footer' => 1,
+        'form' => 1,
+        'frame' => 1,
+        'frameset' => 1,
+        'h1' => 1,
+        'h2' => 1,
+        'h3' => 1,
+        'h4' => 1,
+        'h5' => 1,
+        'h6' => 1,
+        'head' => 1,
+        'header' => 1,
+        'hr' => 1,
+        'html' => 1,
+        'iframe' => 1,
+        'legend' => 1,
+        'li' => 1,
+        'link' => 1,
+        'main' => 1,
+        'menu' => 1,
+        'menuitem' => 1,
+        'nav' => 1,
+        'noframes' => 1,
+        'ol' => 1,
+        'optgroup' => 1,
+        'option' => 1,
+        'p' => 1,
+        'param' => 1,
+        'search' => 1,
+        'section' => 1,
+        'summary' => 1,
+        'table' => 1,
+        'tbody' => 1,
+        'td' => 1,
+        'tfoot' => 1,
+        'th' => 1,
+        'thead' => 1,
+        'title' => 1,
+        'tr' => 1,
+        'track' => 1,
+        'ul' => 1
+    ];
     $r = ['p', "", [], 0];
     $raws = \explode("\n", \rtrim(\strtr($text, [
         "\r\n" => "\n",
@@ -19,10 +89,27 @@ function rows($text) {
     foreach ($raws as $raw) {
         [$row, $t] = n($raw);
         if (false === $r[0]) {
-            if (false !== \strpos(',pre,script,style,textarea', ',' . $r[4][1] . ',')) {
-                // TODO
+            // HTML block type 1
+            if (isset($blocks_1[$r[4][1]]) && false !== \stripos($row, '</' . $r[4][1] . '>')) {
+                $r[1] .= $row . "\n";
+                $rows[] = $r;
+                $r = ['p', "", [], 0];
+                continue;
             }
-            if (false !== \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,param,search,section,summary,table,tbody,td,tfoot,th,thead,title,tr,track,ul,', ',' . $r[4][1] . ',') && "" === \trim($row)) {
+            // HTML block type 2, 3, 4, and 5
+            if (
+                2 === $r[4][0] && false !== \strpos($row, '-->') ||
+                3 === $r[4][0] && false !== \strpos($row, '?>') ||
+                4 === $r[4][0] && false !== \strpos($row, '>') ||
+                5 === $r[4][0] && false !== \strpos($row, ']]>')
+            ) {
+                $r[1] .= $row . "\n";
+                $rows[] = $r;
+                $r = ['p', "", [], 0];
+                continue;
+            }
+            // HTML block type 6
+            if (isset($blocks_6[$r[4][1]]) && "" === \trim($row)) {
                 $rows[] = $r;
                 $r = ['p', "", [], 0];
                 continue;
@@ -82,37 +169,81 @@ function rows($text) {
             }
             continue;
         }
-        if ('<' === ($row[0] ?? '%') && ($name = \substr($row, 1, \strcspn($row, " \t", 1)))) {
-            // <https://spec.commonmark.org/0.31.2#html-block>
-            if (false !== \strpos(',pre,script,style,textarea,', ',' . $name . ',')) {
+        // <https://spec.commonmark.org/0.31.2#html-block>
+        if ('<' === ($row[0] ?? '%') && ($block = \substr($row, 1, \strcspn($row, " \t>", 1)))) {
+            if ('!' === ($block[0] ?? '%') && '>' !== ($block[1] ?? '%')) {
                 if ("" !== $r[1]) {
+                    // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
                     $rows[] = $r;
-                    $r = [false, $row . "\n", [], $t, [1, $name]];
+                }
+                if ('--' === \substr($block, 1, 2)) {
+                    $r = [false, $row . "\n", [], $t, [2, null]];
+                    if (false !== \strpos($row, '-->')) {
+                        // Ends on its own line
+                        $rows[] = $r;
+                        $r = ['p', "", [], 0];
+                    }
                     continue;
                 }
-                $r[0] = false;
-                $r[1] .= $row . "\n";
-                if (0 === $r[3]) {
-                    $r[3] = $t;
-                }
-                $r[4] = [1, $name];
-                continue;
-            }
-            if (false !== \strpos(',address,article,aside,base,basefont,blockquote,body,caption,center,col,colgroup,dd,details,dialog,dir,div,dl,dt,fieldset,figcaption,figure,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hr,html,iframe,legend,li,link,main,menu,menuitem,nav,noframes,ol,optgroup,option,p,param,search,section,summary,table,tbody,td,tfoot,th,thead,title,tr,track,ul,', ',' . \trim($name = \strtolower($name), '/') . ',')) {
-                if ("" !== $r[1]) {
-                    $rows[] = $r;
-                    $r = [false, $row . "\n", [], $t, [6, $name]];
+                if ('[CDATA[' === \substr($block, 1, 7)) {
+                    $r = [false, $row . "\n", [], $t, [5, null]];
+                    if (false !== \strpos($row, ']]>')) {
+                        // Ends on its own line
+                        $rows[] = $r;
+                        $r = ['p', "", [], 0];
+                    }
                     continue;
                 }
-                $r[0] = false;
-                $r[1] .= $row . "\n";
-                if (0 === $r[3]) {
-                    $r[3] = $t;
+                $r = [false, $row . "\n", [], $t, [4, null]];
+                if (false !== \strpos($row, '>')) {
+                    // Ends on its own line
+                    $rows[] = $r;
+                    $r = ['p', "", [], 0];
                 }
-                $r[4] = [6, $name];
                 continue;
             }
-            // TODO
+            if ('?' === ($block[0] ?? '%') && '>' !== ($block[1] ?? '%')) {
+                if ("" !== $r[1]) {
+                    // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
+                    $rows[] = $r;
+                }
+                $r = [false, $row . "\n", [], $t, [3, null]];
+                if (false !== \strpos($row, '?>')) {
+                    // Ends on its own line
+                    $rows[] = $r;
+                    $r = ['p', "", [], 0];
+                }
+                continue;
+            }
+            // The initial tag doesn’t need to be a valid tag, as long as it starts like one
+            $block = \strtolower($block);
+            if (isset($blocks_1[$block])) {
+                if ("" !== $r[1]) {
+                    // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
+                    $rows[] = $r;
+                }
+                $r = [false, $row . "\n", [], $t, [1, $block]];
+                if (false !== \stripos($row, '</' . $block . '>')) {
+                    // Ends on its own line
+                    $rows[] = $r;
+                    $r = ['p', "", [], 0];
+                }
+                continue;
+            }
+            // HTML block(s) type 6 does not care whether it is an open or close tag
+            if (isset($blocks_6[$block_6 = \trim($block, '/')])) {
+                if ("" !== $r[1]) {
+                    // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
+                    $rows[] = $r;
+                }
+                $r = [false, $row . "\n", [], $t, [6, $block]];
+                continue;
+            }
+            $r[1] .= $row . "\n";
+            if (0 === $r[3]) {
+                $r[3] = $t;
+            }
+            continue;
         }
         // <https://spec.commonmark.org/0.31.2/#bullet-list>
         if (false !== \strpos('*+-', $row[0] ?? '%') && ($z = \strspn($row, " \t", 1))) {
@@ -198,11 +329,36 @@ foreach ([
     "asdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n   * asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n   * asdf asdf asdf asdf",
 
-    // "raw"
+    // raw 1
+    "<script asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n<script asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n<script asdf asdf",
+    // raw 1
+    "<script asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf\n</script>asdf asdf asdf",
+    "<script asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf\n</script>\nasdf asdf asdf asdf",
+    "<script asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf\n</script>\n\nasdf asdf asdf asdf",
+    // raw 1
+    "<script asdf </script> asdf asdf\nasdf asdf asdf asdf",
+    "<script asdf asdf </script>\nasdf asdf asdf asdf",
+    // raw 2
+    "<!-- asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n<!-- asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n<!-- asdf asdf asdf",
+    // raw 2
+    "<!-- asdf asdf asdf\n\nasdf asdf asdf -->\nasdf asdf asdf asdf",
+    "<!-- asdf asdf asdf\n\nasdf asdf asdf -->\n\nasdf asdf asdf asdf",
+    // raw 3
+    "<? asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n<? asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n<? asdf asdf asdf",
+    // raw 3
+    "<? asdf asdf asdf\n\nasdf asdf asdf ?>\nasdf asdf asdf asdf",
+    "<? asdf asdf asdf\n\nasdf asdf asdf ?>\n\nasdf asdf asdf asdf",
+    // raw 6
     "<div asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n<div asdf asdf asdf\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\nasdf asdf asdf asdf\n<div asdf asdf asdf",
-    // "raw"
+    // raw 6
     "<div asdf asdf asdf\n\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
     "<div asdf asdf asdf\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
 
