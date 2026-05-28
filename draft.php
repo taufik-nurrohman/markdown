@@ -1,5 +1,21 @@
 <?php namespace x\markdown;
 
+/*
+
+#
+*
++
+-
+1
+:
+<
+=
+>
+_
+|
+
+*/
+
 function from(?string $value, $block = true): ?string {}
 
 function n(string $text) {
@@ -124,14 +140,37 @@ function rows(string $text, array $lot = []) {
             $r[1] .= $row . "\n";
             continue;
         }
+        if ('blockquote' === $r[0]) {
+            if ("" === \trim($row)) {
+                $rows[] = $r;
+                $r = ['p', "", [], 0];
+                continue;
+            }
+            $next = rows($row, $lot)[0][0] ?? [];
+            if ('blockquote' === ($next[0] ?? '%')) {
+                $r[1] .= $row . "\n";
+                continue;
+            }
+            // <https://spec.commonmark.org/0.31.2#example-232>
+            // <https://spec.commonmark.org/0.31.2#example-233>
+            // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
+            if ('p' === ($next[0] ?? '%') && $t === $r[3]) {
+                $r[1] .= $row . "\n";
+                continue;
+            }
+            $rows[] = $r;
+            $r = $next;
+            continue;
+        }
         if ('ol' === $r[0]) {
             // <https://spec.commonmark.org/0.31.2#example-306>
             if ("" === \trim($row)) {
                 $r[1] .= "\n";
                 continue;
             }
+            $next = rows($row, $lot)[0][0] ?? [];
             // <https://spec.commonmark.org/0.31.2#of-the-same-type>
-            if (($n = \strspn($row, '0123456789')) && \strspn($row, " \t", $n + 1) && $row[$n] === $r[4][2] && $t <= $r[3] + $r[4][0] - 1) {
+            if ('ol' === ($next[0] ?? '%') && $next[4][2] === $r[4][2] && $t <= $r[3] + $r[4][0] - 1) {
                 $r[1] .= "\x3" . $row . "\n";
                 continue;
             }
@@ -140,14 +179,18 @@ function rows(string $text, array $lot = []) {
                 $r[1] .= \str_repeat(' ', $t) . $row . "\n";
                 continue;
             }
-            if ('p' === (($row_new = rows($row, $lot)[0][0])[0] ?? '%') && $t <= $r[3] + $r[4][0] - 1) {
+            // <https://spec.commonmark.org/0.31.2#lazy-continuation-line>
+            if ('p' === ($next[0] ?? '%') && $t <= $r[3] + $r[4][0] - 1 && "\n\n" !== \substr($r[1], -2)) {
                 $r[1] .= $row . "\n";
                 continue;
             }
             $r[1] = \rtrim($r[1], "\n") . "\n";
             $rows[] = $r;
-            $r = $row_new;
+            $r = $next;
             continue;
+        }
+        if ('pre' === $r[0]) {
+            // TODO
         }
         if ('ul' === $r[0]) {
             // <https://spec.commonmark.org/0.31.2#example-306>
@@ -155,8 +198,9 @@ function rows(string $text, array $lot = []) {
                 $r[1] .= "\n";
                 continue;
             }
+            $next = rows($row, $lot)[0][0] ?? [];
             // <https://spec.commonmark.org/0.31.2#of-the-same-type>
-            if (false !== \strpos('*+-', $row[0] ?? '%') && \strspn($row, " \t", 1) && $row[0] === $r[4][1] && $t <= $r[3] + $r[4][0] - 1) {
+            if ('ul' === ($next[0] ?? '%') && $next[4][1] === $r[4][1] && $t <= $r[3] + $r[4][0] - 1) {
                 $r[1] .= "\x3" . $row . "\n";
                 continue;
             }
@@ -165,13 +209,14 @@ function rows(string $text, array $lot = []) {
                 $r[1] .= \str_repeat(' ', $t) . $row . "\n";
                 continue;
             }
-            if ('p' === (($row_new = rows($row, $lot)[0][0])[0] ?? '%') && $t <= $r[3] + $r[4][0] - 1) {
+            // <https://spec.commonmark.org/0.31.2#lazy-continuation-line>
+            if ('p' === ($next[0] ?? '%') && $t <= $r[3] + $r[4][0] - 1 && "\n\n" !== \substr($r[1], -2)) {
                 $r[1] .= $row . "\n";
                 continue;
             }
             $r[1] = \rtrim($r[1], "\n") . "\n";
             $rows[] = $r;
-            $r = $row_new;
+            $r = $next;
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#indented-code-block>
@@ -184,12 +229,60 @@ function rows(string $text, array $lot = []) {
             }
             continue;
         }
+        // <https://spec.commonmark.org/0.31.2#atx-heading>
         if (($n = \strspn($row, '#')) && $n < 7 && \strspn($row, " \t", $n)) {
             if ("" !== $r[1]) {
                 $rows[] = $r;
             }
             $rows[] = ['h' . $n, $row . "\n", [], $t, [$n, '#']];
             $r = ['p', "", [], 0];
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#example-80>
+        if ('-' === ($row[0] ?? '%') && \strspn($row, '-') === \strlen($row) && 'p' === $r[0] && "" !== $r[1]) {
+            $r[0] = 'h2';
+            $r[4] = [2, '-'];
+            $rows[] = $r;
+            $r = ['p', "", [], 0];
+            continue;
+        }
+        if ('=' === ($row[0] ?? '%') && \strspn($row, '=') === \strlen($row) && 'p' === $r[0] && "" !== $r[1]) {
+            $r[0] = 'h1';
+            $r[4] = [1, '='];
+            $rows[] = $r;
+            $r = ['p', "", [], 0];
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#thematic-break>
+        $w = \strtr($row, ["\t" => "", ' ' => ""]);
+        if ($w && ('*' === $w[0] || '-' === $w[0] || '_' === $w[0]) && \strspn($w, $w[0]) === \strlen($w)) {
+            if ("" !== $r[1]) {
+                $rows[] = $r;
+            }
+            $rows[] = ['hr', false, [], $t, [$w[0]]];
+            $r = ['p', "", [], 0];
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2/#bullet-list>
+        if (false !== \strpos('*+-', $row[0] ?? '%') && ($z = \strspn($row, " \t", 1))) {
+            $r[0] = 'ul';
+            $r[1] .= $row . "\n";
+            if (0 === $r[3]) {
+                $r[3] = $t;
+            }
+            $r[4] = [1 + $z, $row[0], ""];
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#ordered-list>
+        if (($n = \strspn($row, '0123456789')) && false !== \strpos(').', $row[$n] ?? '%') && ($z = \strspn($row, " \t", $n + 1))) {
+            $r[0] = 'ol';
+            $r[1] .= $row . "\n";
+            // <https://spec.commonmark.org/0.31.2#start-number>
+            $r[2]['start'] = $now = (int) \substr($row, 0, $n);
+            if (0 === $r[3]) {
+                $r[3] = $t;
+            }
+            $r[4] = [$n + 1 + $z, $now, $row[$n]];
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#html-block>
@@ -268,56 +361,19 @@ function rows(string $text, array $lot = []) {
             }
             continue;
         }
-        // <https://spec.commonmark.org/0.31.2#example-80>
-        if ('-' === ($row[0] ?? '%') && \strspn($row, '-') === \strlen($row) && 'p' === $r[0] && "" !== $r[1]) {
-            $r[0] = 'h2';
-            $r[4] = [2, '-'];
-            $rows[] = $r;
-            $r = ['p', "", [], 0];
-            continue;
-        }
-        if ('=' === ($row[0] ?? '%') && \strspn($row, '=') === \strlen($row) && 'p' === $r[0] && "" !== $r[1]) {
-            $r[0] = 'h1';
-            $r[4] = [1, '='];
-            $rows[] = $r;
-            $r = ['p', "", [], 0];
-            continue;
-        }
-        // <https://spec.commonmark.org/0.31.2#thematic-break>
-        $w = \strtr($row, ["\t" => "", ' ' => ""]);
-        if ($w && ('*' === $w[0] || '-' === $w[0] || '_' === $w[0]) && \strspn($w, $w[0]) === \strlen($w)) {
+        // <https://spec.commonmark.org/0.31.2#block-quote-marker>
+        if ('>' === ($row[0] ?? '%')) {
             if ("" !== $r[1]) {
                 $rows[] = $r;
             }
-            $rows[] = ['hr', false, [], $t, [$w[0]]];
-            $r = ['p', "", [], 0];
-            continue;
-        }
-        // <https://spec.commonmark.org/0.31.2/#bullet-list>
-        if (false !== \strpos('*+-', $row[0] ?? '%') && ($z = \strspn($row, " \t", 1))) {
-            $r[0] = 'ul';
-            $r[1] .= $row . "\n";
-            if (0 === $r[3]) {
-                $r[3] = $t;
-            }
-            $r[4] = [1 + $z, $row[0], ""];
-            continue;
-        }
-        // <https://spec.commonmark.org/0.31.2#ordered-list>
-        if (($n = \strspn($row, '0123456789')) && false !== \strpos(').', $row[$n] ?? '%') && ($z = \strspn($row, " \t", $n + 1))) {
-            $r[0] = 'ol';
-            $r[1] .= $row . "\n";
-            // <https://spec.commonmark.org/0.31.2#start-number>
-            $r[2]['start'] = $now = (int) \substr($row, 0, $n);
-            if (0 === $r[3]) {
-                $r[3] = $t;
-            }
-            $r[4] = [$n + 1 + $z, $now, $row[$n]];
+            $r = ['blockquote', $row . "\n", [], $t];
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#paragraph>
         if ("" === \trim($row)) {
-            $rows[] = $r;
+            if ("" !== $r[1]) {
+                $rows[] = $r;
+            }
             $r = ['p', "", [], 0];
             continue;
         }
@@ -336,6 +392,20 @@ function rows(string $text, array $lot = []) {
 
 
 foreach ([
+
+    // blockquote
+    "> asdf asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n> asdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n> asdf asdf asdf asdf",
+    // blockquote
+    "> asdf asdf asdf asdf\n> asdf asdf asdf asdf\n> asdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n> asdf asdf asdf asdf\n> asdf asdf asdf asdf",
+    "> asdf asdf asdf asdf\nasdf asdf asdf asdf\n> asdf asdf asdf asdf",
+    "> asdf asdf asdf asdf\n> asdf asdf asdf asdf\nasdf asdf asdf asdf",
+    // blockquote
+    "> asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\n> asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n> asdf asdf asdf asdf",
 
     // h1
     "=\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
