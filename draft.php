@@ -12,95 +12,33 @@ function n(string $text) {
 function row(string $text, array $lot = []) {}
 
 function rows(string $text, array $lot = []) {
-    static $blocks = [
-        1 => [
-            'pre' => 1,
-            'script' => 1,
-            'style' => 1,
-            'textarea' => 1
-        ],
-        6 => [
-            'address' => 1,
-            'article' => 1,
-            'aside' => 1,
-            'base' => 1,
-            'basefont' => 1,
-            'blockquote' => 1,
-            'body' => 1,
-            'caption' => 1,
-            'center' => 1,
-            'col' => 1,
-            'colgroup' => 1,
-            'dd' => 1,
-            'details' => 1,
-            'dialog' => 1,
-            'dir' => 1,
-            'div' => 1,
-            'dl' => 1,
-            'dt' => 1,
-            'fieldset' => 1,
-            'figcaption' => 1,
-            'figure' => 1,
-            'footer' => 1,
-            'form' => 1,
-            'frame' => 1,
-            'frameset' => 1,
-            'h1' => 1,
-            'h2' => 1,
-            'h3' => 1,
-            'h4' => 1,
-            'h5' => 1,
-            'h6' => 1,
-            'head' => 1,
-            'header' => 1,
-            'hr' => 1,
-            'html' => 1,
-            'iframe' => 1,
-            'legend' => 1,
-            'li' => 1,
-            'link' => 1,
-            'main' => 1,
-            'menu' => 1,
-            'menuitem' => 1,
-            'nav' => 1,
-            'noframes' => 1,
-            'ol' => 1,
-            'optgroup' => 1,
-            'option' => 1,
-            'p' => 1,
-            'param' => 1,
-            'search' => 1,
-            'section' => 1,
-            'summary' => 1,
-            'table' => 1,
-            'tbody' => 1,
-            'td' => 1,
-            'tfoot' => 1,
-            'th' => 1,
-            'thead' => 1,
-            'title' => 1,
-            'tr' => 1,
-            'track' => 1,
-            'ul' => 1
-        ]
-    ];
+    static $blocks = [];
+    $blocks[1] ??= \array_fill_keys(['pre', 'script', 'style', 'textarea'], 1);
+    $blocks[6] ??= \array_fill_keys([
+        'address', 'article', 'aside', 'base', 'basefont', 'blockquote', 'body', 'caption', 'center', 'col', 'colgroup',
+        'dd', 'details', 'dialog', 'dir', 'div', 'dl', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form',
+        'frame', 'frameset', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hr', 'html', 'iframe', 'legend',
+        'li', 'link', 'main', 'menu', 'menuitem', 'nav', 'noframes', 'ol', 'optgroup', 'option', 'p', 'param', 'search',
+        'section', 'summary', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'title', 'tr', 'track', 'ul'
+    ], 1);
     $lot[0] ??= []; // Reference(s)
     $lot[1] ??= []; // Abbreviation(s)
     $lot[2] ??= []; // Note(s)
-    $r = ['p', "", [], 0];
+    $new = $r = ['p', "", [], 0];
     $raws = \explode("\n", \rtrim(\strtr($text, [
         "\r\n" => "\n",
         "\r" => "\n"
     ]), "\n"));
     $rows = [];
+    $x = "\x1a";
     foreach ($raws as $raw) {
         [$row, $t] = n($raw);
         if (false === $r[0]) {
             // HTML block type 1
-            if (isset($blocks[$r[4][0]][$r[4][1]]) && false !== \stripos($row, '</' . $r[4][1] . '>')) {
+            if (1 === $r[4][0] && isset($blocks[1][$r[4][1]]) && false !== \stripos($row, '</' . $r[4][1] . '>')) {
                 $r[1] .= $row . "\n";
                 $rows[] = $r;
-                $r = ['p', "", [], 0];
+                $r = $new;
                 continue;
             }
             // HTML block type 2, 3, 4, and 5
@@ -112,13 +50,13 @@ function rows(string $text, array $lot = []) {
             ) {
                 $r[1] .= $row . "\n";
                 $rows[] = $r;
-                $r = ['p', "", [], 0];
+                $r = $new;
                 continue;
             }
             // HTML block type 6
-            if (isset($blocks[$r[4][0]][$r[4][1]]) && "" === \trim($row)) {
+            if (6 === $r[4][0] && isset($blocks[6][$r[4][1]]) && "" === \trim($row)) {
                 $rows[] = $r;
-                $r = ['p', "", [], 0];
+                $r = $new;
                 continue;
             }
             $r[1] .= $row . "\n";
@@ -130,9 +68,10 @@ function rows(string $text, array $lot = []) {
                 $r[1] .= "\n";
                 continue;
             }
+            $new_row = rows($row, $lot)[0][0] ?? $new;
             // <https://spec.commonmark.org/0.31.2#of-the-same-type>
-            if (($n = \strspn($row, '0123456789')) && \strspn($row, " \t", $n + 1) && $row[$n] === $r[4][2] && $t <= $r[3] + $r[4][0] - 1) {
-                $r[1] .= "\x3" . $row . "\n";
+            if ('ol' === $new_row[0] && $new_row[4][2] === $r[4][2] && $t < $r[3] + $r[4][0]) {
+                $r[1] .= "\x3" . \substr($row, $new_row[3] + $new_row[4][0]) . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#example-307>
@@ -140,14 +79,27 @@ function rows(string $text, array $lot = []) {
                 $r[1] .= \str_repeat(' ', $t) . $row . "\n";
                 continue;
             }
-            if ('p' === (($row_new = rows($row, $lot)[0][0])[0] ?? '%') && $t <= $r[3] + $r[4][0] - 1) {
+            // <https://spec.commonmark.org/0.31.2#lazy-continuation-line>
+            if ('p' === $new_row[0] && $t < $r[3] + $r[4][0] && "\n\n" !== \substr($r[1], -2)) {
                 $r[1] .= $row . "\n";
                 continue;
             }
             $r[1] = \rtrim($r[1], "\n") . "\n";
             $rows[] = $r;
-            $r = $row_new;
+            $r = $new_row;
             continue;
+        }
+        if ('pre' === $r[0]) {
+            // <https://spec.commonmark.org/0.31.2#example-111>
+            if ("" === \trim($row)) {
+                $r[1] .= "\n";
+                continue;
+            }
+            if ("\t" === $r[4][1] && $t < $r[3]) {
+                $rows[] = $r;
+                $r = rows($row, $lot)[0][0] ?? $new;
+                continue;
+            }
         }
         if ('ul' === $r[0]) {
             // <https://spec.commonmark.org/0.31.2#example-306>
@@ -155,9 +107,10 @@ function rows(string $text, array $lot = []) {
                 $r[1] .= "\n";
                 continue;
             }
+            $new_row = rows($row, $lot)[0][0] ?? $new;
             // <https://spec.commonmark.org/0.31.2#of-the-same-type>
-            if (false !== \strpos('*+-', $row[0] ?? '%') && \strspn($row, " \t", 1) && $row[0] === $r[4][1] && $t <= $r[3] + $r[4][0] - 1) {
-                $r[1] .= "\x3" . $row . "\n";
+            if ('ul' === $new_row[0] && $new_row[4][1] === $r[4][1] && $t < $r[3] + $r[4][0]) {
+                $r[1] .= "\x3" . \substr($row, $new_row[3] + $new_row[4][0]) . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#example-307>
@@ -165,13 +118,14 @@ function rows(string $text, array $lot = []) {
                 $r[1] .= \str_repeat(' ', $t) . $row . "\n";
                 continue;
             }
-            if ('p' === (($row_new = rows($row, $lot)[0][0])[0] ?? '%') && $t <= $r[3] + $r[4][0] - 1) {
+            // <https://spec.commonmark.org/0.31.2#lazy-continuation-line>
+            if ('p' === $new_row[0] && $t < $r[3] + $r[4][0] && "\n\n" !== \substr($r[1], -2)) {
                 $r[1] .= $row . "\n";
                 continue;
             }
             $r[1] = \rtrim($r[1], "\n") . "\n";
             $rows[] = $r;
-            $r = $row_new;
+            $r = $new_row;
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#indented-code-block>
@@ -182,19 +136,20 @@ function rows(string $text, array $lot = []) {
             if (0 === $r[3]) {
                 $r[3] = $t;
             }
+            $r[4] = [4, "\t"];
             continue;
         }
-        if (($n = \strspn($row, '#')) && $n < 7 && \strspn($row, " \t", $n)) {
+        if (($n = \strspn($row, '#')) && $n < 7 && \strspn($row . ' ', " \t", $n)) {
             if ("" !== $r[1]) {
                 $rows[] = $r;
             }
-            $rows[] = ['h' . $n, $row . "\n", [], $t, [$n, '#']];
-            $r = ['p', "", [], 0];
+            $rows[] = ['h' . $n, \trim(\substr($row, $n)) . "\n", [], $t, [$n, '#']];
+            $r = $new;
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#html-block>
-        if ('<' === ($row[0] ?? '%') && ($block = \substr($row, 1, \strcspn($row, " \t>", 1)))) {
-            if ('!' === ($block[0] ?? '%') && '>' !== ($block[1] ?? '%')) {
+        if ('<' === ($row[0] ?? $x) && ($block = \substr($row, 1, \strcspn($row, " \t>", 1)))) {
+            if ('!' === ($block[0] ?? $x) && '>' !== ($block[1] ?? $x)) {
                 if ("" !== $r[1]) {
                     // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
                     $rows[] = $r;
@@ -204,7 +159,7 @@ function rows(string $text, array $lot = []) {
                     if (false !== \strpos($row, '-->')) {
                         // Ends on its own line
                         $rows[] = $r;
-                        $r = ['p', "", [], 0];
+                        $r = $new;
                     }
                     continue;
                 }
@@ -213,7 +168,7 @@ function rows(string $text, array $lot = []) {
                     if (false !== \strpos($row, ']]>')) {
                         // Ends on its own line
                         $rows[] = $r;
-                        $r = ['p', "", [], 0];
+                        $r = $new;
                     }
                     continue;
                 }
@@ -221,11 +176,11 @@ function rows(string $text, array $lot = []) {
                 if (false !== \strpos($row, '>')) {
                     // Ends on its own line
                     $rows[] = $r;
-                    $r = ['p', "", [], 0];
+                    $r = $new;
                 }
                 continue;
             }
-            if ('?' === ($block[0] ?? '%') && '>' !== ($block[1] ?? '%')) {
+            if ('?' === ($block[0] ?? $x) && '>' !== ($block[1] ?? $x)) {
                 if ("" !== $r[1]) {
                     // All type(s) of HTML block(s) except type 7 may interrupt a paragraph
                     $rows[] = $r;
@@ -234,7 +189,7 @@ function rows(string $text, array $lot = []) {
                 if (false !== \strpos($row, '?>')) {
                     // Ends on its own line
                     $rows[] = $r;
-                    $r = ['p', "", [], 0];
+                    $r = $new;
                 }
                 continue;
             }
@@ -249,7 +204,7 @@ function rows(string $text, array $lot = []) {
                 if (false !== \stripos($row, '</' . $block . '>')) {
                     // Ends on its own line
                     $rows[] = $r;
-                    $r = ['p', "", [], 0];
+                    $r = $new;
                 }
                 continue;
             }
@@ -269,56 +224,77 @@ function rows(string $text, array $lot = []) {
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#example-80>
-        if ('-' === ($row[0] ?? '%') && \strspn($row, '-') === \strlen($row) && 'p' === $r[0] && "" !== $r[1]) {
+        if ('-' === ($row[0] ?? $x) && \strspn($row, '-') === \strlen($row) && 'p' === $r[0] && "" !== $r[1]) {
             $r[0] = 'h2';
             $r[4] = [2, '-'];
             $rows[] = $r;
-            $r = ['p', "", [], 0];
+            $r = $new;
             continue;
         }
-        if ('=' === ($row[0] ?? '%') && \strspn($row, '=') === \strlen($row) && 'p' === $r[0] && "" !== $r[1]) {
+        if ('=' === ($row[0] ?? $x) && \strspn($row, '=') === \strlen($row) && 'p' === $r[0] && "" !== $r[1]) {
             $r[0] = 'h1';
             $r[4] = [1, '='];
             $rows[] = $r;
-            $r = ['p', "", [], 0];
+            $r = $new;
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#thematic-break>
         $w = \strtr($row, ["\t" => "", ' ' => ""]);
-        if ($w && ('*' === $w[0] || '-' === $w[0] || '_' === $w[0]) && \strspn($w, $w[0]) === \strlen($w)) {
+        if ($w && false !== \strpos('*-_', $w[0]) && \strspn($w, $w[0]) === ($n = \strlen($w)) && $n >= 3) {
             if ("" !== $r[1]) {
                 $rows[] = $r;
             }
             $rows[] = ['hr', false, [], $t, [$w[0]]];
-            $r = ['p', "", [], 0];
+            $r = $new;
             continue;
         }
         // <https://spec.commonmark.org/0.31.2/#bullet-list>
-        if (false !== \strpos('*+-', $row[0] ?? '%') && ($z = \strspn($row, " \t", 1))) {
-            $r[0] = 'ul';
-            $r[1] .= $row . "\n";
-            if (0 === $r[3]) {
-                $r[3] = $t;
+        if (false !== \strpos('*+-', $row[0] ?? $x) && ($s = \strspn($row . ' ', " \t", 1))) {
+            $empty = $row[0] === \trim($row);
+            if ("" !== $r[1]) {
+                // <https://spec.commonmark.org/0.31.2#example-285>
+                if ($empty) {
+                    $r[1] .= $row . "\n";
+                    continue;
+                }
+                $rows[] = $r;
             }
-            $r[4] = [1 + $z, $row[0], ""];
+            $r = ['ul', \substr($row, 1 + $s) . "\n", [], $t, [1 + $s, $row[0], ""]];
+            // <https://spec.commonmark.org/0.31.2#example-284>
+            if ($empty) {
+                $rows[] = $r;
+                $r = $new;
+            }
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#ordered-list>
-        if (($n = \strspn($row, '0123456789')) && false !== \strpos(').', $row[$n] ?? '%') && ($z = \strspn($row, " \t", $n + 1))) {
-            $r[0] = 'ol';
-            $r[1] .= $row . "\n";
+        if (($n = \strspn($row, '0123456789')) && false !== \strpos(').', $row[$n] ?? $x) && ($s = \strspn($row . ' ', " \t", $n + 1))) {
             // <https://spec.commonmark.org/0.31.2#start-number>
-            $r[2]['start'] = $now = (int) \substr($row, 0, $n);
-            if (0 === $r[3]) {
-                $r[3] = $t;
+            $at = (int) \substr($row, 0, $n);
+            $empty = \substr($row, 0, $n + 1) === \trim($row);
+            if ("" !== $r[1]) {
+                // <https://spec.commonmark.org/0.31.2#example-285>
+                // <https://spec.commonmark.org/0.31.2#example-304>
+                if (1 !== $at || $empty) {
+                    $r[1] .= $row . "\n";
+                    continue;
+                }
+                $rows[] = $r;
             }
-            $r[4] = [$n + 1 + $z, $now, $row[$n]];
+            $r = ['ol', \substr($row, $n + 1 + $s) . "\n", ['start' => $at], $t, [$n + 1 + $s, $at, $row[$n]]];
+            // <https://spec.commonmark.org/0.31.2#example-284>
+            if ($empty) {
+                $rows[] = $r;
+                $r = $new;
+            }
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#paragraph>
         if ("" === \trim($row)) {
-            $rows[] = $r;
-            $r = ['p', "", [], 0];
+            if ('p' !== $r[0] || "" !== $r[1]) {
+                $rows[] = $r;
+                $r = $new;
+            }
             continue;
         }
         $r[1] .= $row . "\n";
@@ -337,6 +313,14 @@ function rows(string $text, array $lot = []) {
 
 foreach ([
 
+    // h
+    "# asdf asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n# asdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n# asdf asdf asdf asdf",
+    "#\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n#\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n#",
+
     // h1
     "=\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n=\nasdf asdf asdf asdf",
@@ -345,8 +329,8 @@ foreach ([
     "====================\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n====================\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\nasdf asdf asdf asdf\n====================",
+    // h1
     "1. asdf asdf asdf asdf\n=\nasdf asdf asdf asdf",
-    "1. asdf asdf asdf asdf\n# asdf asdf asdf asdf",
 
     // h2
     "-\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
@@ -380,7 +364,31 @@ foreach ([
     "    asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n    asdf asdf asdf asdf",
+    // pre
+    "    asdf asdf asdf asdf\n    asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n    asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n    asdf asdf asdf asdf",
+    // pre
+    "    asdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n\n    asdf asdf asdf asdf",
+    // pre
+    "    asdf asdf asdf asdf\n        asdf asdf asdf asdf\n    asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n        asdf asdf asdf asdf\n    asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n    asdf asdf asdf asdf\n        asdf asdf asdf asdf\n    asdf asdf asdf asdf",
 
+    // ol
+    "1. asdf asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n1. asdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n1. asdf asdf asdf asdf",
+    // ol
+    "2. asdf asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n2. asdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n2. asdf asdf asdf asdf",
+    // ol
+    "1.\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n1.\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n1.",
     // ol
     "1. asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n\n1. asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
@@ -395,6 +403,14 @@ foreach ([
     "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n1. asdf asdf asdf asdf\n   1. asdf asdf asdf asdf",
 
     // ul
+    "* asdf asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n* asdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n* asdf asdf asdf asdf",
+    // ul
+    "*\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n*\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\nasdf asdf asdf asdf\n*",
+    // ul
     "* asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n* asdf asdf asdf asdf",
@@ -403,9 +419,9 @@ foreach ([
     "asdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n* asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n* asdf asdf asdf asdf",
     // ul
-    "* asdf asdf asdf asdf\n   * asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
-    "asdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n   * asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
-    "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n   * asdf asdf asdf asdf",
+    "* asdf asdf asdf asdf\n  * asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n  * asdf asdf asdf asdf\n\nasdf asdf asdf asdf",
+    "asdf asdf asdf asdf\n\nasdf asdf asdf asdf\n\n* asdf asdf asdf asdf\n  * asdf asdf asdf asdf",
 
     // raw 1
     "<script asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
@@ -425,6 +441,9 @@ foreach ([
     // raw 2
     "<!-- asdf asdf asdf\n\nasdf asdf asdf -->\nasdf asdf asdf asdf",
     "<!-- asdf asdf asdf\n\nasdf asdf asdf -->\n\nasdf asdf asdf asdf",
+    // raw 2
+    "<!-- asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf -->\nasdf asdf asdf asdf",
+    "<!-- asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf -->\n\nasdf asdf asdf asdf",
     // raw 3
     "<? asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n<? asdf asdf asdf\nasdf asdf asdf asdf",
@@ -432,6 +451,9 @@ foreach ([
     // raw 3
     "<? asdf asdf asdf\n\nasdf asdf asdf ?>\nasdf asdf asdf asdf",
     "<? asdf asdf asdf\n\nasdf asdf asdf ?>\n\nasdf asdf asdf asdf",
+    // raw 3
+    "<? asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf ?>\nasdf asdf asdf asdf",
+    "<? asdf asdf asdf\n\nasdf asdf asdf asdf\n\nasdf asdf asdf ?>\n\nasdf asdf asdf asdf",
     // raw 6
     "<div asdf asdf asdf\nasdf asdf asdf asdf\nasdf asdf asdf asdf",
     "asdf asdf asdf asdf\n<div asdf asdf asdf\nasdf asdf asdf asdf",
