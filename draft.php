@@ -311,6 +311,36 @@ function rows(string $text, array $lot = []) {
 
 
 
+
+$files = glob(__DIR__ . '/draft/*/*/*.md', GLOB_NOSORT);
+
+usort($files, function ($a, $b) {
+    return strnatcmp(dirname($a) . '/' . basename($a, '.md'), dirname($b) . '/' . basename($b, '.md'));
+});
+
+$current = "";
+foreach ($files as $file) {
+    if ($current !== ($t = basename(dirname($file, 2)) . '\\' . basename(dirname($file))) || "" === $current) {
+        echo '<h2 style="margin:0;">.\\test\\' . $t . '\\*</h2>';
+        $current = $t;
+    }
+    $text = file_get_contents($file);
+    echo '<div style="display:flex;gap:1em;margin:1em 0;">';
+    echo '<pre style="border:2px solid #f00;flex:1;font:normal normal 12px/1.25 monospace;margin:0;overflow:auto;padding:0 0.25em;">';
+    echo \htmlspecialchars($text);
+    echo '</pre>';
+    echo '<pre style="border:2px solid #00f;flex:1;font:normal normal 12px/1.25 monospace;margin:0;overflow:auto;padding:0 0.25em;">';
+    echo \htmlspecialchars(\json_encode(rows($text, [])[0], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+    echo '</pre>';
+    echo '</div>';
+}
+
+
+echo '<hr>';
+echo '<hr>';
+echo '<hr>';
+
+
 foreach ([
 
     // h
