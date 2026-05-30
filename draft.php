@@ -67,14 +67,26 @@ function rows(string $text, array $lot = []) {
         if (0 === $r[0]) {}
         if (1 === $r[0] || 2 === $r[0]) {
             if ("" === \trim($row)) {
-                $lot[$r[0]][$r[4][1]] .= "\n";
+                $lot[$r[0]][$r[4][1]][0] .= "\n";
                 continue;
             }
             if ($t > 0) {
-                $lot[$r[0]][$r[4][1]] .= $row . "\n";
+                $lot[$r[0]][$r[4][1]][0] .= \substr($raw, $r[3]) . "\n";
                 continue;
             }
-            $rows[] = $r;
+            // Get first indent on a non-empty line after the first line, the use it as the indent of the first line
+            $d = 0;
+            foreach (\explode("\n", $lot[$r[0]][$r[4][1]][0]) as $v) {
+                if ("" !== \trim($v) && ($s = \strspn($v, " \t"))) {
+                    $d = \substr($v, 0, $s);
+                    break;
+                }
+            }
+            if (0 !== $d) {
+                $lot[$r[0]][$r[4][1]][0] = $d . \ltrim($lot[$r[0]][$r[4][1]][0]);
+            }
+            $lot[$r[0]][$r[4][1]][0] = \rtrim($lot[$r[0]][$r[4][1]][0], "\n") . "\n";
+            $lot[$r[0]][$r[4][1]][1] = \strlen($d);
             $r = rows($row, $lot)[0][0] ?? $reset;
             continue;
         }
@@ -206,7 +218,7 @@ function rows(string $text, array $lot = []) {
             $row = \trim(\substr($row, $n));
             $row_test = \rtrim($row, '#');
             // `# asdf \#`
-            if ("\\" === \substr($test, -1)) {
+            if ("\\" === \substr($row_test, -1)) {
                 // Keep `#` suffix
             // `# asdf#`
             } else if (false === \strpos(" \t", \substr($row_test, -1))) {
@@ -250,7 +262,7 @@ function rows(string $text, array $lot = []) {
                 if ($next >= $n || false !== \strpos(" \t", $row[$next])) {
                     $key = v(\substr(\trim(\substr($row, 2, $next - 3)), 0, -1));
                     [$value, $s] = n(\substr($row, $next));
-                    $lot[1][$key] = $value . "\n";
+                    $lot[1][$key] = [$value . "\n", 0];
                     if ("" !== $r[1]) {
                         $rows[] = $r;
                     }
