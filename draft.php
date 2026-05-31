@@ -76,7 +76,7 @@ function rows(string $text, array $lot = []) {
                 $lot[$r[0]][$r[4][1]][0] .= \substr($raw, $r[3]) . "\n";
                 continue;
             }
-            // Get first indent on a non-empty line after the first line, the use it as the indent of the first line
+            // Get first indent on a non-empty line after the first line, then use it as the indent of the first line
             $d = 0;
             foreach (\explode("\n", $lot[$r[0]][$r[4][1]][0]) as $v) {
                 if ("" !== \trim($v) && ($s = \strspn($v, " \t"))) {
