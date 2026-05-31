@@ -20,21 +20,23 @@
 
 function from(?string $value, $block = true): ?string {}
 
-function n(string $text, int $tab = 4) {
+function n(string $text, ?int $max = null, int $tab = 4) {
     $i = $t = 0;
     $total = \strlen($text);
-    while ($i < $total) {
+    $limit = $max ? \min($max, $total) : $total;
+    while ($i < $limit) {
         $c = $text[$i];
         if (' ' === $c) {
-            ++$t;
             ++$i;
+            ++$t;
             continue;
         }
         if ("\t" === $c) {
-            $t += $tab - ($t % $tab);
             ++$i;
+            $t += $tab - ($t % $tab);
             continue;
         }
+        // Hit non white-space before reaching `$max`
         break;
     }
     return [\substr($text, $i), $t, $i];
@@ -63,7 +65,7 @@ function rows(string $text, array $lot = []) {
     $rows = [];
     $x = "\x1a";
     foreach ($raws as $raw) {
-        [$row, $t] = n($raw);
+        [$row, $t] = n($raw, 3);
         if (0 === $r[0]) {}
         if (1 === $r[0] || 2 === $r[0]) {
             if ("" === \trim($row)) {
@@ -122,7 +124,7 @@ function rows(string $text, array $lot = []) {
         if ('blockquote' === $r[0]) {
             $row_new = rows($row, $lot)[0][0] ?? $reset;
             if ('blockquote' === $row_new[0]) {
-                $r[1] .= n(\substr($row, 1))[0] . "\n";
+                $r[1] .= $row_new[1];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
@@ -373,7 +375,15 @@ function rows(string $text, array $lot = []) {
             if ("" !== $r[1]) {
                 $rows[] = $r;
             }
-            $r = ['blockquote', n(\substr($row, 1))[0] . "\n", [], $t];
+            [$a, $b] = n($row = \substr($row, 1), 1);
+            if ($w = ($b + 1) - 1) {
+                $n = $w - 1;
+                $row = \substr($row, 1);
+                if ($n > 0) {
+                    $row = \str_repeat(' ', $n) . $row;
+                }
+            }
+            $r = ['blockquote', $row . "\n", [], $t];
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#thematic-break>
