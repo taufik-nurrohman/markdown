@@ -6,6 +6,8 @@
     #
     *
     +
+    `
+    ~
     -
     1
     :
@@ -18,22 +20,84 @@
 
 */
 
+function a(string $text) {
+    $r = [];
+    $s = "";
+    $total = \strlen($text .= ' ');
+    for ($i = 0; $i < $total; ++$i) {
+        $c = $text[$i];
+        if ('=' === $c) {
+            $k = $s;
+            $s = "";
+            if (++$i >= $total) {
+                $r[$k] = "";
+                break;
+            }
+            $c = $text[$i];
+            $q = 0;
+            if ('"' === $c || "'" === $c) {
+                $q = $c;
+                ++$i;
+            }
+            while ($i < $total) {
+                $c = $text[$i];
+                if ($q) {
+                    if ($c === $q) {
+                        break;
+                    }
+                } else if ("\t" === $c || ' ' === $c) {
+                    --$i; // Let outer loop to process white-space(s)
+                    break;
+                }
+                $s .= $c;
+                ++$i;
+            }
+            $r[$k] = $s;
+            $s = "";
+            continue;
+        }
+        if ("" === $s && false !== \strpos(" \t", $c)) {
+            continue;
+        }
+        if (false !== \strpos(" \t#.", $c) && "" !== $s) {
+            if ("" !== $s) {
+                if ('#' === $s[0] && "" !== ($s = \substr($s, 1))) {
+                    $r['id'] = $s;
+                } else if ('.' === $s[0] && "" !== ($s = \substr($s, 1))) {
+                    $r['class'][] = $s;
+                } else {
+                    $r['class'][] = 'language-' . $s;
+                }
+            }
+            $s = false !== \strpos(" \t", $c) ? "" : $c;
+            continue;
+        }
+        $s .= $c;
+    }
+    if (!empty($r['class'])) {
+        \sort($r['class']);
+        $r['class'] = \implode(' ', $r['class']);
+    }
+    \ksort($r);
+    return $r;
+}
+
 function from(?string $value, $block = true): ?string {}
 
-function n(string $text, ?int $max = null, int $tab = 4) {
+function n(string $text, int $max = 0, int $tab = 4) {
     $i = $t = 0;
     $total = \strlen($text);
     $limit = $max ? \min($max, $total) : $total;
     while ($i < $limit) {
         $c = $text[$i];
-        if (' ' === $c) {
-            ++$i;
-            ++$t;
-            continue;
-        }
         if ("\t" === $c) {
             ++$i;
             $t += $tab - ($t % $tab);
+            continue;
+        }
+        if (' ' === $c) {
+            ++$i;
+            ++$t;
             continue;
         }
         // Hit non white-space before reaching `$max`
@@ -65,7 +129,7 @@ function rows(string $text, array $lot = []) {
     $rows = [];
     $x = "\x1a";
     foreach ($raws as $raw) {
-        [$row, $t] = n($raw, 3);
+        [$row, $t] = n($raw, 4);
         if (0 === $r[0]) {}
         if (1 === $r[0] || 2 === $r[0]) {
             if ("" === \trim($row)) {
@@ -164,14 +228,31 @@ function rows(string $text, array $lot = []) {
             continue;
         }
         if ('pre' === $r[0]) {
-            // <https://spec.commonmark.org/0.31.2#example-111>
-            if ("" === \trim($row)) {
-                $r[1] .= "\n";
+            if ('`' === $r[4][1] || '~' === $r[4][1]) {
+                $row = n($raw, $r[3])[0];
+                if ($row === \str_repeat($r[4][1], $r[4][0])) {
+                    $rows[] = $r;
+                    $r = $reset;
+                    continue;
+                }
+                $r[1] .= $row . "\n";
                 continue;
             }
+            // <https://spec.commonmark.org/0.31.2#example-111>
+            if ("" === \trim($row)) {
+                // <https://spec.commonmark.org/0.31.2#example-112>
+                $r[1] .= n($raw, 4)[0] . "\n";
+                continue;
+            }
+            $row_new = rows($raw, $lot)[0][0] ?? $reset;
+            if ('pre' === $row_new[0]) {
+                $r[1] .= $row_new[1];
+                continue;
+            }
+            // <https://spec.commonmark.org/0.31.2#example-114>
             if ("\t" === $r[4][1] && $t < $r[3]) {
                 $rows[] = $r;
-                $r = rows($row, $lot)[0][0] ?? $reset;
+                $r = $row_new;
                 continue;
             }
         }
@@ -204,13 +285,16 @@ function rows(string $text, array $lot = []) {
         }
         // <https://spec.commonmark.org/0.31.2#indented-code-block>
         if ($t >= 4) {
-            $r[0] = 'pre';
-            $r[1] .= $row . "\n";
-            $r[2]['class'] = false;
-            if (0 === $r[3]) {
-                $r[3] = $t;
+            if ("" !== $r[1]) {
+                // <https://spec.commonmark.org/0.31.2#example-113>
+                if ('p' === $r[0]) {
+                    $r[1] .= $row . "\n";
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.31.2#example-115>
+                $rows[] = $r;
             }
-            $r[4] = [4, "\t"];
+            $r = ['pre', $row . "\n", ['class' => false], $t, [4, "\t"]];
             continue;
         }
         if (($n = \strspn($row, '#')) && $n < 7 && \strspn($row . ' ', " \t", $n)) {
@@ -435,6 +519,25 @@ function rows(string $text, array $lot = []) {
                 $rows[] = $r;
                 $r = $reset;
             }
+            continue;
+        }
+        if ('[' === ($row[0] ?? $x)) {
+            // TODO
+        }
+        // <https://spec.commonmark.org/0.31.2#code-fence>
+        if (($n = \strspn($row, '`') ?: \strspn($row, '~')) && $n >= 3) {
+            // <https://spec.commonmark.org/0.31.2#info-string>
+            $rest = \trim(\substr($row, $n));
+            // <https://spec.commonmark.org/0.31.2#example-145>
+            if ('`' === $row[0] && false !== \strpos($rest, '`')) {
+                $r[1] .= $row . "\n";
+                continue;
+            }
+            if ("" !== $r[1]) {
+                // <https://spec.commonmark.org/0.31.2#example-140>
+                $rows[] = $r;
+            }
+            $r = ['pre', "", a($rest), $t, [$n, $row[0]]];
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#paragraph>
