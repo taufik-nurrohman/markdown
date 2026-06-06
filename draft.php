@@ -865,7 +865,8 @@ function rows(string $text, array &$lot = []) {
         // TODO: Strict pattern without regular expression for link reference definition
         if (0 === $r[0] && !\preg_match('/^\S+$/', \trim($r[1]))) {
             $r[0] = 'p';
-            $r[1] = \trim($r[4][2] . "\n" . $r[1], "\n") . "\n";
+            // $r[1] = \trim($r[4][2] . "\n" . $r[1], "\n") . "\n";
+            $r[1] = $r[4][2];
             unset($r[4]);
         }
     }
