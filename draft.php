@@ -21,22 +21,22 @@
 */
 
 function a(string $text) {
-    $max = \strlen($text = \trim($text) . ' ');
     $r = [];
     $s = "";
+    $size = \strlen($text = \trim($text) . ' ');
     if ($strict = '{' === $text[0] && '}' === \substr($text, -2, 1) && "\\" !== \substr($text, -3, 1)) {
-        $text = \trim(\substr($text, 1, -2)) . ' ';
+        $size = \strlen($text = \trim(\substr($text, 1, -2)) . ' ');
     }
-    for ($i = 0; $i < $max; ++$i) {
+    for ($i = 0; $i < $size; ++$i) {
         $c = $text[$i];
-        if ("\\" === $c && $i + 1 < $max) {
+        if ("\\" === $c && $i + 1 < $size) {
             $s .= $text[++$i];
             continue;
         }
         if ('=' === $c) {
             $k = $s;
             $s = "";
-            if (++$i >= $max) {
+            if (++$i >= $size) {
                 $r[$k] = "";
                 break;
             }
@@ -46,9 +46,9 @@ function a(string $text) {
                 $quote = $c;
                 ++$i;
             }
-            while ($i < $max) {
+            while ($i < $size) {
                 $c = $text[$i];
-                if ("\\" === $c && $i + 1 < $max) {
+                if ("\\" === $c && $i + 1 < $size) {
                     $s .= $text[++$i];
                     continue;
                 }
@@ -111,9 +111,9 @@ function a1(string $row) {
         return $r;
     }
     $at = false;
-    $max = \strlen($row);
-    $stack = 1;
-    for ($i = $max - 2; $i >= 0; --$i) {
+    $level = 1;
+    $size = \strlen($row);
+    for ($i = $size - 2; $i >= 0; --$i) {
         $c = $row[$i];
         $slash = 0;
         for ($j = $i - 1; $j >= 0 && "\\" === $row[$j]; --$j) {
@@ -123,10 +123,10 @@ function a1(string $row) {
             continue;
         }
         if ('}' === $c) {
-            ++$stack;
+            ++$level;
         } else if ('{' === $c) {
-            --$stack;
-            if (0 === $stack) {
+            --$level;
+            if (0 === $level) {
                 if (0 === $i || false !== \strpos(" \t", $row[$i - 1])) {
                     $at = $i;
                 }
@@ -139,6 +139,29 @@ function a1(string $row) {
         $r[1] = a(\substr($row, $at));
     }
     return $r;
+}
+
+function d(string $text, int $limit = 4) {
+    $d = $i = 0;
+    $size = \strlen($text);
+    $size = $limit ? \min($limit, $size) : $size;
+    while ($i < $size) {
+        $c = $text[$i];
+        if ("\t" === $c) {
+            $d += 4 - ($d % 4);
+            $i += 1;
+            continue;
+        }
+        if (' ' === $c) {
+            $d += 1;
+            $i += 1;
+            continue;
+        }
+        // Hit non white-space before reaching `$limit`
+        break;
+    }
+    $text = \substr($text, $i);
+    return [$text, $d, $i];
 }
 
 function from(?string $value, $block = true): ?string {}
@@ -157,15 +180,15 @@ function rows(string $text, array &$lot = []) {
     ], 1);
     // List of reference(s), abbreviation(s), and note(s)
     $lot = \array_replace([[], [], []], $lot);
+    $p = $r = ['p', "", [], 0];
     $raws = \explode("\n", \rtrim(\strtr($text, [
         "\r\n" => "\n",
         "\r" => "\n"
     ]), "\n"));
-    $reset = $r = ['p', "", [], 0];
     $rows = [];
     $x = "\x1a";
     foreach ($raws as $raw) {
-        [$row, $t] = t($raw, 4);
+        [$row, $d] = d($raw, 4);
         if (0 === $r[0]) {}
         if (1 === $r[0] || 2 === $r[0]) {
             $r[1] = \ltrim($r[1], "\n");
@@ -173,19 +196,18 @@ function rows(string $text, array &$lot = []) {
                 $r[1] .= "\n";
                 continue;
             }
-            if ($t > 0) {
-                $r[1] .= t($raw, $r[3])[0] . "\n";
+            if ($d > 0) {
+                $r[1] .= s($raw, $r[4][1]) . "\n";
                 continue;
             }
-            $row_new = rows($raw, $lot)[0][0] ?? $reset;
+            $row_new = rows($raw, $lot)[0][0] ?? $p;
             // <https://spec.commonmark.org/0.31.2#lazy-continuation-line>
             if ('p' === $row_new[0] && "" !== $row_new[1] && "\n\n" !== \substr($r[1], -2)) {
                 $r[1] .= $row_new[1];
                 continue;
             }
-            [$value, $n] = t($r[1], $r[3]);
-            $value = s($value, $n);
-            $r[1] = \trim($value, "\n") . "\n";
+            $r[1] = \trim($r[1], "\n");
+            $r[1] = shift($r[1] . "\n", \strspn($r[1], ' '), $r[4][1]);
             $rows[] = $r;
             $r = $row_new;
             continue;
@@ -193,9 +215,9 @@ function rows(string $text, array &$lot = []) {
         if (false === $r[0]) {
             // HTML block type 1
             if (1 === $r[4][0] && isset($blocks[1][$r[4][1]]) && false !== \stripos($row, '</' . $r[4][1] . '>')) {
-                $r[1] .= $row . "\n";
+                $r[1] .= $raw . "\n";
                 $rows[] = $r;
-                $r = $reset;
+                $r = $p;
                 continue;
             }
             // HTML block type 2, 3, 4, and 5
@@ -205,23 +227,22 @@ function rows(string $text, array &$lot = []) {
                 4 === $r[4][0] && false !== \strpos($row, '>') ||
                 5 === $r[4][0] && false !== \strpos($row, ']]>')
             ) {
-                $r[1] .= $row . "\n";
+                $r[1] .= $raw . "\n";
                 $rows[] = $r;
-                $r = $reset;
+                $r = $p;
                 continue;
             }
-            // HTML block type 6
-            if (6 === $r[4][0] && isset($blocks[6][$r[4][1]]) && "" === \trim($row)) {
+            // HTML block type 6, and 7
+            if ((6 === $r[4][0] && isset($blocks[6][$r[4][1]]) || 7 === $r[4][0]) && "" === \trim($row)) {
                 $rows[] = $r;
-                $r = $reset;
+                $r = $p;
                 continue;
             }
-            $r[1] .= $row . "\n";
+            $r[1] .= $raw . "\n";
             continue;
         }
         if ('blockquote' === $r[0]) {
-            $row_new = rows($raw, $lot)[0][0] ?? $reset;
-            echo json_encode($row_new);
+            $row_new = rows($raw, $lot)[0][0] ?? $p;
             if ('blockquote' === $row_new[0]) {
                 $r[1] .= $row_new[1];
                 continue;
@@ -241,19 +262,19 @@ function rows(string $text, array &$lot = []) {
                 $r[1] .= "\n";
                 continue;
             }
-            $row_new = rows($raw, $lot)[0][0] ?? $reset;
+            $row_new = rows($raw, $lot)[0][0] ?? $p;
             // <https://spec.commonmark.org/0.31.2#of-the-same-type>
-            if ('ol' === $row_new[0] && $row_new[4][2] === $r[4][2] && $t < $r[3] + $r[4][0]) {
+            if ('ol' === $row_new[0] && $row_new[4][2] === $r[4][2] && $d < $r[3] + $r[4][0]) {
                 $r[1] .= "\x3" . \substr($row, $row_new[3] + $row_new[4][0]) . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#example-307>
-            if ($t >= $r[3] + $r[4][0]) {
-                $r[1] .= \str_repeat(' ', $t) . $row . "\n";
+            if ($d >= $r[3] + $r[4][0]) {
+                $r[1] .= \str_repeat(' ', $d) . $row . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#lazy-continuation-line>
-            if (('p' === $row_new[0] || 'pre' === $row_new[0] && "\t" === $row_new[4][1]) && "" !== $row_new[1] && $t < $r[3] + $r[4][0] && "\n\n" !== \substr($r[1], -2)) {
+            if (('p' === $row_new[0] || 'pre' === $row_new[0] && "\t" === $row_new[4][1]) && "" !== $row_new[1] && $d < $r[3] + $r[4][0] && "\n\n" !== \substr($r[1], -2)) {
                 $r[1] .= $row . "\n";
                 continue;
             }
@@ -264,10 +285,10 @@ function rows(string $text, array &$lot = []) {
         }
         if ('pre' === $r[0]) {
             if ('`' === $r[4][1] || '~' === $r[4][1]) {
-                $row = t($raw, $r[3])[0];
+                $row = d($raw, $r[3])[0];
                 if ($row === \str_repeat($r[4][1], $r[4][0])) {
                     $rows[] = $r;
-                    $r = $reset;
+                    $r = $p;
                     continue;
                 }
                 $r[1] .= $row . "\n";
@@ -276,16 +297,16 @@ function rows(string $text, array &$lot = []) {
             // <https://spec.commonmark.org/0.31.2#example-111>
             if ("" === \trim($row)) {
                 // <https://spec.commonmark.org/0.31.2#example-112>
-                $r[1] .= t($raw, 4)[0] . "\n";
+                $r[1] .= d($raw, 4)[0] . "\n";
                 continue;
             }
-            $row_new = rows($raw, $lot)[0][0] ?? $reset;
+            $row_new = rows($raw, $lot)[0][0] ?? $p;
             if ('pre' === $row_new[0]) {
                 $r[1] .= $row_new[1];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#example-114>
-            if ("\t" === $r[4][1] && $t < $r[3]) {
+            if ("\t" === $r[4][1] && $d < $r[3]) {
                 $rows[] = $r;
                 $r = $row_new;
                 continue;
@@ -297,19 +318,19 @@ function rows(string $text, array &$lot = []) {
                 $r[1] .= "\n";
                 continue;
             }
-            $row_new = rows($raw, $lot)[0][0] ?? $reset;
+            $row_new = rows($raw, $lot)[0][0] ?? $p;
             // <https://spec.commonmark.org/0.31.2#of-the-same-type>
-            if ('ul' === $row_new[0] && $row_new[4][1] === $r[4][1] && $t < $r[3] + $r[4][0]) {
+            if ('ul' === $row_new[0] && $row_new[4][1] === $r[4][1] && $d < $r[3] + $r[4][0]) {
                 $r[1] .= "\x3" . \substr($row, $row_new[3] + $row_new[4][0]) . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#example-307>
-            if ($t >= $r[3] + $r[4][0]) {
-                $r[1] .= \str_repeat(' ', $t) . $row . "\n";
+            if ($d >= $r[3] + $r[4][0]) {
+                $r[1] .= \str_repeat(' ', $d) . $row . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#lazy-continuation-line>
-            if (('p' === $row_new[0] || 'pre' === $row_new[0] && "\t" === $row_new[4][1]) && "" !== $row_new[1] && $t < $r[3] + $r[4][0] && "\n\n" !== \substr($r[1], -2)) {
+            if (('p' === $row_new[0] || 'pre' === $row_new[0] && "\t" === $row_new[4][1]) && "" !== $row_new[1] && $d < $r[3] + $r[4][0] && "\n\n" !== \substr($r[1], -2)) {
                 $r[1] .= $row . "\n";
                 continue;
             }
@@ -320,7 +341,7 @@ function rows(string $text, array &$lot = []) {
         }
         $exit = ('pre' === $r[0] && "\t" !== $r[4][1]) || 'h' === ($r[0] . "")[0] || (false === $r[0] && $r[4][0] >= 1 && $r[4][0] <= 5);
         // <https://spec.commonmark.org/0.31.2#indented-code-block>
-        if ($t >= 4) {
+        if ($d >= 4) {
             if ("" !== $r[1]) {
                 // <https://spec.commonmark.org/0.31.2#example-113>
                 if (!$exit) {
@@ -330,14 +351,14 @@ function rows(string $text, array &$lot = []) {
                 // <https://spec.commonmark.org/0.31.2#example-115>
                 $rows[] = $r;
             }
-            $r = ['pre', $row . "\n", ['class' => false], $t, [4, "\t"]];
+            $r = ['pre', $row . "\n", ['class' => false], $d, [4, "\t"]];
             continue;
         }
         $c = $row[0] ?? $x;
         // <https://spec.commonmark.org/0.31.2#atx-heading>
         if ('#' === $c && ($n = \strspn($row, $c)) && $n < 7 && \strspn($row . ' ', " \t", $n)) {
             if ("" !== $r[1]) {
-                if ($t >= 4 && !$exit) {
+                if ($d >= 4 && !$exit) {
                     $r[1] .= $row . "\n";
                     continue;
                 }
@@ -352,49 +373,49 @@ function rows(string $text, array &$lot = []) {
                 $row = \trim($row_test);
             }
             [$row, $a1] = a1($row);
-            $rows[] = ['h' . $n, $row . "\n", $a1, $t, [$n, '#']];
-            $r = $reset;
+            $rows[] = ['h' . $n, $row . "\n", $a1, $d, [$n, '#']];
+            $r = $p;
             continue;
         }
         if ('*' === $c && '[' === ($row[1] ?? $x)) {
-            $max = \strlen($row);
-            $stack = 0;
-            for ($i = 2; $i < $max; ++$i) {
+            $level = 0;
+            $size = \strlen($row);
+            for ($i = 2; $i < $size; ++$i) {
                 $c = $row[$i];
-                if ("\\" === $c && $i + 1 < $max) {
+                if ("\\" === $c && $i + 1 < $size) {
                     ++$i;
                     continue;
                 }
                 if ('[' === $c) {
-                    ++$stack;
+                    ++$level;
                     continue;
                 }
                 if (']' === $c) {
-                    if ($stack > 0) {
-                        --$stack;
+                    if ($level > 0) {
+                        --$level;
                         continue;
                     }
                 }
                 $next = $i + 1; // Go to `]`
-                while ($next < $max && false !== \strpos(" \t", $row[$next])) {
+                while ($next < $size && false !== \strpos(" \t", $row[$next])) {
                     ++$next;
                 }
                 // There must be a `:` after the optional white-space(s)
-                if ($next >= $max || ':' !== $row[$next]) {
+                if ($next >= $size || ':' !== $row[$next]) {
                     continue;
                 }
                 $next += 1; // Go to one character after `:`
                 // There must be a white-space after the `:`, unless it marks the end of the row
-                if ($next >= $max || false !== \strpos(" \t", $row[$next])) {
+                if ($next >= $size || false !== \strpos(" \t", $row[$next])) {
                     if ("" !== $r[1]) {
                         $rows[] = $r;
                     }
-                    $k = \substr($row, 0, $next + 1);
+                    $k = \substr($row, 0, $next);
                     $key = \trim(\substr($k, 2)); // Remove `*[`
                     $key = \trim(\substr($key, 0, -1)); // Remove `:`
                     $key = \trim(\substr($key, 0, -1)); // Remove `]`
-                    [$value, $n] = t(\substr($row, $next));
-                    $r = [1, $value . "\n", [], $t, [$n, v($key), \strlen($k)]];
+                    $value = \substr($row, $next);
+                    $r = [1, $value . "\n", [], $d, [v($key), \strlen($k)]];
                     continue 2;
                 }
             }
@@ -412,11 +433,11 @@ function rows(string $text, array &$lot = []) {
                 }
                 $rows[] = $r;
             }
-            $r = ['ul', \substr($row, 1 + $s) . "\n", [], $t, [1 + $s, $row[0], ""]];
+            $r = ['ul', \substr($row, 1 + $s) . "\n", [], $d, [1 + $s, $row[0], ""]];
             // <https://spec.commonmark.org/0.31.2#example-284>
             if ($empty) {
                 $rows[] = $r;
-                $r = $reset;
+                $r = $p;
             }
             continue;
         }
@@ -433,7 +454,7 @@ function rows(string $text, array &$lot = []) {
                 // <https://spec.commonmark.org/0.31.2#example-140>
                 $rows[] = $r;
             }
-            $r = ['pre', "", a($rest), $t, [$n, $row[0]]];
+            $r = ['pre', "", a($rest), $d, [$n, $row[0]]];
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#setext-heading>
@@ -444,7 +465,7 @@ function rows(string $text, array &$lot = []) {
             $r[2] = $a1;
             $r[4] = [$n, $c];
             $rows[] = $r;
-            $r = $reset;
+            $r = $p;
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#ordered-list>
@@ -461,11 +482,11 @@ function rows(string $text, array &$lot = []) {
                 }
                 $rows[] = $r;
             }
-            $r = ['ol', \substr($row, $n + 1 + $s) . "\n", ['start' => $at], $t, [$n + 1 + $s, $at, $row[$n]]];
+            $r = ['ol', \substr($row, $n + 1 + $s) . "\n", ['start' => $at], $d, [$n + 1 + $s, $at, $row[$n]]];
             // <https://spec.commonmark.org/0.31.2#example-284>
             if ($empty) {
                 $rows[] = $r;
-                $r = $reset;
+                $r = $p;
             }
             continue;
         }
@@ -479,31 +500,35 @@ function rows(string $text, array &$lot = []) {
                 }
                 // <https://spec.commonmark.org/0.31.2#example-179>
                 if ('--' === \substr($block, 1, 2)) {
-                    $r = [false, $row . "\n", [], $t, [2]];
+                    $r = [false, $raw . "\n", [], $d, [2]];
                     if (false !== \strpos($row, '-->')) {
                         // Ends on its own line
                         $rows[] = $r;
-                        $r = $reset;
+                        $r = $p;
                     }
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#example-182>
                 if ('[CDATA[' === \substr($block, 1, 7)) {
-                    $r = [false, $row . "\n", [], $t, [5]];
+                    $r = [false, $raw . "\n", [], $d, [5]];
                     if (false !== \strpos($row, ']]>')) {
                         // Ends on its own line
                         $rows[] = $r;
-                        $r = $reset;
+                        $r = $p;
                     }
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#example-181>
-                $r = [false, $row . "\n", [], $t, [4]];
-                if (false !== \strpos($row, '>')) {
-                    // Ends on its own line
-                    $rows[] = $r;
-                    $r = $reset;
+                if (\strspn(\strtolower($block), 'abcdefghijklmnopqrstuvwxyz', 1)) {
+                    $r = [false, $raw . "\n", [], $d, [4]];
+                    if (false !== \strpos($row, '>')) {
+                        // Ends on its own line
+                        $rows[] = $r;
+                        $r = $p;
+                    }
+                    continue;
                 }
+                $r[1] .= $row . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#example-180>
@@ -512,26 +537,25 @@ function rows(string $text, array &$lot = []) {
                 if ("" !== $r[1]) {
                     $rows[] = $r;
                 }
-                $r = [false, $row . "\n", [], $t, [3]];
+                $r = [false, $raw . "\n", [], $d, [3]];
                 if (false !== \strpos($row, '?>')) {
                     // Ends on its own line
                     $rows[] = $r;
-                    $r = $reset;
+                    $r = $p;
                 }
                 continue;
             }
             // The initial tag doesn’t need to be a valid tag, as long as it starts like one
-            $block = \strtolower($block);
-            if (isset($blocks[1][$block])) {
+            if (isset($blocks[1][$block = \strtolower($block)])) {
                 // <https://spec.commonmark.org/0.31.2#example-185>
                 if ("" !== $r[1]) {
                     $rows[] = $r;
                 }
-                $r = [false, $row . "\n", [], $t, [1, $block]];
+                $r = [false, $raw . "\n", [], $d, [1, $block]];
                 if (false !== \stripos($row, '</' . $block . '>')) {
                     // Ends on its own line
                     $rows[] = $r;
-                    $r = $reset;
+                    $r = $p;
                 }
                 continue;
             }
@@ -541,13 +565,26 @@ function rows(string $text, array &$lot = []) {
                 if ("" !== $r[1]) {
                     $rows[] = $r;
                 }
-                $r = [false, $row . "\n", [], $t, [6, $block_6]];
+                $r = [false, $raw . "\n", [], $d, [6, $block_6]];
                 continue;
             }
             if ('>' === \substr($test = \trim($row), -1)) {
+                // `<asdf …>`
+                $is_open = true;
                 $test = \rtrim(\substr($test, 1, -1));
+                // `</asdf>`
+                if ('/' === $test[0] ?? $x) {
+                    $is_open = false;
+                    $test = \substr($test, 1);
+                }
+                // `<asdf …/>`
+                if ('/' === \substr($test, -1)) {
+                    $is_open = null;
+                    $test = \substr($test, 0, -1);
+                }
+                $test = \trim(\strtolower($test));
                 // <https://spec.commonmark.org/0.31.2#tag-name>
-                if (!$n = \strspn($test[0] ?? $x, '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')) {
+                if (!$n = \strspn($test, '-0123456789abcdefghijklmnopqrstuvwxyz')) {
                     $r[1] .= $row . "\n";
                     continue;
                 }
@@ -555,15 +592,23 @@ function rows(string $text, array &$lot = []) {
                     $r[1] .= $row . "\n";
                     continue;
                 }
+                // An opening or closing tag with no attribute(s)
                 if ("" === ($test = \trim(\substr($test, $n)))) {
-                    $r = [false, $row . "\n", [], $t, [7]];
+                    if ("" !== $r[1]) {
+                        if ('p' === $r[0]) {
+                            $r[1] .= $row . "\n";
+                            continue;
+                        }
+                        $rows[] = $r;
+                    }
+                    $r = [false, $raw . "\n", [], $d, [7]];
                     continue;
                 }
-                // TODO: HTML block(s) type 7
+                // TODO: HTML block(s) type 7 with attribute(s)
             }
             $r[1] .= $row . "\n";
             if (0 === $r[3]) {
-                $r[3] = $t;
+                $r[3] = $d;
             }
             continue;
         }
@@ -572,7 +617,7 @@ function rows(string $text, array &$lot = []) {
             if ("" !== $r[1]) {
                 $rows[] = $r;
             }
-            [$a, $b] = t($row = \substr($row, 1), 1);
+            [$a, $b] = d($row = \substr($row, 1), 1);
             if ($w = ($b + 1) - 1) {
                 $n = $w - 1;
                 $row = \substr($row, 1);
@@ -580,11 +625,58 @@ function rows(string $text, array &$lot = []) {
                     $row = \str_repeat(' ', $n) . $row;
                 }
             }
-            $r = ['blockquote', $row . "\n", [], $t];
+            $r = ['blockquote', $row . "\n", [], $d];
+            continue;
+        }
+        if ('[' === $c && '^' === ($row[1] ?? $x)) {
+            $level = 0;
+            $size = \strlen($row);
+            for ($i = 2; $i < $size; ++$i) {
+                $c = $row[$i];
+                if ("\\" === $c && $i + 1 < $size) {
+                    ++$i;
+                    continue;
+                }
+                if ('[' === $c) {
+                    ++$level;
+                    continue;
+                }
+                if (']' === $c) {
+                    if ($level > 0) {
+                        --$level;
+                        continue;
+                    }
+                }
+                $next = $i + 1; // Go to `]`
+                while ($next < $size && false !== \strpos(" \t", $row[$next])) {
+                    ++$next;
+                }
+                // There must be a `:` after the optional white-space(s)
+                if ($next >= $size || ':' !== $row[$next]) {
+                    continue;
+                }
+                $next += 1; // Go to one character after `:`
+                // There must be a white-space after the `:`, unless it marks the end of the row
+                if ($next >= $size || false !== \strpos(" \t", $row[$next])) {
+                    if ("" !== $r[1]) {
+                        $rows[] = $r;
+                    }
+                    $k = \substr($row, 0, $next);
+                    $key = \trim(\substr($k, 2)); // Remove `[^`
+                    $key = \trim(\substr($key, 0, -1)); // Remove `:`
+                    $key = \trim(\substr($key, 0, -1)); // Remove `]`
+                    $value = \substr($row, $next);
+                    $r = [2, $value . "\n", [], $d, [v($key), \strlen($k)]];
+                    continue 2;
+                }
+            }
+            $r[1] .= $row . "\n";
             continue;
         }
         if ('[' === $c) {
             // TODO
+            $r[1] .= $row . "\n";
+            continue;
         }
         // <https://spec.commonmark.org/0.31.2#thematic-break>
         $test = \strtr($row, ["\t" => "", ' ' => ""]);
@@ -592,8 +684,8 @@ function rows(string $text, array &$lot = []) {
             if ("" !== $r[1]) {
                 $rows[] = $r;
             }
-            $rows[] = ['hr', false, [], $t, [$c]];
-            $r = $reset;
+            $rows[] = ['hr', false, [], $d, [$c]];
+            $r = $p;
             continue;
         }
         if (false !== \strpos($row, '|')) {}
@@ -601,14 +693,17 @@ function rows(string $text, array &$lot = []) {
         if ("" === \trim($row)) {
             if ('p' !== $r[0] || "" !== $r[1]) {
                 $rows[] = $r;
-                $r = $reset;
+                $r = $p;
             }
             continue;
         }
         $r[1] .= $row . "\n";
         if (0 === $r[3]) {
-            $r[3] = $t;
+            $r[3] = $d;
         }
+    }
+    if (1 === $r[0] || 2 === $r[0]) {
+        $r[1] = shift($r[1], \strspn($r[1], ' '), $r[4][1]);
     }
     if ("" !== $r[1]) {
         $rows[] = $r;
@@ -616,16 +711,16 @@ function rows(string $text, array &$lot = []) {
     return [$rows, $lot];
 }
 
-function s(string $text, int $limit = 4, int $t = 0) {
+function s(string $text, int $limit = 4, int $d = 0) {
     $i = 0;
     while (false !== ($n = \strpos($text, "\t", $i))) {
-        $col = $t + $n;
-        if ($col >= $limit) {
+        $c = $d + $n;
+        if ($c >= $limit) {
             break;
         }
-        $r = 4 - ($col % 4);
-        if ($col + $r > $limit) {
-            $r = $limit - $col;
+        $r = 4 - ($c % 4);
+        if ($c + $r > $limit) {
+            $r = $limit - $c;
         }
         $text = \substr_replace($text, \str_repeat(' ', $r), $n, 1);
         $i = $n + $r;
@@ -633,27 +728,15 @@ function s(string $text, int $limit = 4, int $t = 0) {
     return $text;
 }
 
-function t(string $text, int $limit = 4) {
-    $i = $t = 0;
-    $max = \strlen($text);
-    $max = $limit ? \min($limit, $max) : $max;
-    while ($i < $max) {
-        $c = $text[$i];
-        if ("\t" === $c) {
-            ++$i;
-            $t += 4 - ($t % 4);
-            continue;
-        }
-        if (' ' === $c) {
-            ++$i;
-            ++$t;
-            continue;
-        }
-        // Hit non white-space before reaching `$limit`
-        break;
+function shift(string $text, int $d = 0, int $prefix = 0) {
+    $r = "";
+    foreach (\explode("\n", $text) as $v) {
+        $n = \strspn($v, ' ');
+        $n >= $d && ($v = \substr($v, $d));
+        $n >= $prefix && ($v = \substr($v, $prefix));
+        $r .= $v . "\n";
     }
-    $text = \substr($text, $i);
-    return [$text, $t, $i];
+    return \substr($r, 0, -1);
 }
 
 function v(string $text) {
@@ -701,14 +784,14 @@ function v(string $text) {
 $files = glob(__DIR__ . '/draft/*/*/*.md', GLOB_NOSORT);
 
 usort($files, function ($a, $b) {
-    return strnatcmp(substr($a, 0, -3), substr($b, 0, -3));
+    return strnatcmp(strtr(substr($a, 0, -3), ['/' => '-', "\\" => '-']), strtr(substr($b, 0, -3), ['/' => '-', "\\" => '-']));
 });
 
 $current = "";
 foreach ($files as $file) {
-    if ($current !== ($t = basename(dirname($file, 2)) . '\\' . basename(dirname($file))) || "" === $current) {
-        echo '<h2 style="margin:0;">.\\test\\' . $t . '\\*</h2>';
-        $current = $t;
+    if ($current !== ($d = basename(dirname($file, 2)) . '\\' . basename(dirname($file))) || "" === $current) {
+        echo '<h2 style="margin:0;">.\\test\\' . $d . '\\*</h2>';
+        $current = $d;
     }
     $text = file_get_contents($file);
     echo '<div style="display:flex;gap:1em;margin:1em 0;">';
