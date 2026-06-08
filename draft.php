@@ -188,6 +188,7 @@ function r(string $text) {
     $text = \trim(\substr($text, $n + 2));
     // A link label should be followed by a link destination
     if ("" === $text) {
+        // <https://spec.commonmark.org/0.31.2#example-199>
         return [];
     }
     // <https://spec.commonmark.org/0.31.2#link-destination>
@@ -244,6 +245,7 @@ function r(string $text) {
     }
     // If it has a title, it needs to be preceded by a white-space
     if ("" !== $text && !($n = \strspn($text, " \n\t"))) {
+        // <https://spec.commonmark.org/0.31.2#example-201>
         return [];
     }
     if ("" !== ($text = \substr($text, $n))) {
@@ -275,7 +277,9 @@ function r(string $text) {
         // Attribute(s) exist right after the link destination
         if ("" !== ($text = \substr($text, $n))) {
             $r[3] = \trim($text);
+            // This part must be junk text after the link destination or title
             if ('{' !== $r[3][0] || '}' !== \substr($r[3], -1) || "\\" === \substr($r[3], -2, 1)) {
+                // <https://spec.commonmark.org/0.31.2#example-209>
                 return [];
             }
             $r[3] = a($r[3]);
@@ -319,6 +323,7 @@ function rows(string $text, array &$lot = []) {
             $row = \substr($row, $d > 4 ? 4 : $d);
         }
         if ($r && 0 === $r[0]) {
+            // A link reference definition syntax cannot contain empty line(s)
             if ("" === ($row = \trim($row))) {
                 if ($ref = r($r[1])) {
                     $r[1] = "\n";
@@ -334,6 +339,7 @@ function rows(string $text, array &$lot = []) {
                 $r = null;
                 continue;
             }
+            // Current line validates the link reference definition syntax
             if ($ref = r($r[1] . $row)) {
                 $r[1] = "\n";
                 $r[2]['href'] = $ref[1];
@@ -345,6 +351,7 @@ function rows(string $text, array &$lot = []) {
                 $r = null;
                 continue;
             }
+            // Current line invalidates the link reference definition syntax
             if ($ref = r($r[1])) {
                 $r[1] = "\n";
                 $r[2]['href'] = $ref[1];
@@ -353,9 +360,11 @@ function rows(string $text, array &$lot = []) {
                 $r[2] = \array_replace($r[2], $ref[3]);
                 $r[4] = [$ref[0]];
                 $rows[] = $r;
+                // Assume the next line starts a new block
                 $r = rows($raw, $lot)[0][0] ?? null;
                 continue;
             }
+            // It does not seem to be a link reference definition syntax
             $now = rows($raw, $lot)[0][0] ?? null;
             if ($now && 'p' === $now[0] && "" !== $now[1]) {
                 $r[1] .= $row . "\n";
@@ -732,6 +741,7 @@ function rows(string $text, array &$lot = []) {
                     $r[1] .= $raw . "\n";
                     continue;
                 }
+                // <https://spec.commonmark.org/0.31.2#example-214>
                 $rows[] = $r;
             }
             $r = [0, $row . "\n", [], $d, []];
