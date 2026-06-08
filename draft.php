@@ -41,9 +41,9 @@ function a(string $text) {
                 break;
             }
             $c = $text[$i];
-            $quote = 0;
+            $q = 0;
             if ('"' === $c || "'" === $c) {
-                $quote = $c;
+                $q = $c;
                 ++$i;
             }
             while ($i < $size) {
@@ -52,8 +52,8 @@ function a(string $text) {
                     $s .= $text[++$i];
                     continue;
                 }
-                if ($quote) {
-                    if ($c === $quote) {
+                if ($q) {
+                    if ($c === $q) {
                         break;
                     }
                 } else if ("\t" === $c || ' ' === $c) {
@@ -143,6 +143,7 @@ function a1(string $row) {
 
 function from(?string $value, $block = true): ?string {}
 
+// <https://spec.commonmark.org/0.31.2#link-reference-definition>
 function r(string $text) {
     if ('[' !== ($text[0] ?? 0)) {
         return [];
@@ -159,26 +160,95 @@ function r(string $text) {
     if (false === $n) {
         return [];
     }
+    // <https://spec.commonmark.org/0.31.2#link-label>
     $r[0] = s1(v(\trim(\substr($text, 1, $n - 1))));
+    // A link label cannot be empty
+    if ("" === $r[0]) {
+        return [];
+    }
+    $limit = \strlen($r[0]);
+    // A link label can have at most 999 character(s) inside the `[` and `]` character(s)
+    if ($limit > 999) {
+        return [];
+    }
+    for ($j = 0; $j < $limit; ++$j) {
+        if ("\\" === $r[0][$j]) {
+            ++$j;
+            continue;
+        }
+        // A link label cannot contain unescaped `[` and `]` character(s)
+        if ('[' === $r[0][$j] || ']' === $r[0][$j]) {
+            return [];
+        }
+    }
+    if (\defined("\\MB_CASE_FOLD")) {
+        // <https://spec.commonmark.org/0.31.2#matches>
+        $r[0] = \mb_convert_case($r[0], \MB_CASE_FOLD, 'UTF-8');
+    }
     $text = \trim(\substr($text, $n + 2));
+    // A link label should be followed by a link destination
     if ("" === $text) {
         return [];
     }
+    // <https://spec.commonmark.org/0.31.2#link-destination>
     if ('<' === $text[0]) {
         if (false === ($n = \strpos($text, '>'))) {
             return [];
         }
         $r[1] = \substr($text, 0, $n + 1);
+        // A link destination cannot contain line break
+        if (false !== \strpos($r[1], "\n")) {
+            return [];
+        }
+        $limit = \strlen($r[1]) - 1;
+        for ($j = 1; $j < $limit; ++$j) {
+            if ("\\" === $r[1][$j]) {
+                ++$j;
+                continue;
+            }
+            // A link destination cannot contain unescaped `<` and `>` character(s)
+            if ('<' === $r[1][$j] || '>' === $r[1][$j]) {
+                return [];
+            }
+        }
         $text = \substr($text, $n + 1);
     } else {
-        $r[1] = \substr($text, 0, $n = \strcspn($text, " \n\t"));
+        // A link destination cannot be empty, unless it is `<>`
+        if (!$n = \strcspn($text, " \n\t")) {
+            return [];
+        }
+        $r[1] = \substr($text, 0, $n);
+        $d = 0;
+        $limit = \strlen($r[1]);
+        for ($j = 0; $j < $limit; ++$j) {
+            if ("\\" === $r[1][$j]) {
+                ++$j;
+                continue;
+            }
+            if ('(' === $r[1][$j]) {
+                ++$d;
+            } else if (')' === $r[1][$j]) {
+                if (0 === $d) {
+                    return [];
+                }
+                --$d;
+            }
+            if ('<' === $r[1][$j]) {
+                return [];
+            }
+        }
+        if (0 !== $d) {
+            return [];
+        }
         $text = \substr($text, $n);
     }
+    // If it has a title, it needs to be preceded by a white-space
     if ("" !== $text && !($n = \strspn($text, " \n\t"))) {
         return [];
     }
     if ("" !== ($text = \substr($text, $n))) {
         if ('{' !== ($q = $text[0])) {
+            // <https://spec.commonmark.org/0.31.2#link-title>
             if ("'" === $q || '"' === $q || '(' === $q) {
                 $i = 1; // Start after `'`, `"`, or `(`
                 $q = '(' === $q ? ')' : $q;
@@ -196,11 +266,13 @@ function r(string $text) {
                 $text = \substr($text, $n + 1);
             }
         }
+        // It has a title that can be followed by attribute(s), which must be preceded by a white-space
         if ("" !== $text && !($n = \strspn($text, " \n\t"))) {
             if (null !== $r[2]) {
                 return [];
             }
         }
+        // Attribute(s) exist right after the link destination
         if ("" !== ($text = \substr($text, $n))) {
             $r[3] = \trim($text);
             if ('{' !== $r[3][0] || '}' !== \substr($r[3], -1) || "\\" === \substr($r[3], -2, 1)) {
