@@ -766,6 +766,17 @@ function rows(string $text, array &$lot = []) {
             $r = ['pre', "\n", a($rest), $d, [$n, $c]];
             continue;
         }
+        // <https://spec.commonmark.org/0.31.2#setext-heading>
+        if (('-' === $c || '=' === $c) && \strspn($row, $c) === \strlen($row) && $r && 'p' === $r[0] && "" !== $r[1]) {
+            [$row, $a1] = a1(\substr($r[1], 0, -1));
+            $r[0] = 'h' . ($n = '-' === $c ? 2 : 1);
+            $r[1] = $row . "\n";
+            $r[2] = $a1;
+            $r[4] = [$n, $c];
+            $rows[] = $r;
+            $r = null;
+            continue;
+        }
         if ("" === \trim($row)) {
             if ($r && "" !== $r[1]) {
                 $rows[] = $r;
