@@ -147,8 +147,8 @@ function r(string $text) {
     if ('[' !== ($text[0] ?? 0)) {
         return [];
     }
-    $attributes = $label = $link = $title = null;
     $i = 1; // Start after `[`
+    $r = [null, null, null, []];
     while (false !== ($n = \strpos($text, ']:', $i))) {
         if ($n > 1 && "\\" === $text[$n - 1]) {
             $i = $n + 2;
@@ -159,7 +159,7 @@ function r(string $text) {
     if (false === $n) {
         return [];
     }
-    $label = \trim(\substr($text, 1, $n - 1));
+    $r[0] = s1(v(\trim(\substr($text, 1, $n - 1))));
     $text = \trim(\substr($text, $n + 2));
     if ("" === $text) {
         return [];
@@ -168,44 +168,48 @@ function r(string $text) {
         if (false === ($n = \strpos($text, '>'))) {
             return [];
         }
-        $link = \substr($text, 0, $n + 1);
+        $r[1] = \substr($text, 0, $n + 1);
         $text = \substr($text, $n + 1);
     } else {
-        $link = \substr($text, 0, $n = \strcspn($text, " \n\t"));
+        $r[1] = \substr($text, 0, $n = \strcspn($text, " \n\t"));
         $text = \substr($text, $n);
     }
-    if ($text && !($n = \strspn($text, " \n\t"))) {
+    if ("" !== $text && !($n = \strspn($text, " \n\t"))) {
         return [];
     }
     if ("" !== ($text = \substr($text, $n))) {
-        $open = $text[0];
-        if ("'" === $open || '"' === $open || '(' === $open) {
-            $close = '(' === $open ? ')' : $open;
-            $p = 1;
-            while (false !== ($end = \strpos($text, $close, $p))) {
-                if ('\\' === $text[$end - 1]) {
-                    $p = $end + 1;
-                    continue;
+        if ('{' !== ($q = $text[0])) {
+            if ("'" === $q || '"' === $q || '(' === $q) {
+                $i = 1; // Start after `'`, `"`, or `(`
+                $q = '(' === $q ? ')' : $q;
+                while (false !== ($n = \strpos($text, $q, $i))) {
+                    if ("\\" === $text[$n - 1]) {
+                        $i = $n + 1;
+                        continue;
+                    }
+                    break;
                 }
-                break;
+                if (false === $n) {
+                    return [];
+                }
+                $r[2] = v(\substr($text, 1, $n - 1));
+                $text = \substr($text, $n + 1);
             }
-            if (false === $end) {
+        }
+        if ("" !== $text && !($n = \strspn($text, " \n\t"))) {
+            if (null !== $r[2]) {
                 return [];
             }
-            $title = v(\substr($text, 1, $end - 1));
-            $text = \substr($text, $end + 1);
-        }
-        if ($text && !($n = \strspn($text, " \n\t"))) {
-            return [];
         }
         if ("" !== ($text = \substr($text, $n))) {
-            $attributes = \trim($text);
-            if ('{' !== $attributes[0] && '}' !== \substr($attributes, -1)) {
+            $r[3] = \trim($text);
+            if ('{' !== $r[3][0] || '}' !== \substr($r[3], -1) || "\\" === \substr($r[3], -2, 1)) {
                 return [];
             }
+            $r[3] = a($r[3]);
         }
     }
-    return [s1(v($label)), $link, $title, a($attributes ?? "")];
+    return $r;
 }
 
 function row(string $text, array &$lot = []) {}
@@ -215,11 +219,12 @@ function rows(string $text, array &$lot = []) {
     $blocks || ($blocks = [
         1 => \array_fill_keys(['pre', 'script', 'style', 'textarea'], 1),
         6 => \array_fill_keys([
-            'address', 'article', 'aside', 'base', 'basefont', 'blockquote', 'body', 'caption', 'center', 'col', 'colgroup',
-            'dd', 'details', 'dialog', 'dir', 'div', 'dl', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form',
-            'frame', 'frameset', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hr', 'html', 'iframe', 'legend',
-            'li', 'link', 'main', 'menu', 'menuitem', 'nav', 'noframes', 'ol', 'optgroup', 'option', 'p', 'param', 'search',
-            'section', 'summary', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'title', 'tr', 'track', 'ul'
+            'address', 'article', 'aside', 'base', 'basefont', 'blockquote', 'body', 'caption', 'center', 'col',
+            'colgroup', 'dd', 'details', 'dialog', 'dir', 'div', 'dl', 'dt', 'fieldset', 'figcaption', 'figure',
+            'footer', 'form', 'frame', 'frameset', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hr', 'html',
+            'iframe', 'legend', 'li', 'link', 'main', 'menu', 'menuitem', 'nav', 'noframes', 'ol', 'optgroup', 'option',
+            'p', 'param', 'search', 'section', 'summary', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'title', 'tr',
+            'track', 'ul'
         ], 1)
     ]);
     $c1 || ($c1 = 'abcdefghijklmnopqrstuvwxyz');
@@ -666,7 +671,10 @@ function rows(string $text, array &$lot = []) {
             $rest = \trim(\substr($row, $n));
             // <https://spec.commonmark.org/0.31.2#example-145>
             if ('`' === $c && false !== \strpos($rest, '`')) {
-                $r[1] .= $row . "\n";
+                if ($r && "" !== $r[1]) {
+                    $r[1] .= $row . "\n";
+                }
+                $r = ['p', $row . "\n", [], $d];
                 continue;
             }
             if ($r && "" !== $r[1]) {
@@ -689,9 +697,9 @@ function rows(string $text, array &$lot = []) {
         }
         $r = ['p', $row . "\n", [], $d];
     }
-    // if ($r && "" !== $r[1]) {
-    //     $rows[] = $r;
-    // }
+    if ($r && "" !== $r[1]) {
+        $rows[] = $r;
+    }
     return [$rows, $lot];
 
     foreach ($raws as $raw) {
@@ -1377,25 +1385,6 @@ function rows(string $text, array &$lot = []) {
     }
     return [$rows, $lot];
 }
-
-/*
-function s(string $text, int $max = 4, int $d = 0) {
-    $i = 0;
-    while (false !== ($n = \strpos($text, "\t", $i))) {
-        $c = $d + $n;
-        if ($c >= $max) {
-            break;
-        }
-        $r = 4 - ($c % 4);
-        if ($c + $r > $max) {
-            $r = $max - $c;
-        }
-        $text = \substr_replace($text, \str_repeat(' ', $r), $n, 1);
-        $i = $n + $r;
-    }
-    return $text;
-}
-*/
 
 function s(string $text, int $max = 4, int $n = 0) {
     $limit = \strlen($text);
