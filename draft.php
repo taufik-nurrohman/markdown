@@ -152,6 +152,50 @@ function attr(string $text) {
 
 function from(?string $value, $block = true): ?string {}
 
+function note(string $text) {
+    if ('[' !== ($text[0] ?? 0) || '^' !== ($text[1] ?? 0)) {
+        return [];
+    }
+    $i = 2; // Start after `[^`
+    while (false !== ($n = \strpos($text, ']:', $i))) {
+        if ($n > 2 && "\\" === $text[$n - 1]) {
+            $i = $n + 2;
+            continue;
+        }
+        $k = \substr($text, 0, $n += 2);
+        $key = \trim(\substr($k, 2, -2)); // Remove `[^` and `]:`
+        $value = \rtrim(\substr($text, $n));
+        $n = 0;
+        // Case for note content that comes below the note label
+        if ("\n" === ($value[0] ?? 0)) {
+            // Get the least amount of indentation from the note value to remove
+            $n = \strspn($value = \trim($value, "\n"), ' ');
+            foreach (\explode("\n", $value) as $v) {
+                if ("" !== ($v = \rtrim($v)) && ($w = \strspn($v, ' ')) < $n) {
+                    $n = $w;
+                }
+            }
+        // Case for note content that comes next to the note label
+        } else {
+            // Get the indentation after the first line because it is not indented
+            if ("" !== ($next = \trim(\strstr($value = \trim($value), "\n"), "\n"))) {
+                $n = \strspn($next, ' ');
+                foreach (\explode("\n", $next) as $v) {
+                    if ("" !== ($v = \rtrim($v)) && ($w = \strspn($v, ' ')) < $n) {
+                        $n = $w;
+                    }
+                }
+            }
+        }
+        $n && ($value = s2($value, $n));
+        if ("" === $key || "" === $value) {
+            return []; // Note key and content cannot be empty
+        }
+        return [s1(v($key)), $value . "\n"];
+    }
+    return [];
+}
+
 // <https://spec.commonmark.org/0.31.2#link-reference-definition>
 function ref(string $text) {
     if ('[' !== ($text[0] ?? 0)) {
@@ -332,7 +376,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             $row = \substr($row, $d > 4 ? 4 : $d);
         }
         if ($deep >= 0 && $r && 0 === $r[0]) {
-            // A link reference definition cannot contain blank line(s)
+            // A link reference definition cannot contain blank line(s).
             if ("" === ($row = \trim($row))) {
                 if ($ref = ref($r[1])) {
                     $lot[0][$ref[0]] = [$ref[1], $ref[2], $ref[3]];
@@ -346,7 +390,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                 $r = null;
                 continue;
             }
-            // Current line validates the link reference definition
+            // Current line validates the link reference definition.
             if ($ref = ref($r[1] . $row)) {
                 $lot[0][$ref[0]] = [$ref[1], $ref[2], $ref[3]];
                 $r = null;
@@ -365,7 +409,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             // consider it as a continuation of the link reference definition, which is to be validated later.
             $now = rows($raw, $lot)[0][0] ?? null;
             if ($now && 'p' === $now[0] && "" !== $now[1]) {
-                $r[1] .= $row . "\n";
+                $r[1] .= $now[1];
                 continue;
             }
             // A new block interrupts the current link reference definition stream, causing it to become invalid.
@@ -377,7 +421,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             continue;
         }
         if ($deep >= 0 && $r && 1 === $r[0]) {
-            // An abbreviation definition cannot contain blank line(s)
+            // An abbreviation definition cannot contain blank line(s).
             if ("" === ($row = \trim($row))) {
                 if ($abbr = abbr($r[1])) {
                     $lot[1][$abbr[0]] = $abbr[1];
@@ -394,7 +438,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             // Check if the current line can continue the abbreviation definition.
             $now = rows($raw, $lot)[0][0] ?? null;
             if ($now && 'p' === $now[0] && "" !== $now[1]) {
-                $r[1] .= $row . "\n";
+                $r[1] .= $now[1];
                 continue;
             }
             // At this point, the new block should interrupt the current abbreviation definition stream.
@@ -409,12 +453,47 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             $r = $now;
             continue;
         }
-        if ($deep >= 0 && $r && 2 === $r[0]) {}
+        if ($deep >= 0 && $r && 2 === $r[0]) {
+            // A note can have blank line(s), just like list(s).
+            if ("" === \trim($row)) {
+                $r[1] .= "\n";
+                continue;
+            }
+            // Multi-line note(s) don’t have to be indented by four space(s) as required by Markdown Extra. A space or
+            // tab is enough to continue the note. Since there is no formal specification for this block, the best
+            // approach is probably to use the minimum indent rule for list item continuation where the note label acts
+            // as the list item marker. However, since note label(s) can vary in length, a less strict rule would be
+            // better for this block. Multiple note label(s) with note content below them would look more organized if
+            // they are all lined up at the same indentation level.
+            if ($d > 0) {
+                if (\strspn($raw = s($raw, $d), ' ') > $r[3]) {
+                    $raw = \substr($raw, $r[3]);
+                }
+                $r[1] .= $raw . "\n";
+                continue;
+            }
+            $now = rows($raw, $lot)[0][0] ?? null;
+            if ($now && 'p' === $now[0] && "" !== $now[1] && "\n\n" !== \substr($r[1], -2)) {
+                $r[1] .= $now[1];
+                continue;
+            }
+            $r[1] = \trim($r[1], "\n") . "\n";
+            if ($note = note($r[1])) {
+                $lot[2][$note[0]] = $note[1];
+                $r = $now;
+                continue;
+            }
+            $r[0] = 'p';
+            $rows[] = $r;
+            $r = $now;
+            continue;
+        }
         if ($r && false === $r[0]) {
+            $test = $r[1] . $raw;
             // HTML block type 1
-            if (1 === $r[4][0] && isset($blocks[1][$r[4][1]]) && false !== \stripos($r[1] . $raw, '</' . $r[4][1] . '>')) {
+            if (1 === $r[4][0] && isset($blocks[1][$r[4][1]]) && false !== \stripos($test, '</' . $r[4][1] . '>')) {
                 if ("" !== $row) {
-                    $r[1] .= $raw . "\n";
+                    $r[1] = $test . "\n";
                 }
                 $rows[] = $r;
                 $r = null;
@@ -422,13 +501,13 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             }
             // HTML block type 2, 3, 4, and 5
             if (
-                2 === $r[4][0] && false !== \strpos($r[1] . $raw, '-->') ||
-                3 === $r[4][0] && false !== \strpos($r[1] . $raw, '?>') ||
-                4 === $r[4][0] && false !== \strpos($r[1] . $raw, '>') ||
-                5 === $r[4][0] && false !== \strpos($r[1] . $raw, ']]>')
+                2 === $r[4][0] && false !== \strpos($test, '-->') ||
+                3 === $r[4][0] && false !== \strpos($test, '?>') ||
+                4 === $r[4][0] && false !== \strpos($test, '>') ||
+                5 === $r[4][0] && false !== \strpos($test, ']]>')
             ) {
                 if ("" !== $row) {
-                    $r[1] .= $raw . "\n";
+                    $r[1] = $test . "\n";
                 }
                 $rows[] = $r;
                 $r = null;
@@ -467,12 +546,6 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             $r = rows($raw, $lot)[0][0] ?? null;
             continue;
         }
-        // Close leaf block(s) that will close immediately, such as the thematic break, if it has not been closed yet.
-        if ($r && 'h' === $r[0][0]) {
-            $rows[] = $r;
-            $r = null;
-            continue;
-        }
         if ($r && 'pre' === $r[0]) {
             if ('`' === $r[4][1] || '~' === $r[4][1]) {
                 $row = s($raw, $r[3]);
@@ -488,11 +561,11 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             // <https://spec.commonmark.org/0.31.2#example-111>
             if ("" === \trim($row)) {
                 // <https://spec.commonmark.org/0.31.2#example-112>
-                $r[1] .= \substr(s($raw, $r[3]), $r[3]) . "\n";
+                $r[1] .= \substr(s($raw, 4), 4) . "\n";
                 continue;
             }
             if ($d >= 4) {
-                $r[1] .= \substr(s($raw, $r[3]), $r[3]) . "\n";
+                $r[1] .= \substr(s($raw, 4), 4) . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#example-114>
@@ -523,9 +596,9 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             $r = null;
             continue;
         }
-        // There is no formal specification for the abbreviation block in CommonMark, so I will treat it in a similar
-        // manner to the link reference definition block. It acts as a leaf block that cannot interrupt a paragraph. It
-        // can span multiple line(s) but cannot have blank line(s) in between.
+        // There is no formal specification for the abbreviation block in CommonMark, so I will treat it similarly to
+        // the link reference definition block. It acts as a leaf block that cannot interrupt a paragraph. It can span
+        // multiple line(s), but it cannot contain any blank line(s).
         if ($deep >= 0 && '*' === $c && '[' === ($row[1] ?? 0)) {
             // <https://spec.commonmark.org/0.31.2#example-213>
             if ($r && "" !== $r[1]) {
@@ -573,33 +646,18 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                 // <https://spec.commonmark.org/0.31.2#html-comment>
                 if ('--' === \substr($block, 1, 2)) {
                     $r = [false, $raw . "\n", [], $d, [2]];
-                    if (false !== \strpos($row, '-->')) {
-                        // Ends on its own line
-                        $rows[] = $r;
-                        $r = null;
-                    }
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#cdata-section>
                 // <https://spec.commonmark.org/0.31.2#example-182>
                 if ('[CDATA[' === \substr($block, 1, 7)) {
                     $r = [false, $raw . "\n", [], $d, [5]];
-                    if (false !== \strpos($row, ']]>')) {
-                        // Ends on its own line
-                        $rows[] = $r;
-                        $r = null;
-                    }
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#declaration>
                 // <https://spec.commonmark.org/0.31.2#example-181>
                 if (\strspn(\strtolower($block), $c1, 1)) {
                     $r = [false, $raw . "\n", [], $d, [4]];
-                    if (false !== \strpos($row, '>')) {
-                        // Ends on its own line
-                        $rows[] = $r;
-                        $r = null;
-                    }
                     continue;
                 }
                 $r[1] .= $row . "\n";
@@ -613,11 +671,6 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                     $rows[] = $r;
                 }
                 $r = [false, $raw . "\n", [], $d, [3]];
-                if (false !== \strpos($row, '?>')) {
-                    // Ends on its own line
-                    $rows[] = $r;
-                    $r = null;
-                }
                 continue;
             }
             if (isset($blocks[1][$block = \strtolower($block)])) {
@@ -626,15 +679,11 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                     $rows[] = $r;
                 }
                 $r = [false, $raw . "\n", [], $d, [1, $block]];
-                if (false !== \stripos($row, '</' . $block . '>')) {
-                    // Ends on its own line
-                    $rows[] = $r;
-                    $r = null;
-                }
                 continue;
             }
             // HTML block type 6 does not differentiate between open and close tag(s). The initial tag does not need to
-            // be a valid tag. As long as it starts like one, that’s okay.
+            // be a valid HTML tag. As long as it starts like one, it is still valid. Even a start tag that looks like
+            // `<div <?asdf [asdf] --`, is still considered a valid HTML block type 6.
             if (isset($blocks[6][$block_6 = \trim($block, '/')])) {
                 // <https://spec.commonmark.org/0.31.2#example-185>
                 if ($r && "" !== $r[1]) {
@@ -645,16 +694,16 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             }
             if ('>' === \substr($test = \trim($row), -1)) {
                 // <https://spec.commonmark.org/0.31.2#open-tag>
-                $open = 1;
+                $k = 1;
                 $test = \rtrim(\substr($test, 1, -1));
                 // <https://spec.commonmark.org/0.31.2#closing-tag>
-                if ('/' === $test[0] ?? $x) {
-                    $open = 0;
+                if ('/' === ($test[0] ?? 0)) {
+                    $k = 0;
                     $test = \substr($test, 1);
                 }
                 // <https://spec.commonmark.org/0.31.2#open-tag>
                 if ('/' === \substr($test, -1)) {
-                    $open = 2;
+                    $k = 2;
                     $test = \substr($test, 0, -1);
                 }
                 $test = \trim(\strtolower($test));
@@ -673,19 +722,19 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                         $r = [false, $raw . "\n", [], $d, [7]];
                         continue;
                     }
-                    if ($open) {
-                        $end = true;
+                    if (0 !== $k) {
+                        $e = true;
                         $limit = \strlen($test);
                         for ($i = 0; $i < $limit; ++$i) {
                             while ($i < $limit && false !== \strpos(" \t", $test[$i])) {
-                                ++$i;
+                                ++$i; // Skip white-space(s) after tag name
                             }
                             if ($i >= $limit) {
                                 break;
                             }
                             // <https://spec.commonmark.org/0.31.2#attribute-name>
                             if (false === \strpos($c5, $test[$i])) {
-                                $end = false;
+                                $e = false;
                                 break;
                             }
                             while ($i < $limit && false !== \strpos($c6, $test[$i])) {
@@ -693,44 +742,43 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                             }
                             // <https://spec.commonmark.org/0.31.2#attribute-value-specification>
                             while ($i < $limit && false !== \strpos(" \t", $test[$i])) {
-                                ++$i;
+                                ++$i; // Skip white-space(s) after tag attribute name if any
                             }
                             // <https://spec.commonmark.org/0.31.2#attribute-value>
                             if ($i < $limit && '=' === $test[$i]) {
-                                ++$i;
+                                ++$i; // Go to one character after `=`
                                 // <https://spec.commonmark.org/0.31.2#attribute-value-specification>
                                 while ($i < $limit && false !== \strpos(" \t", $test[$i])) {
-                                    ++$i;
+                                    ++$i; // Skip white-space(s) after `=` if any
                                 }
                                 if ($i >= $limit) {
-                                    $end = false;
+                                    $e = false;
                                     break;
                                 }
                                 $q = $test[$i];
                                 // <https://spec.commonmark.org/0.31.2#single-quoted-attribute-value>
                                 // <https://spec.commonmark.org/0.31.2#double-quoted-attribute-value>
                                 if ("'" === $q || '"' === $q) {
-                                    ++$i;
-                                    $end = false;
+                                    ++$i; // Go to one character after `'` or `"`
+                                    $e = false;
                                     while ($i < $limit) {
                                         if ($q === $test[$i]) {
-                                            $end = true;
+                                            $e = true;
                                             break;
                                         }
                                         ++$i;
                                     }
-                                    if (!$end) {
-                                        $end = false;
+                                    if (!$e) {
                                         break;
                                     }
                                 } else {
                                     // <https://spec.commonmark.org/0.31.2#unquoted-attribute-value>
                                     if (false !== \strpos(" \t'" . '"<=>`', $test[$i])) {
-                                        $end = false;
+                                        $e = false;
                                         break;
                                     }
                                     while ($i < $limit && false === \strpos(" \t'" . '"<=>`', $test[$i])) {
-                                        ++$i;
+                                        ++$i; // Skip white-space(s) after bare attribute value
                                     }
                                     --$i; // Put the cursor back right after the un-quoted attribute value
                                 }
@@ -738,7 +786,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                                 --$i; // Put the cursor back right after the attribute name if there is no value
                             }
                         }
-                        if ($end) {
+                        if ($e) {
                             if ($r && "" !== $r[1]) {
                                 // <https://spec.commonmark.org/0.31.2#example-187>
                                 if ('p' === $r[0]) {
@@ -769,7 +817,23 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             $r = ['blockquote', $row . "\n", [], $d];
             continue;
         }
-        if ($deep >= 0 && '[' === $c && '^' === ($row[1] ?? 0)) {}
+        // There is no formal specification for note block in CommonMark. For now, the closest fit is to treat it as a
+        // container block. It can span multiple line(s) and may contain blank line(s), just like the list block.
+        // However, since its label syntax is very similar to that of the link reference definition’s label syntax, it
+        // will also be treated in the same way, so that it cannot interrupt a paragraph.
+        if ($deep >= 0 && '[' === $c && '^' === ($row[1] ?? 0)) {
+            // <https://spec.commonmark.org/0.31.2#example-213>
+            if ($r && "" !== $r[1]) {
+                if ('p' === $r[0]) {
+                    $r[1] .= $raw . "\n";
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.31.2#example-214>
+                $rows[] = $r;
+            }
+            $r = [2, $row . "\n", [], $d, []];
+            continue;
+        }
         if ($deep >= 0 && '[' === $c) {
             // <https://spec.commonmark.org/0.31.2#example-213>
             if ($r && "" !== $r[1]) {
@@ -856,10 +920,11 @@ function rows(string $text, array &$lot = [], $deep = 0) {
         $r = ['p', $row . "\n", [], $d];
     }
     if ($r && "" !== $r[1]) {
-        // At this point, there is probably an open code block that has reached the forced last `\n` character. It
-        // should be removed; otherwise, the result will have too many extra `\n` character(s) at the end of the code
-        // block content.
-        if ('pre' === $r[0]) {
+        // At this point, there is probably an open block that has reached the forced last `\n` character. It should be
+        // removed; otherwise, the result will have too many extra `\n` character(s) at the end of the block content.
+        if (2 === $r[0]) {
+            $r[1] = \trim($r[1], "\n") . "\n";
+        } else if ('pre' === $r[0]) {
             if ('`' === $r[4][1] || '~' === $r[4][1]) {
                 $r[1] = \substr($r[1], 1);
             }
@@ -877,7 +942,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             if ("" === \trim($row)) {
                 // TODO: Strict pattern without regular expression for link reference definition
                 if (\preg_match('/^\S+$/', \trim($r[1]))) {
-                    $r[1] = shift($r[1], \strspn($r[1], ' '), $r[4][1]);
+                    $r[1] = s2($r[1], \strspn($r[1], ' '), $r[4][1]);
                     $rows[] = $r;
                     $r = $p;
                     continue;
@@ -889,7 +954,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             if ('p' === $row_new[0] && "" !== $row_new[1]) {
                 // TODO: Strict pattern without regular expression for link reference definition
                 if (\preg_match('/^\S+$/', \trim($r[1]))) {
-                    $r[1] = shift($r[1], \strspn($r[1], ' '), $r[4][1]);
+                    $r[1] = s2($r[1], \strspn($r[1], ' '), $r[4][1]);
                     $rows[] = $r;
                     $r = $row_new;
                     continue;
@@ -899,7 +964,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             }
             // TODO: Strict pattern without regular expression for link reference definition
             if (\preg_match('/^\S+$/', \trim($r[1]))) {
-                $r[1] = shift($r[1], \strspn($r[1], ' '), $r[4][1]);
+                $r[1] = s2($r[1], \strspn($r[1], ' '), $r[4][1]);
                 $rows[] = $r;
                 $r = $row_new;
                 continue;
@@ -924,7 +989,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                 continue;
             }
             $r[1] = \trim($r[1], "\n");
-            $r[1] = shift($r[1] . "\n", \strspn($r[1], ' '), $r[4][1]);
+            $r[1] = s2($r[1] . "\n", \strspn($r[1], ' '), $r[4][1]);
             $rows[] = $r;
             $r = $row_new;
             continue;
@@ -1538,7 +1603,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
         }
     }
     if (0 === $r[0] || 1 === $r[0] || 2 === $r[0]) {
-        $r[1] = shift($r[1], \strspn($r[1], ' '), $r[4][1]);
+        $r[1] = s2($r[1], \strspn($r[1], ' '), $r[4][1]);
         // TODO: Strict pattern without regular expression for link reference definition
         if (0 === $r[0] && !\preg_match('/^\S+$/', \trim($r[1]))) {
             $r[0] = 'p';
@@ -1588,11 +1653,12 @@ function s1(string $text) {
     })));
 }
 
-function shift(string $text, int $d = 0, int $e = 0) {
+function s2(string $text, int $d = 0) {
     $r = "";
     foreach (\explode("\n", $text) as $v) {
-        ($n = \strspn($v, ' ')) >= $d && ($v = \substr($v, $d));
-        ($n = \strspn($v, ' ')) >= $e && ($v = \substr($v, $e));
+        if (($n = \strspn($v, ' ')) >= $d) {
+            $v = \substr($v, $d);
+        }
         $r .= $v . "\n";
     }
     return \substr($r, 0, -1);
