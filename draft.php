@@ -971,7 +971,7 @@ function rows(string $text, array &$lot = [], $deep = 0) {
         }
         $rows[] = $r;
     }
-    if (true === $deep || $deep > 0) {
+    if (25 === $deep) {
         foreach ($rows as $k => &$v) {
             // Put the abbreviation, reference, and note block(s) into the batch!
             if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {
@@ -982,6 +982,9 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                 unset($rows[$k]);
             }
             // unset($v[3], $v[4]);
+        }
+        foreach ($lot[2] as &$v) {
+            $v = rows($v, $lot, $deep - 1)[0];
         }
         unset($v);
     }
@@ -1778,7 +1781,7 @@ foreach ($files as $file) {
     echo '</pre>';
     echo '<pre style="border:2px solid #00f;flex:1;font:normal normal 12px/1.25 monospace;margin:0;overflow:auto;padding:0 0.25em;">';
     $lot = [];
-    echo \htmlspecialchars(\json_encode(rows($text, $lot, 1), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+    echo \htmlspecialchars(\json_encode(rows($text, $lot, 25), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
     echo '</pre>';
     echo '</div>';
 }
