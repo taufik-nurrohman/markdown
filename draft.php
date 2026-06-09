@@ -56,6 +56,24 @@ function a(string $row) {
     return $r;
 }
 
+function abbr(string $text) {
+    if ('*' !== ($text[0] ?? 0) || '[' !== ($text[1] ?? 0)) {
+        return [];
+    }
+    $i = 2; // Start after `*[`
+    while (false !== ($n = \strpos($text, ']:', $i))) {
+        if ($n > 2 && "\\" === $text[$n - 1]) {
+            $i = $n + 2;
+            continue;
+        }
+        $k = \substr($text, 0, $n += 2);
+        $key = \trim(\substr($k, 2, -2)); // Remove `*[` and `]:`
+        $value = \trim(\substr($text, $n));
+        return [s1(v($key)), $value . "\n"];
+    }
+    return [];
+}
+
 function attr(string $text) {
     // Force a space at the end of the text. This will make processing easier.
     $limit = \strlen($text = \trim($text) . ' ');
@@ -123,9 +141,10 @@ function attr(string $text) {
         }
         $s .= $c;
     }
-    if (!empty($r['class'])) {
-        \sort($r['class']);
-        $r['class'] = \implode(' ', \array_unique($r['class']));
+    $set = \array_unique($r['class'] ?? []);
+    if ($set) {
+        \sort($set);
+        $r['class'] = \implode(' ', $set);
     }
     \ksort($r);
     return $r;
@@ -278,7 +297,7 @@ function ref(string $text) {
 
 function row(string $text, array &$lot = []) {}
 
-function rows(string $text, array &$lot = []) {
+function rows(string $text, array &$lot = [], $deep = 0) {
     $lot = \array_replace([[], [], []], $lot);
     if ("" === \trim($text)) {
         return [[], $lot];
@@ -312,75 +331,85 @@ function rows(string $text, array &$lot = []) {
         if ($d = \strspn($row = s($raw, 4), ' ')) {
             $row = \substr($row, $d > 4 ? 4 : $d);
         }
-        if ($r && 0 === $r[0]) {
-            // A link reference definition syntax cannot contain empty line(s)
+        if ($deep >= 0 && $r && 0 === $r[0]) {
+            // A link reference definition cannot contain blank line(s)
             if ("" === ($row = \trim($row))) {
                 if ($ref = ref($r[1])) {
                     $lot[0][$ref[0]] = [$ref[1], $ref[2], $ref[3]];
                     $r = null;
                     continue;
                 }
+                // A blank line closes the current potential link reference definition. If the potential link reference
+                // definition is not valid, treat it as a normal paragraph.
                 $r[0] = 'p';
                 $rows[] = $r;
                 $r = null;
                 continue;
             }
-            // Current line validates the link reference definition syntax
+            // Current line validates the link reference definition
             if ($ref = ref($r[1] . $row)) {
                 $lot[0][$ref[0]] = [$ref[1], $ref[2], $ref[3]];
                 $r = null;
                 continue;
             }
-            // Current line invalidates the link reference definition syntax
+            // Current line invalidates the link reference definition. Try to validate the previous chunk. If it is a
+            // valid link reference definition, then we can assume that the next line can start a new block.
             if ($ref = ref($r[1])) {
                 $lot[0][$ref[0]] = [$ref[1], $ref[2], $ref[3]];
                 // Assume the next line starts a new block
                 $r = rows($raw, $lot)[0][0] ?? null;
                 continue;
             }
-            // It does not seem to be a link reference definition syntax
+            // At this point, current link reference definition stream is not yet a valid link reference definition. We
+            // can assume that the current line may start a new block. However, if the current line is a paragraph,
+            // consider it as a continuation of the link reference definition, which is to be validated later.
             $now = rows($raw, $lot)[0][0] ?? null;
             if ($now && 'p' === $now[0] && "" !== $now[1]) {
                 $r[1] .= $row . "\n";
                 continue;
             }
+            // A new block interrupts the current link reference definition stream, causing it to become invalid.
+            if ($now && 0 === $r[0]) {
+                $r[0] = 'p';
+            }
+            $rows[] = $r;
+            $r = $now;
+            continue;
+        }
+        if ($deep >= 0 && $r && 1 === $r[0]) {
+            // An abbreviation definition cannot contain blank line(s)
+            if ("" === ($row = \trim($row))) {
+                if ($abbr = abbr($r[1])) {
+                    $lot[1][$abbr[0]] = $abbr[1];
+                    $r = null;
+                    continue;
+                }
+                // A blank line closes the current potential abbreviation definition. If the potential abbreviation
+                // definition is not valid, treat it as a normal paragraph.
+                $r[0] = 'p';
+                $rows[] = $r;
+                $r = null;
+                continue;
+            }
+            // Check if the current line can continue the abbreviation definition.
+            $now = rows($raw, $lot)[0][0] ?? null;
+            if ($now && 'p' === $now[0] && "" !== $now[1]) {
+                $r[1] .= $row . "\n";
+                continue;
+            }
+            // At this point, the new block should interrupt the current abbreviation definition stream.
+            if ($abbr = abbr($r[1])) {
+                $lot[1][$abbr[0]] = $abbr[1];
+                $r = $now;
+                continue;
+            }
+            // At this point, the potential abbreviation definition is closed but not valid.
             $r[0] = 'p';
             $rows[] = $r;
             $r = $now;
             continue;
         }
-        if ($r && 1 === $r[0]) {
-            $now = rows($raw, $lot)[0][0] ?? null;
-            if ($now && 'p' === $now[0] && "" !== $now[1]) {
-                $r[1] .= $now[1];
-                continue;
-            }
-            $r[1] = \trim($r[1], "\n") . "\n";
-            if ('*' === ($r[1][0] ?? 0) && '[' === ($r[1][1] ?? 0)) {
-                $final = false;
-                $i = 2; // Start after `*[`
-                $row = $r[1];
-                while (false !== ($n = \strpos($row, ']:', $i))) {
-                    if ($n > 2 && "\\" === $row[$n - 1]) {
-                        $i = $n + 2;
-                        continue;
-                    }
-                    $final = true;
-                    break;
-                }
-                if ($final) {
-                    $k = \substr($row, 0, $n += 2);
-                    $key = \trim(\substr($k, 2, -2)); // Remove `*[` and `]:`
-                    $value = \trim(\substr($row, $n));
-                    $r[1] = $value . "\n";
-                    $r[4] = [s1(v($key)), \strlen($k)];
-                }
-            }
-            $rows[] = $r;
-            $r = $now;
-            continue;
-        }
-        if ($r && 2 === $r[0]) {}
+        if ($deep >= 0 && $r && 2 === $r[0]) {}
         if ($r && false === $r[0]) {
             // HTML block type 1
             if (1 === $r[4][0] && isset($blocks[1][$r[4][1]]) && false !== \stripos($r[1] . $raw, '</' . $r[4][1] . '>')) {
@@ -415,19 +444,33 @@ function rows(string $text, array &$lot = []) {
             continue;
         }
         if ($r && 'blockquote' === $r[0]) {
-            $now = rows($row, $lot)[0][0] ?? null;
+            $now = rows($raw, $lot, -1)[0][0] ?? null; // Do not capture abbreviation(s), reference(s), and note(s)
             if ($now && 'blockquote' === $now[0]) {
                 $r[1] .= $now[1];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-            if ($now && \in_array($now[0], [0, 1, 2, 'p'], true) && "" !== $now[1]) {
-                // TODO: Also check last block type of the block quote content to determine if current leaf block is a lazy continuation line
+            if ($now && ('p' === $now[0] || 'pre' === $now[0] && "\t" === $now[4][1]) && "" !== $now[1]) {
+                // <https://spec.commonmark.org/0.31.2#example-238>
+                // Also, check if the last block type in the block quote stream accepts paragraph continuation text. If
+                // it does accept it, treat the current potential paragraph continuation text as a new block.
+                $test = \end(rows($r[1], $lot)[0]) ?: null;
+                if ($test && 'p' !== $test[0]) {
+                    $rows[] = $r;
+                    $r = rows($raw, $lot)[0][0] ?? null;
+                    continue;
+                }
                 $r[1] .= $raw . "\n";
                 continue;
             }
             $rows[] = $r;
-            $r = $now;
+            $r = rows($raw, $lot)[0][0] ?? null;
+            continue;
+        }
+        // Close leaf block(s) that will close immediately, such as the thematic break, if it has not been closed yet.
+        if ($r && 'h' === $r[0][0]) {
+            $rows[] = $r;
+            $r = null;
             continue;
         }
         if ($r && 'pre' === $r[0]) {
@@ -445,11 +488,11 @@ function rows(string $text, array &$lot = []) {
             // <https://spec.commonmark.org/0.31.2#example-111>
             if ("" === \trim($row)) {
                 // <https://spec.commonmark.org/0.31.2#example-112>
-                $r[1] .= s($raw, $r[3]) . "\n";
+                $r[1] .= \substr(s($raw, $r[3]), $r[3]) . "\n";
                 continue;
             }
             if ($d >= 4) {
-                $r[1] .= s($raw, $r[3]) . "\n";
+                $r[1] .= \substr(s($raw, $r[3]), $r[3]) . "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#example-114>
@@ -458,7 +501,7 @@ function rows(string $text, array &$lot = []) {
             continue;
         }
         if ($d >= 4 && (!$r || 'p' !== $r[0])) {
-            $r = ['pre', $row . "\n", ['class' => false], $d, [1, "\t"]];
+            $r = ['pre', $row . "\n", ['class' => false], 4, [1, "\t"]];
             continue;
         }
         $c = $row[0] ?? $x;
@@ -480,26 +523,18 @@ function rows(string $text, array &$lot = []) {
             $r = null;
             continue;
         }
-        if ('*' === $c && '[' === ($row[1] ?? 0)) {
-            $final = false;
-            $i = 2; // Start after `*[`
-            while (false !== ($n = \strpos($row, ']:', $i))) {
-                if ($n > 2 && "\\" === $row[$n - 1]) {
-                    $i = $n + 2;
+        // There is no formal specification for the abbreviation block in CommonMark, so I will treat it in a similar
+        // manner to the link reference definition block. It acts as a leaf block that cannot interrupt a paragraph. It
+        // can span multiple line(s) but cannot have blank line(s) in between.
+        if ($deep >= 0 && '*' === $c && '[' === ($row[1] ?? 0)) {
+            // <https://spec.commonmark.org/0.31.2#example-213>
+            if ($r && "" !== $r[1]) {
+                if ('p' === $r[0]) {
+                    $r[1] .= $raw . "\n";
                     continue;
                 }
-                $final = true;
-                break;
-            }
-            if ($final) {
-                if ($r && "" !== $r[1]) {
-                    $rows[] = $r;
-                }
-                $k = \substr($row, 0, $n += 2);
-                $key = \trim(\substr($k, 2, -2)); // Remove `*[` and `]:`
-                $value = \trim(\substr($row, $n));
-                $r = [1, $value . "\n", [], $d, [s1(v($key)), \strlen($k)]];
-                continue;
+                // <https://spec.commonmark.org/0.31.2#example-214>
+                $rows[] = $r;
             }
             $r = [1, $row . "\n", [], $d, []];
             continue;
@@ -598,8 +633,8 @@ function rows(string $text, array &$lot = []) {
                 }
                 continue;
             }
-            // HTML block(s) type 6 does not care whether it is an open or close tag. The initial tag doesn’t need to be
-            // a valid tag. As long as it starts like one, then it is okay.
+            // HTML block type 6 does not differentiate between open and close tag(s). The initial tag does not need to
+            // be a valid tag. As long as it starts like one, that’s okay.
             if (isset($blocks[6][$block_6 = \trim($block, '/')])) {
                 // <https://spec.commonmark.org/0.31.2#example-185>
                 if ($r && "" !== $r[1]) {
@@ -629,7 +664,7 @@ function rows(string $text, array &$lot = []) {
                     if ("" === ($test = \trim(\substr($test, $n + 1)))) {
                         if ($r && "" !== $r[1]) {
                             // <https://spec.commonmark.org/0.31.2#example-187>
-                            if (\in_array($r[0], [0, 1, 2, 'blockquote', 'p'], true)) {
+                            if ('p' === $r[0]) {
                                 $r[1] .= $raw . "\n";
                                 continue;
                             }
@@ -639,7 +674,7 @@ function rows(string $text, array &$lot = []) {
                         continue;
                     }
                     if ($open) {
-                        $final = true;
+                        $end = true;
                         $limit = \strlen($test);
                         for ($i = 0; $i < $limit; ++$i) {
                             while ($i < $limit && false !== \strpos(" \t", $test[$i])) {
@@ -650,7 +685,7 @@ function rows(string $text, array &$lot = []) {
                             }
                             // <https://spec.commonmark.org/0.31.2#attribute-name>
                             if (false === \strpos($c5, $test[$i])) {
-                                $final = false;
+                                $end = false;
                                 break;
                             }
                             while ($i < $limit && false !== \strpos($c6, $test[$i])) {
@@ -668,30 +703,30 @@ function rows(string $text, array &$lot = []) {
                                     ++$i;
                                 }
                                 if ($i >= $limit) {
-                                    $final = false;
+                                    $end = false;
                                     break;
                                 }
-                                $quote = $test[$i];
+                                $q = $test[$i];
                                 // <https://spec.commonmark.org/0.31.2#single-quoted-attribute-value>
                                 // <https://spec.commonmark.org/0.31.2#double-quoted-attribute-value>
-                                if ("'" === $quote || '"' === $quote) {
+                                if ("'" === $q || '"' === $q) {
                                     ++$i;
                                     $end = false;
                                     while ($i < $limit) {
-                                        if ($quote === $test[$i]) {
+                                        if ($q === $test[$i]) {
                                             $end = true;
                                             break;
                                         }
                                         ++$i;
                                     }
                                     if (!$end) {
-                                        $final = false;
+                                        $end = false;
                                         break;
                                     }
                                 } else {
                                     // <https://spec.commonmark.org/0.31.2#unquoted-attribute-value>
                                     if (false !== \strpos(" \t'" . '"<=>`', $test[$i])) {
-                                        $final = false;
+                                        $end = false;
                                         break;
                                     }
                                     while ($i < $limit && false === \strpos(" \t'" . '"<=>`', $test[$i])) {
@@ -703,10 +738,10 @@ function rows(string $text, array &$lot = []) {
                                 --$i; // Put the cursor back right after the attribute name if there is no value
                             }
                         }
-                        if ($final) {
+                        if ($end) {
                             if ($r && "" !== $r[1]) {
                                 // <https://spec.commonmark.org/0.31.2#example-187>
-                                if (\in_array($r[0], [0, 1, 2, 'blockquote', 'p'], true)) {
+                                if ('p' === $r[0]) {
                                     $r[1] .= $raw . "\n";
                                     continue;
                                 }
@@ -724,15 +759,18 @@ function rows(string $text, array &$lot = []) {
             if ($r && "" !== $r[1]) {
                 $rows[] = $r;
             }
+            // Expand the `\t` after the block quote marker to 4 column(s), and then normalize the required 4-column(s)
+            // indentation of an indented-style code block into space(s).
             $row = s(\substr($row, 1), 8, 1);
+            // Now, we can drop the optional white-space (it is a literal space now) after the block quote marker.
             if (' ' === ($row[0] ?? 0)) {
                 $row = \substr($row, 1);
             }
             $r = ['blockquote', $row . "\n", [], $d];
             continue;
         }
-        if ('[' === $c && '^' === ($row[1] ?? 0)) {}
-        if ('[' === $c) {
+        if ($deep >= 0 && '[' === $c && '^' === ($row[1] ?? 0)) {}
+        if ($deep >= 0 && '[' === $c) {
             // <https://spec.commonmark.org/0.31.2#example-213>
             if ($r && "" !== $r[1]) {
                 if ('p' === $r[0]) {
@@ -769,7 +807,7 @@ function rows(string $text, array &$lot = []) {
             // <https://spec.commonmark.org/0.31.2#info-string>
             $rest = \trim(\substr($row, $n));
             // <https://spec.commonmark.org/0.31.2#example-145>
-            if ('`' === $c && false !== \strpos($rest, '`')) {
+            if ('`' === $c && false !== \strpos($rest, $c)) {
                 if ($r && "" !== $r[1]) {
                     $r[1] .= $row . "\n";
                 }
@@ -818,6 +856,15 @@ function rows(string $text, array &$lot = []) {
         $r = ['p', $row . "\n", [], $d];
     }
     if ($r && "" !== $r[1]) {
+        // At this point, there is probably an open code block that has reached the forced last `\n` character. It
+        // should be removed; otherwise, the result will have too many extra `\n` character(s) at the end of the code
+        // block content.
+        if ('pre' === $r[0]) {
+            if ('`' === $r[4][1] || '~' === $r[4][1]) {
+                $r[1] = \substr($r[1], 1);
+            }
+            $r[1] = \substr($r[1], 0, -1);
+        }
         $rows[] = $r;
     }
     return [$rows, $lot];
@@ -1510,19 +1557,22 @@ function s(string $text, int $max = 4, int $n = 0) {
     $limit = \strlen($text);
     $r = "";
     for ($i = 0; $i < $limit; ++$i) {
+        if ($n >= $max) {
+            return $r . \substr($text, $i);
+        }
         $c = $text[$i];
         if (' ' === $c) {
-            if ($n < $max) {
-                $r .= $c;
-            }
+            $r .= $c;
             $n += 1;
             continue;
         }
         if ("\t" === $c) {
             $z = 4 - ($n % 4);
-            if ($n < $max) {
-                $r .= \str_repeat(' ', \min($z, $max - $n));
+            if ($n + $z > $max) {
+                $r .= \str_repeat(' ', $max - $n);
+                return $r . \substr($text, $i);
             }
+            $r .= \str_repeat(' ', $z);
             $n += $z;
             continue;
         }
