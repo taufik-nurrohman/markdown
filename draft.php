@@ -232,9 +232,11 @@ function ref(string $text) {
             return []; // Link label cannot contain unescaped `[` and `]` character(s)
         }
     }
+    // <https://spec.commonmark.org/0.31.2#matches>
     if (\defined("\\MB_CASE_FOLD")) {
-        // <https://spec.commonmark.org/0.31.2#matches>
         $r[0] = \mb_convert_case($r[0], \MB_CASE_FOLD, 'UTF-8');
+    } else {
+        $r[0] = \strtolower($r[0]);
     }
     $text = \trim(\substr($text, $n + 2));
     // <https://spec.commonmark.org/0.31.2#example-199>
@@ -379,7 +381,8 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             // A link reference definition cannot contain blank line(s).
             if ("" === ($row = \trim($row))) {
                 if ($ref = ref($r[1])) {
-                    $lot[0][$ref[0]] = [$ref[1], $ref[2], $ref[3]];
+                    $r[4] = [$ref[0], \array_slice($ref, 1)];
+                    $rows[] = $r;
                     $r = null;
                     continue;
                 }
@@ -392,14 +395,16 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             }
             // Current line validates the link reference definition.
             if ($ref = ref($r[1] . $row)) {
-                $lot[0][$ref[0]] = [$ref[1], $ref[2], $ref[3]];
+                $r[4] = [$ref[0], \array_slice($ref, 1)];
+                $rows[] = $r;
                 $r = null;
                 continue;
             }
             // Current line invalidates the link reference definition. Try to validate the previous chunk. If it is a
             // valid link reference definition, then we can assume that the next line can start a new block.
             if ($ref = ref($r[1])) {
-                $lot[0][$ref[0]] = [$ref[1], $ref[2], $ref[3]];
+                $r[4] = [$ref[0], \array_slice($ref, 1)];
+                $rows[] = $r;
                 // Assume the next line starts a new block
                 $r = rows($raw, $lot)[0][0] ?? null;
                 continue;
@@ -422,14 +427,13 @@ function rows(string $text, array &$lot = [], $deep = 0) {
         }
         if ($deep >= 0 && $r && 1 === $r[0]) {
             // An abbreviation definition cannot contain blank line(s).
-            if ("" === ($row = \trim($row))) {
+            if ("" === \trim($row)) {
                 if ($abbr = abbr($r[1])) {
-                    $lot[1][$abbr[0]] = $abbr[1];
+                    $r[4] = $abbr;
+                    $rows[] = $r;
                     $r = null;
                     continue;
                 }
-                // A blank line closes the current potential abbreviation definition. If the potential abbreviation
-                // definition is not valid, treat it as a normal paragraph.
                 $r[0] = 'p';
                 $rows[] = $r;
                 $r = null;
@@ -441,16 +445,21 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                 $r[1] .= $now[1];
                 continue;
             }
+            if ($now && false === $now[0] && 7 === $now[4][0]) {
+                $r[1] .= $now[1];
+                continue;
+            }
             // At this point, the new block should interrupt the current abbreviation definition stream.
             if ($abbr = abbr($r[1])) {
-                $lot[1][$abbr[0]] = $abbr[1];
+                $r[4] = $abbr;
+                $rows[] = $r;
                 $r = $now;
                 continue;
             }
             // At this point, the potential abbreviation definition is closed but not valid.
             $r[0] = 'p';
             $rows[] = $r;
-            $r = $now;
+            $r = null;
             continue;
         }
         if ($deep >= 0 && $r && 2 === $r[0]) {
@@ -479,7 +488,8 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             }
             $r[1] = \trim($r[1], "\n") . "\n";
             if ($note = note($r[1])) {
-                $lot[2][$note[0]] = $note[1];
+                $r[4] = $note;
+                $rows[] = $r;
                 $r = $now;
                 continue;
             }
@@ -489,11 +499,10 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             continue;
         }
         if ($r && false === $r[0]) {
-            $test = $r[1] . $raw;
             // HTML block type 1
-            if (1 === $r[4][0] && isset($blocks[1][$r[4][1]]) && false !== \stripos($test, '</' . $r[4][1] . '>')) {
-                if ("" !== $row) {
-                    $r[1] = $test . "\n";
+            if (1 === $r[4][0] && isset($blocks[1][$r[4][1]]) && false !== \stripos($r[1], '</' . $r[4][1] . '>')) {
+                if ("" !== \trim($row)) {
+                    $r[1] .= $raw . "\n";
                 }
                 $rows[] = $r;
                 $r = null;
@@ -501,13 +510,13 @@ function rows(string $text, array &$lot = [], $deep = 0) {
             }
             // HTML block type 2, 3, 4, and 5
             if (
-                2 === $r[4][0] && false !== \strpos($test, '-->') ||
-                3 === $r[4][0] && false !== \strpos($test, '?>') ||
-                4 === $r[4][0] && false !== \strpos($test, '>') ||
-                5 === $r[4][0] && false !== \strpos($test, ']]>')
+                2 === $r[4][0] && false !== \strpos($r[1], '-->') ||
+                3 === $r[4][0] && false !== \strpos($r[1], '?>') ||
+                4 === $r[4][0] && false !== \strpos($r[1], '>') ||
+                5 === $r[4][0] && false !== \strpos($r[1], ']]>')
             ) {
-                if ("" !== $row) {
-                    $r[1] = $test . "\n";
+                if ("" !== \trim($row)) {
+                    $r[1] .= $raw . "\n";
                 }
                 $rows[] = $r;
                 $r = null;
@@ -646,18 +655,33 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                 // <https://spec.commonmark.org/0.31.2#html-comment>
                 if ('--' === \substr($block, 1, 2)) {
                     $r = [false, $raw . "\n", [], $d, [2]];
+                    if (false !== \strpos($row, '-->')) {
+                        // End on its own line
+                        $rows[] = $r;
+                        $r = null;
+                    }
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#cdata-section>
                 // <https://spec.commonmark.org/0.31.2#example-182>
                 if ('[CDATA[' === \substr($block, 1, 7)) {
                     $r = [false, $raw . "\n", [], $d, [5]];
+                    if (false !== \strpos($row, ']]>')) {
+                        // End on its own line
+                        $rows[] = $r;
+                        $r = null;
+                    }
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#declaration>
                 // <https://spec.commonmark.org/0.31.2#example-181>
                 if (\strspn(\strtolower($block), $c1, 1)) {
                     $r = [false, $raw . "\n", [], $d, [4]];
+                    if (false !== \strpos($row, '>')) {
+                        // End on its own line
+                        $rows[] = $r;
+                        $r = null;
+                    }
                     continue;
                 }
                 $r[1] .= $row . "\n";
@@ -671,6 +695,11 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                     $rows[] = $r;
                 }
                 $r = [false, $raw . "\n", [], $d, [3]];
+                if (false !== \strpos($row, '?>')) {
+                    // End on its own line
+                    $rows[] = $r;
+                    $r = null;
+                }
                 continue;
             }
             if (isset($blocks[1][$block = \strtolower($block)])) {
@@ -679,6 +708,11 @@ function rows(string $text, array &$lot = [], $deep = 0) {
                     $rows[] = $r;
                 }
                 $r = [false, $raw . "\n", [], $d, [1, $block]];
+                if (false !== \stripos($row, '</' . $block . '>')) {
+                    // End on its own line
+                    $rows[] = $r;
+                    $r = null;
+                }
                 continue;
             }
             // HTML block type 6 does not differentiate between open and close tag(s). The initial tag does not need to
@@ -924,6 +958,11 @@ function rows(string $text, array &$lot = [], $deep = 0) {
         // removed; otherwise, the result will have too many extra `\n` character(s) at the end of the block content.
         if (2 === $r[0]) {
             $r[1] = \trim($r[1], "\n") . "\n";
+            if ($note = note($r[1])) {
+                $r[4] = $note;
+            } else {
+                $r[0] = 'p';
+            }
         } else if ('pre' === $r[0]) {
             if ('`' === $r[4][1] || '~' === $r[4][1]) {
                 $r[1] = \substr($r[1], 1);
@@ -932,7 +971,19 @@ function rows(string $text, array &$lot = [], $deep = 0) {
         }
         $rows[] = $r;
     }
-    return [$rows, $lot];
+    if (true === $deep || $deep > 0) {
+        foreach ($rows as $k => $v) {
+            // Put the abbreviation, reference, and note block(s) into the batch!
+            if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {
+                // <https://spec.commonmark.org/0.31.2#example-204>
+                if (!isset($lot[$v[0]][$v[4][0]])) {
+                    $lot[$v[0]][$v[4][0]] = $v[4][1];
+                }
+                unset($rows[$k]);
+            }
+        }
+    }
+    return [\array_values($rows), $lot];
 
     foreach ($raws as $raw) {
         [$row, $d] = d($raw, 4);
@@ -1725,7 +1776,7 @@ foreach ($files as $file) {
     echo '</pre>';
     echo '<pre style="border:2px solid #00f;flex:1;font:normal normal 12px/1.25 monospace;margin:0;overflow:auto;padding:0 0.25em;">';
     $lot = [];
-    echo \htmlspecialchars(\json_encode(rows($text, $lot), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+    echo \htmlspecialchars(\json_encode(rows($text, $lot, 1), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
     echo '</pre>';
     echo '</div>';
 }
