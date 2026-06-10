@@ -1097,10 +1097,13 @@ function rows(string $text, array &$lot = [], $deep = 0) {
         // unset($v[3], $v[4]);
     }
     unset($v);
-    foreach ($lot[2] as &$v) {
-        $v = rows($v, $lot, $deep - 1)[0];
+    // Evaluate note(s) once
+    if (999 === $deep) {
+        foreach ($lot[2] as &$v) {
+            $v = rows($v, $lot, $deep - 1)[0];
+        }
+        unset($v);
     }
-    unset($v);
     return [\array_values($rows), $lot, $void];
 
         foreach ($raws as $raw) {
