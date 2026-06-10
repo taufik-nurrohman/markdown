@@ -1040,65 +1040,67 @@ function rows(string $text, array &$lot = [], $deep = 0) {
         }
         $rows[] = $r;
     }
-    if (999 === $deep) {
-        foreach ($rows as $k => &$v) {
-            // Put the abbreviation, reference, and note block(s) into the batch!
-            if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {
-                // <https://spec.commonmark.org/0.31.2#example-204>
-                if (!isset($lot[$v[0]][$v[4][0]])) {
-                    $lot[$v[0]][$v[4][0]] = $v[4][1];
-                }
-                unset($rows[$k]);
+    foreach ($rows as $k => &$v) {
+        // Put the abbreviation, reference, and note block(s) into the batch!
+        if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {
+            // <https://spec.commonmark.org/0.31.2#example-204>
+            if (!isset($lot[$v[0]][$v[4][0]])) {
+                $lot[$v[0]][$v[4][0]] = $v[4][1];
+            }
+            unset($rows[$k]);
+            continue;
+        }
+        if ($deep > 0) {
+            if ('blockquote' === $v[0]) {
+                $v[1] = rows($v[1], $lot, $deep - 1)[0] ?: "\n";
                 continue;
             }
-            if ($deep > 0) {
-                if ('blockquote' === $v[0]) {
-                    $v[1] = rows($v[1], $lot, $deep - 1)[0] ?: "\n";
-                    continue;
-                }
-                if ('pre' === $v[0]) {
-                    $v[1] = ['code', \htmlspecialchars($v[1]), $v[2], -1];
-                    $v[2] = [];
-                    continue;
-                }
-                if (\in_array($v[0], ['dl', 'ol', 'ul'], true)) {
-                    $name = 'dl' === $v[0] ? 'dd' : 'li';
-                    $raw = $v[1];
-                    $v[1] = [];
-                    // <https://spec.commonmark.org/0.31.2#loose>
-                    // A list is loose if any of its constituent list item(s) are separated by blank line(s) …
-                    $loose = false !== \strpos($raw, "\n\n\x3");
-                    foreach (\explode("\x3", $raw) as $r) {
-                        $r = rows($r, $lot, $deep - 1);
-                        $v[1][] = [$name, $r[0] ?: "\n", [], $v[3]];
-                        // … or if any of its constituent list item(s) directly contain two block-level element(s) with
-                        // a blank line between them.
-                        if ($r[2] > 0) {
-                            $loose = true;
-                        }
+            if ('pre' === $v[0]) {
+                $v[1] = ['code', \htmlspecialchars($v[1]), $v[2], -1];
+                $v[2] = [];
+                continue;
+            }
+            if (\in_array($v[0], ['dl', 'ol', 'ul'], true)) {
+                $name = 'dl' === $v[0] ? 'dd' : 'li';
+                $raw = $v[1];
+                $v[1] = [];
+                // <https://spec.commonmark.org/0.31.2#loose>
+                // A list is loose if any of its constituent list item(s) are separated by blank line(s) …
+                $loose = false !== \strpos($raw, "\n\n\x3");
+                foreach (\explode("\x3", $raw) as $r) {
+                    $r = rows($r, $lot, $deep - 1);
+                    $v[1][] = [$name, $r[0] ?: "\n", [], $v[3]];
+                    // … or if any of its constituent list item(s) directly contain two block-level element(s) with
+                    // a blank line between them.
+                    if ($r[2] > 0) {
+                        $loose = true;
                     }
-                    if (!($v[4][3] = $loose) && $v[1]) {
-                        foreach ($v[1] as &$vv) {
-                            if (!\is_array($vv[1]) || \count($vv[1]) > 1 || 'p' !== $vv[1][0][0]) {
+                }
+                if (!($v[4][3] = $loose) && $v[1]) {
+                    foreach ($v[1] as &$vv) {
+                        if (\is_array($vv[1] ?: 0) && \count($vv[1]) < 3 && 'p' === $vv[1][0][0]) {
+                            if (\in_array($vv[1][1][0] ?? 0, ['ol', 'ul'], true)) {
+                                $vv[1][0] = $vv[1][0][1]; // Remove the surrounding paragraph
                                 continue;
                             }
                             $vv[1][0] = $vv[1][0][1]; // Remove the surrounding paragraph
+                            continue;
                         }
-                        unset($vv);
                     }
-                    continue;
+                    unset($vv);
                 }
-                // TODO
-                // $v[1] = row($v[1], $lot);
+                continue;
             }
-            // unset($v[3], $v[4]);
+            // TODO
+            // $v[1] = row($v[1], $lot);
         }
-        unset($v);
-        foreach ($lot[2] as &$v) {
-            $v = rows($v, $lot, $deep - 1)[0];
-        }
-        unset($v);
+        // unset($v[3], $v[4]);
     }
+    unset($v);
+    foreach ($lot[2] as &$v) {
+        $v = rows($v, $lot, $deep - 1)[0];
+    }
+    unset($v);
     return [\array_values($rows), $lot, $void];
 
         foreach ($raws as $raw) {
@@ -1890,23 +1892,21 @@ function v(string $text) {
 
 
 
-$batch = basename($_GET['batch'] ?? '0');
+$batch = basename($_GET['batch'] ?? '1');
 $test = basename($_GET['test'] ?? 'p');
 
-$r = "";
-
-$r .= '<form method="get">';
+$r  = '<form method="get">';
 $r .= '<fieldset>';
 $r .= '<legend>';
 $r .= 'Navigation';
 $r .= '</legend>';
-$r .= '<p>';
+$r .= '<p role="group">';
 foreach (glob(__DIR__ . '/draft/*', GLOB_ONLYDIR) as $v) {
     $r .= '<button' . ($test === ($v = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button> ';
 }
-$r = \rtrim($r) . '</p>';
+$r  = \substr($r, 0, -1) . '</p>';
 $r .= '</fieldset>';
-$r .= '<input name="batch" type="hidden" value="0">';
+$r .= '<input name="batch" type="hidden" value="1">';
 $r .= '</form>';
 
 $r .= '<form method="get">';
@@ -1914,11 +1914,12 @@ $r .= '<fieldset>';
 $r .= '<legend>';
 $r .= 'Batch';
 $r .= '</legend>';
-$r .= '<p>';
+$r .= '<p role="group">';
+$r .= '<button' . ($batch === '*' ? ' disabled' : "") . ' name="batch" type="submit" value="*">*</button>';
 foreach (glob(__DIR__ . '/draft/' . $test . '/*', GLOB_ONLYDIR) as $v) {
-    $r .= '<button' . ($batch === ($v = basename($v)) ? ' disabled' : "") . ' name="batch" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button> ';
+    $r .= ' <button' . ($batch === ($v = basename($v)) ? ' disabled' : "") . ' name="batch" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button>';
 }
-$r = \rtrim($r) . '</p>';
+$r .= '</p>';
 $r .= '</fieldset>';
 $r .= '<input name="test" type="hidden" value="' . htmlspecialchars($test) . '">';
 $r .= '</form>';
