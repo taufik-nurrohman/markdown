@@ -43,6 +43,9 @@ namespace x\markdown\from {
     const c5 = c3 . c4 . '-';
     const c6 = c3 . ':_';
     const c7 = c5 . '.:_';
+    // This is the maximum parsing recursion. Regular user(s) would likely never reach this level. They would only do so
+    // if they were to create an extremely deep quote or list block.
+    const deep = 25;
     function a(string $row) {
         $r = [$row, []];
         if (false === \strpos($row, '{')) {
@@ -360,13 +363,29 @@ namespace x\markdown\from {
         }
         return [];
     }
-    function row(string $text, array &$lot = []) {}
-    function rows(string $text, array &$lot = [], $deep = 0) {
+    function raw(?string $value): array {
+        $lot = [];
+        return row($value ?? "", $lot, deep);
+    }
+    function raws(?string $value): array {
+        $lot = [];
+        $r = rows($value ?? "", $lot, deep);
+        // Parse the note block(s)
+        if (!empty($r[1][2])) {
+            foreach ($r[1][2] as &$v) {
+                $v = rows($v, $lot, deep - 1);
+            }
+            unset($v);
+        }
+        return $r;
+    }
+    function row(string $value, array &$lot = [], int $deep = 0) {}
+    function rows(string $value, array &$lot = [], int $deep = 0) {
         $lot = \array_replace([[], [], []], $lot);
-        if ("" === \trim($text)) {
+        if ("" === \trim($value)) {
             return [[], $lot, 0];
         }
-        $max = \count($raws = \explode("\n", \rtrim(\strtr($text, [
+        $max = \count($raws = \explode("\n", \rtrim(\strtr($value, [
             "\r\n" => "\n",
             "\r" => "\n"
         ]), "\n") . "\n")) - 1;
@@ -573,11 +592,13 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ($now && 'p' === $now[0] && "" !== $now[1] && "\n\n" !== \substr($r[1], -2)) {
+                    if (':' === $now[1][0]) {
+                        $now[1] = s($now[1], 6);
+                        if ($n = \strspn($now[1] = s($now[1], 6), ' ', 1)) {
+                            $now[1] = "\x1e" . \substr($now[1], 1 + $n);
+                        }
+                    }
                     $r[1] .= $now[1];
-                    continue;
-                }
-                if ($now && 'dl' === $now[0]) {
-                    $r[1] .= "\x3" . $now[1];
                     continue;
                 }
                 $r[1] = \trim($r[1], "\n") . "\n";
@@ -625,7 +646,7 @@ namespace x\markdown\from {
                     // behavior, you can comment out this line so that any number can continue the list.
                     $r[4][1] = $now[4][1];
                     // Merge list item with a special separator so that it will be easy to split them later.
-                    $r[1] .= "\x3" . $now[1];
+                    $r[1] .= "\x1e" . $now[1];
                     continue;
                 }
                 // At this point, the list block should end due to insufficient indentation level, different list item
@@ -671,7 +692,7 @@ namespace x\markdown\from {
                 $r = ['pre', $row . "\n", [], 4, [1, "\t"]];
                 continue;
             }
-            $c = $row[0] ?? "\x1a";
+            $c = $row[0] ?? "\x2";
             // <https://spec.commonmark.org/0.31.2#atx-heading>
             if ('#' === $c && ($n = \strspn($row, $c)) && $n < 7 && \strspn($row . ' ', c1, $n)) {
                 if ($r && "" !== $r[1]) {
@@ -712,7 +733,7 @@ namespace x\markdown\from {
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#ordered-list>
-            if (($n = \strspn($row, c4)) && $n < 10 && false !== \strpos(').', $row[$n] ?? "\x1a") && ($w = \strspn($row . ' ', c1, $n + 1))) {
+            if (($n = \strspn($row, c4)) && $n < 10 && false !== \strpos(').', $row[$n] ?? "\x3") && ($w = \strspn($row . ' ', c1, $n + 1))) {
                 // <https://spec.commonmark.org/0.31.2#start-number>
                 $start = (int) \substr($row, 0, $n);
                 if ($r && "" !== $r[1]) {
@@ -728,27 +749,21 @@ namespace x\markdown\from {
                 // <https://spec.commonmark.org/0.31.2#example-284>
                 continue;
             }
-            if (':' === $c && \strspn($row, c1, 1)) {
+            if (':' === $c && ($n = \strspn($now = s($row, 6), ' ', 1))) {
+                if (!$r && !empty($rows)) {
+                    $r = \array_pop($rows);
+                }
                 if ($r && 'p' === $r[0] && "" !== $r[1]) {
                     $r[0] = 'dl';
-                    $r[1] = \rtrim($r[1]) . "\x1a\n\x3" . \substr($row, 2) . "\n";
-                    $r[4] = [2, $c, ""];
+                    $r[1] .= "\x3\x1e" . \substr($now, 1 + $n) . "\n";
+                    $r[4] = [1 + $n, $c, ""];
                     continue;
                 }
-                if (!$r && !empty($rows)) {
-                    $past = $rows[\count($rows) - 1];
-                    if ($past && 'p' === $past[0] && "" !== $past[1]) {
-                        $r = \array_pop($rows);
-                        $r[0] = 'dl';
-                        $r[1] = \rtrim($r[1]) . "\x1a\n\n\x3" . \substr($row, 2) . "\n";
-                        $r[4] = [2, $c, ""];
-                        if ($void > 0) {
-                            --$void;
-                        }
-                        continue;
-                    }
+                if ($r) {
+                    $r[1] .= $raw . "\n";
+                    continue;
                 }
-                $r[1] .= $raw . "\n";
+                $r = ['p', $raw . "\n", [], $d];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#html-block>
@@ -1098,16 +1113,15 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ('dl' === $v[0]) {
-                    $raw = $v[1];
+                    $text = $v[1];
                     $v[1] = [];
-                    $loose = false !== \strpos($raw, "\n\n\x3");
-                    foreach (\explode("\x3", $raw) as $r) {
-                        if ("\x1a" === \substr($r = \trim($r), -1)) {
-                            $v[1][] = ['dt', \substr($r, 0, -1) . "\n", [], $v[3]];
+                    $loose = false !== \strpos($text, "\n\n\x1e");
+                    foreach (\explode("\x1e", $text) as $r) {
+                        if ("\x3" === \substr($r, -1)) {
+                            $v[1][] = ['dt', \substr($r, 0, -1), [], $v[3]];
                             continue;
                         }
-                        $r = rows($r, $lot, $deep - 1);
-                        $v[1][] = ['dd', $r[0] ?: "", [], $v[3]];
+                        $v[1][] = ['dd', $r, [], $v[3]];
                         if ($r[2] > 0) {
                             $loose = true;
                         }
@@ -1123,12 +1137,12 @@ namespace x\markdown\from {
                     continue;
                 }
                 if (\in_array($v[0], ['ol', 'ul'], true)) {
-                    $raw = $v[1];
+                    $text = $v[1];
                     $v[1] = [];
                     // <https://spec.commonmark.org/0.31.2#loose>
                     // A list is loose if any of its constituent list item(s) are separated by blank line(s) …
-                    $loose = false !== \strpos($raw, "\n\n\x3");
-                    foreach (\explode("\x3", $raw) as $r) {
+                    $loose = false !== \strpos($text, "\n\n\x1e");
+                    foreach (\explode("\x1e", $text) as $r) {
                         $r = rows($r, $lot, $deep - 1);
                         $v[1][] = ['li', $r[0] ?: "", [], $v[3]];
                         // … or if any of its constituent list item(s) directly contain two block-level element(s) with
@@ -1161,13 +1175,6 @@ namespace x\markdown\from {
             // unset($v[3], $v[4]);
         }
         unset($v);
-        // Evaluate note(s) once
-        if (999 === $deep) {
-            foreach ($lot[2] as &$v) {
-                $v = rows($v, $lot, $deep - 1)[0];
-            }
-            unset($v);
-        }
         return [\array_values($rows), $lot, $void];
     }
     function s(string $text, int $max = 4, int $n = 0) {

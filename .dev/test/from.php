@@ -139,6 +139,17 @@ body > main > div {
   display: flex;
   gap: 1em;
 }
+body > main > div > div,
+body > main > div > pre {
+  border: 2px solid #000;
+  flex: 1;
+  padding: 0.25em 0.35em;
+}
+body > main > div > pre {
+  background: #ffc;
+  border-width: 1px;
+  font: normal normal 12px/1.25 'Courier New', monospace;
+}
 body > main > div + div {
   margin-top: 1em;
 }
@@ -274,14 +285,14 @@ foreach ($files as $file) {
         $r .= '<h1 id="to:' . htmlspecialchars($n) . '"><a aria-hidden="true" href="#to:' . $n . '">#</a> ' . $v . "\\*" . '</h1>';
         $current = $v;
     }
-    $raw = file_get_contents($file);
+    $raws = file_get_contents($file);
     $r .= '<div>';
-    $r .= '<pre style="border:2px solid #f00;flex:1;font:normal normal 12px/1.25 monospace;margin:0;overflow:auto;padding:0 0.25em;">';
-    $r .= htmlspecialchars($raw);
+    $r .= '<pre>';
+    $r .= htmlspecialchars($raws);
     $r .= '</pre>';
-    $r .= '<pre style="border:2px solid #00f;flex:1;font:normal normal 12px/1.25 monospace;margin:0;overflow:auto;padding:0 0.25em;">';
+    $r .= '<pre>';
     $lot = [];
-    $r .= htmlspecialchars("<?php\n\nreturn " . tidy_export(x\markdown\from\rows($raw, $lot, 999)) . ';');
+    $r .= htmlspecialchars("<?php\n\nreturn " . tidy_export(x\markdown\from\raws($raws)) . ';');
     $r .= '</pre>';
     $r .= '</div>';
 }
