@@ -1002,6 +1002,15 @@ namespace x\markdown\from {
                 $r = [0, $row . "\n", [], $d, []];
                 continue;
             }
+            // <https://spec.commonmark.org/0.31.2#thematic-break>
+            if (('*' === $c || '-' === $c || '_' === $c) && \strspn($row, $c . c1) == \strlen($row) && ($n = \substr_count($row, $c)) >= 3) {
+                if ($r && "" !== $r[1]) {
+                    $rows[] = $r;
+                }
+                $rows[] = ['hr', false, [], $d, [$c, $n]];
+                $r = null;
+                continue;
+            }
             // <https://spec.commonmark.org/0.31.2#bullet-list>
             if (('*' === $c || '+' === $c || '-' === $c) && ($w = \strspn($row . ' ', c1, 1))) {
                 $vo = $c === \trim($row);
@@ -1048,15 +1057,6 @@ namespace x\markdown\from {
                 $r[2] = $a;
                 $r[4] = [$n, $c];
                 $rows[] = $r;
-                $r = null;
-                continue;
-            }
-            // <https://spec.commonmark.org/0.31.2#thematic-break>
-            if (('*' === $c || '-' === $c || '_' === $c) && \strspn($row, $c . c1) == \strlen($row) && \substr_count($row, $c) >= 3) {
-                if ($r && "" !== $r[1]) {
-                    $rows[] = $r;
-                }
-                $rows[] = ['hr', false, [], $d, [$c]];
                 $r = null;
                 continue;
             }
