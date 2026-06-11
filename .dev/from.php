@@ -25,7 +25,7 @@ namespace x\markdown {
 */
 
 namespace x\markdown\from {
-    const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
+const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
     const b6 = [
         'address' => 1, 'article' => 1, 'aside' => 1, 'base' => 1, 'basefont' => 1, 'blockquote' => 1, 'body' => 1,
         'caption' => 1, 'center' => 1, 'col' => 1, 'colgroup' => 1, 'dd' => 1, 'details' => 1, 'dialog' => 1,
@@ -373,7 +373,7 @@ namespace x\markdown\from {
         // Parse the note block(s)
         if (!empty($r[1][2])) {
             foreach ($r[1][2] as &$v) {
-                $v = rows($v, $lot, deep - 1);
+                $v = rows($v, $lot, deep - 1)[0];
             }
             unset($v);
         }
@@ -1118,7 +1118,7 @@ namespace x\markdown\from {
                     $loose = false !== \strpos($text, "\n\n\x1e");
                     foreach (\explode("\x1e", $text) as $r) {
                         if ("\x3" === \substr($r, -1)) {
-                            $v[1][] = ['dt', \substr($r, 0, -1), [], $v[3]];
+                            $v[1][] = ['dt', \substr($r, 0, -1), []];
                             continue;
                         }
                         $v[1][] = ['dd', $r, [], $v[3]];
@@ -1144,7 +1144,7 @@ namespace x\markdown\from {
                     $loose = false !== \strpos($text, "\n\n\x1e");
                     foreach (\explode("\x1e", $text) as $r) {
                         $r = rows($r, $lot, $deep - 1);
-                        $v[1][] = ['li', $r[0] ?: "", [], $v[3]];
+                        $v[1][] = ['li', $r[0] ?: "", []];
                         // … or if any of its constituent list item(s) directly contain two block-level element(s) with
                         // a blank line between them.
                         if ($r[2] > 0) {
@@ -1172,7 +1172,7 @@ namespace x\markdown\from {
                     $v[1] = \trim($v[1]);
                 }
             }
-            // unset($v[3], $v[4]);
+            unset($v[3], $v[4]);
         }
         unset($v);
         return [\array_values($rows), $lot, $void];
