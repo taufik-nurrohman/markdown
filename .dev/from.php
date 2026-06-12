@@ -597,8 +597,8 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 if ($now && 'p' === $now[0] && "" !== $now[1] && "\n\n" !== \substr($r[1], -2)) {
                     if (':' === $now[1][0]) {
                         $now[1] = s($now[1], 6);
-                        if ($n = \strspn($now[1] = s($now[1], 6), ' ', 1)) {
-                            $now[1] = "\x1e" . \substr($now[1], 1 + $n);
+                        if (\strspn($now[1] = s($now[1], 6), ' ', 1)) {
+                            $now[1] = "\x1e" . \substr($now[1], $r[4][0]);
                         }
                     }
                     $r[1] .= $now[1];
@@ -752,7 +752,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // <https://spec.commonmark.org/0.31.2#example-284>
                 continue;
             }
-            if (':' === $c && ($n = \strspn($now = s($row, 6), ' ', 1))) {
+            if (':' === $c && \strspn($now = s($row, 6), ' ', 1)) {
                 if (!$r && $rows && \is_array($test = $rows[\array_key_last($rows)])) {
                     if ('p' === $test[0] && "" !== $test[1]) {
                         $r = \array_pop($rows);
@@ -763,8 +763,8 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 }
                 if ($r && 'p' === $r[0] && "" !== $r[1]) {
                     $r[0] = 'dl';
-                    $r[1] .= "\x3\x1e" . \substr($now, 1 + $n) . "\n";
-                    $r[4] = [1 + $n, $c, ""];
+                    $r[1] .= "\x3\x1e" . \substr($now, 2) . "\n";
+                    $r[4] = [2, $c, ""];
                     continue;
                 }
                 if ($r) {
@@ -1131,7 +1131,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                             }
                             continue;
                         }
-                        $v[1][] = ['dd', row($r, $lot, $deep - 1), []];
+                        $v[1][] = ['dd', rows($r, $lot, $deep - 1)[0], []];
                         if ($r[2] > 0) {
                             $loose = true;
                         }
