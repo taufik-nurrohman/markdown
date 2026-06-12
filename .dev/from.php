@@ -379,7 +379,10 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
         }
         return $r;
     }
-    function row(string $value, array &$lot = [], int $deep = 0) {}
+    function row(string $value, array &$lot = [], int $deep = 0) {
+        // TODO
+        return \trim($value);
+    }
     function rows(string $value, array &$lot = [], int $deep = 0) {
         $lot = \array_replace([[], [], []], $lot);
         if ("" === \trim($value)) {
@@ -750,8 +753,13 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 continue;
             }
             if (':' === $c && ($n = \strspn($now = s($row, 6), ' ', 1))) {
-                if (!$r && !empty($rows)) {
-                    $r = \array_pop($rows);
+                if (!$r && $rows && \is_array($test = $rows[\array_key_last($rows)])) {
+                    if ('p' === $test[0] && "" !== $test[1]) {
+                        $r = \array_pop($rows);
+                        if ($void > 0) {
+                            --$void;
+                        }
+                    }
                 }
                 if ($r && 'p' === $r[0] && "" !== $r[1]) {
                     $r[0] = 'dl';
@@ -1118,10 +1126,12 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     $loose = false !== \strpos($text, "\n\n\x1e");
                     foreach (\explode("\x1e", $text) as $r) {
                         if ("\x3" === \substr($r, -1)) {
-                            $v[1][] = ['dt', \substr($r, 0, -1), []];
+                            foreach (\explode("\n", \trim(\substr($r, 0, -1))) as $t) {
+                                $v[1][] = ['dt', row($t, $lot, $deep - 1), []];
+                            }
                             continue;
                         }
-                        $v[1][] = ['dd', $r, [], $v[3]];
+                        $v[1][] = ['dd', row($r, $lot, $deep - 1), []];
                         if ($r[2] > 0) {
                             $loose = true;
                         }
@@ -1132,7 +1142,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     continue;
                 }
                 if ('pre' === $v[0]) {
-                    $v[1] = ['code', \htmlspecialchars($v[1]), $v[2], -1];
+                    $v[1] = ['code', \htmlspecialchars($v[1]), $v[2]];
                     $v[2] = [];
                     continue;
                 }
@@ -1169,10 +1179,9 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // TODO
                 // $v[1] = row($v[1], $lot);
                 if (false !== $v[1]) {
-                    $v[1] = \trim($v[1]);
+                    $v[1] = row($v[1], $lot, $deep - 1);
                 }
             }
-            unset($v[3], $v[4]);
         }
         unset($v);
         return [\array_values($rows), $lot, $void];
