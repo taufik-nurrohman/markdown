@@ -1134,16 +1134,23 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
         }
         foreach ($rows as $k => &$v) {
-            // Put the abbreviation, reference, and note block(s) into the batch!
-            if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {
-                // <https://spec.commonmark.org/0.31.2#example-204>
-                if (!isset($lot[$v[0]][$v[4][0]])) {
-                    $lot[$v[0]][$v[4][0]] = $v[4][1];
-                }
-                unset($rows[$k]);
-                continue;
-            }
             if ($deep > 0) {
+                // Put the abbreviation, reference, and note block(s) into the batch!
+                if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {
+                    // <https://spec.commonmark.org/0.31.2#example-204>
+                    if (!isset($lot[$v[0]][$v[4][0]])) {
+                        $lot[$v[0]][$v[4][0]] = $v[4][1];
+                    }
+                    // Collect all abbreviations’ first character(s) to be used later by the `row()` function. This
+                    // function reads the line character by character, letting me quickly determine when a character
+                    // might start an abbreviation. I want to avoid using regular expression for this task.
+                    if (1 === $v[0]) {
+                        $lot["\x2"] ??= [];
+                        $lot["\x2"][$v[4][0][0]][$v[4][0]] = 1;
+                    }
+                    unset($rows[$k]);
+                    continue;
+                }
                 if ('blockquote' === $v[0]) {
                     $v[1] = rows($v[1], $lot, $deep - 1)[0] ?: "";
                     continue;
