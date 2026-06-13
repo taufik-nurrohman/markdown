@@ -37,44 +37,19 @@ if (!function_exists('array_is_list')) {
     }
 }
 
-function highlight_php(string $text) {
+function view_raw(string $text) {
     $r = "";
     foreach (token_get_all($text) as $t) {
         if (is_array($t)) {
             $color = '00b';
             switch ($t[0]) {
-                case T_COMMENT:
-                case T_DOC_COMMENT:
-                    $color = 'f70';
-                    break;
-                case T_CLOSE_TAG:
                 case T_OPEN_TAG:
-                case T_OPEN_TAG_WITH_ECHO:
                     $color = '00b';
                     break;
                 case T_INLINE_HTML:
                     $color = '000';
                     break;
-                case T_ABSTRACT:
-                case T_CLASS:
-                case T_ECHO:
-                case T_ELSE:
-                case T_ELSEIF:
-                case T_FINAL:
-                case T_FOR:
-                case T_FOREACH:
-                case T_FUNCTION:
-                case T_IF:
-                case T_NAMESPACE:
-                case T_NEW:
-                case T_PRINT:
-                case T_PRIVATE:
-                case T_PROTECTED:
-                case T_PUBLIC:
                 case T_RETURN:
-                case T_STATIC:
-                case T_USE:
-                case T_WHILE:
                     $color = '070';
                     break;
                 case T_CONSTANT_ENCAPSED_STRING:
@@ -82,44 +57,70 @@ function highlight_php(string $text) {
                     $color = 'd00';
                     break;
             }
-            $r .= '<span style="color:#' . $color . ';">' . htmlspecialchars($t[1]) . '</span>';
+            $r .= '<span style="color:#' . $color . ';">' . strtr(htmlspecialchars($t[1]), [
+                "\t" => "<span style=\"color:#400;\">\\t</span>",
+                "\x1a" => "<span style=\"color:#400;\">\\x1a</span>",
+                "\x1e" => "<span style=\"color:#400;\">\\x1e</span>",
+                "\x2" => "<span style=\"color:#400;\">\\x2</span>",
+                "\x3" => "<span style=\"color:#400;\">\\x3</span>"
+            ]) . '</span>';
             continue;
         }
-        $r .= '<span style="color:#070;">' . htmlspecialchars($t) . '</span>';
+        $r .= '<span style="color:#070;">' . strtr(htmlspecialchars($t), [
+            "\t" => "<span style=\"color:#400;\">\\t</span>",
+            "\x1a" => "<span style=\"color:#400;\">\\x1a</span>",
+            "\x1e" => "<span style=\"color:#400;\">\\x1e</span>",
+            "\x2" => "<span style=\"color:#400;\">\\x2</span>",
+            "\x3" => "<span style=\"color:#400;\">\\x3</span>"
+        ]) . '</span>';
     }
     return $r;
 }
 
+function view_result(string $text) {
+    // TODO
+    return $text;
+}
+
+function view_source(string $text) {
+    return htmlspecialchars($text);
+}
+
+function dent($value, $dent) {
+    $r = "";
+    foreach (explode("\n", $value) as $k => $v) {
+        $r .= "\n" . (0 !== $k && "" !== $v ? $dent . $v : $v);
+    }
+    return substr($r, 1);
+}
+
 // <https://github.com/mecha-cms/mecha/blob/v3.2.0/engine/f.php#L1606-L1671>
-function tidy_export($value, $d = "", $key_as_string = false, $is_object = null) {
+function export($value, $dent = "", $key_as_string = false, $is_object = null) {
     if (is_object($value)) {
         if ($value instanceof stdClass) {
-            return '(object) ' . tidy_export((array) $value, $d, true, true);
+            return '(object) ' . export((array) $value, $dent, true, true);
         }
-        return strtr(var_export($value, true), [
-            "\n " . $d => "\n" . $d,
-            ",\n" . $d . ')' => "\n" . $d . ')'
-        ]);
+        return '(object) []';
     }
     if (is_array($value)) {
         $r = [];
         if (!$is_object && array_is_list($value)) {
             foreach ($value as $k => $v) {
-                $r[] = tidy_export($v, $d . '  ', $key_as_string);
+                $r[] = export($v, $dent . '  ', $key_as_string);
             }
         } else {
             foreach ($value as $k => $v) {
-                $k = tidy_export($k);
+                $k = export($k);
                 if ($key_as_string && is_numeric($k)) {
                     $k = "'" . $k . "'";
                 }
-                $r[] = $k . ' => ' . tidy_export($v, $d . '  ', $key_as_string);
+                $r[] = $k . ' => ' . export($v, $dent . '  ', $key_as_string);
             }
         }
         if (!$r) {
             return '[]';
         }
-        return "[\n  " . $d . implode(",\n" . $d . '  ', $r) . "\n" . $d . ']';
+        return "[\n  " . $dent . implode(",\n" . $dent . '  ', $r) . "\n" . $dent . ']';
     }
     $value = var_export($value, true);
     if ("''" === $value) {
@@ -127,6 +128,9 @@ function tidy_export($value, $d = "", $key_as_string = false, $is_object = null)
     }
     if ('NULL' === $value) {
         return 'null';
+    }
+    if (false !== strpos($value, "\n") || false !== strpos($value, "\t")) {
+        $value = "<<<TEXT\n" . substr($value, 1, -1) . "\nTEXT";
     }
     return $value;
 }
@@ -345,7 +349,7 @@ foreach ($files as $file) {
     $r .= '</pre>';
     $r .= '<pre>';
     $lot = [];
-    $r .= highlight_php("<?php\n\nreturn " . tidy_export(x\markdown\from\raws($raws)) . ';');
+    $r .= view_raw("<?php\n\nreturn " . export(x\markdown\from\raws($raws)) . ';');
     $r .= '</pre>';
     $r .= '</div>';
 }

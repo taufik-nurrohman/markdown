@@ -590,8 +590,15 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     continue;
                 }
                 $now = rows($raw, $lot)[0][0] ?? null;
-                if ($d >= 2) {
-                    $r[1] .= \substr(s($raw, 6), 2) . "\n";
+                if ($d >= $r[3] + $r[4][0]) {
+                    if (\strspn($r[1], "\n") === ($n = \strlen($r[1])) && $n > 1) {
+                        $r[1] = "\n";
+                        $rows[] = $r;
+                        $r = $now;
+                        ++$void;
+                        continue;
+                    }
+                    $r[1] .= \substr(s($raw, $r[3] + $r[4][0]), $r[3] + $r[4][0]) . "\n";
                     continue;
                 }
                 if ($now && 'p' === $now[0] && "" !== $now[1] && "\n\n" !== \substr($r[1], -2)) {
@@ -605,6 +612,19 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     continue;
                 }
                 $r[1] = \trim($r[1], "\n") . "\n";
+                // If previous block was closed with a blank line, try to capture the last block in queue. If it is a
+                // description list, combine the current definition list with the last block.
+                if ($rows && \is_array($last =& $rows[\array_key_last($rows)])) {
+                    if ('dl' === $last[0]) {
+                        $last[1] .= "\x1e" . $r[1];
+                        $r = null;
+                        if ($void > 0) {
+                            --$void;
+                        }
+                        unset($last);
+                        continue;
+                    }
+                }
                 $rows[] = $r;
                 $r = $now;
                 continue;
@@ -752,9 +772,15 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // <https://spec.commonmark.org/0.31.2#example-284>
                 continue;
             }
-            if (':' === $c && \strspn($now = s($row, 6), ' ', 1)) {
-                if (!$r && $rows && \is_array($test = $rows[\array_key_last($rows)])) {
-                    if ('p' === $test[0] && "" !== $test[1]) {
+            // Since there is no formal specification for the description list block in CommonMark, the closest match
+            // will be used. The description term will be treated as a leaf block, just like the heading block. The
+            // description details will be treated as a container block, identical to an unordered list, where the
+            // bullet marker is a `:`.
+            if (':' === $c && ($w = \strspn(($now = s($row, 6)) . ' ', c1, 1))) {
+                // If previous block was closed with a blank line, try to capture the last block in queue. It should be
+                // a paragraph. Otherwise, the current line is not a valid candidate for the description details block.
+                if (!$r && $rows && \is_array($last = $rows[\array_key_last($rows)])) {
+                    if ('p' === $last[0] && "" !== $last[1]) {
                         $r = \array_pop($rows);
                         if ($void > 0) {
                             --$void;
@@ -763,8 +789,8 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 }
                 if ($r && 'p' === $r[0] && "" !== $r[1]) {
                     $r[0] = 'dl';
-                    $r[1] .= "\x3\x1e" . \substr($now, 2) . "\n";
-                    $r[4] = [2, $c, ""];
+                    $r[1] .= "\x3\x1e" . \substr($now, $w) . "\n";
+                    $r[4] = [$w, $c, ""];
                     continue;
                 }
                 if ($r) {
@@ -1103,7 +1129,9 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 }
                 $r[1] = \substr($r[1], 0, -1);
             }
-            $rows[] = $r;
+            if ($r) {
+                $rows[] = $r;
+            }
         }
         foreach ($rows as $k => &$v) {
             // Put the abbreviation, reference, and note block(s) into the batch!
@@ -1126,18 +1154,32 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     $loose = false !== \strpos($text, "\n\n\x1e");
                     foreach (\explode("\x1e", $text) as $r) {
                         if ("\x3" === \substr($r, -1)) {
+                            // The description term block comes with a special case. A description term block that
+                            // contains line break(s) will be treated as if it consisted of more than one description
+                            // term. This behavior differs from how most block(s) in CommonMark are treated.
                             foreach (\explode("\n", \trim(\substr($r, 0, -1))) as $t) {
                                 $v[1][] = ['dt', row($t, $lot, $deep - 1), []];
                             }
                             continue;
                         }
-                        $v[1][] = ['dd', rows($r, $lot, $deep - 1)[0], []];
+                        $r = rows($r, $lot, $deep - 1);
+                        $v[1][] = ['dd', $r[0], []];
                         if ($r[2] > 0) {
                             $loose = true;
                         }
                     }
                     if (!($v[4][3] = $loose) && $v[1]) {
-                        // TODO
+                        foreach ($v[1] as &$r) {
+                            if (\is_array($r[1] ?: 0) && \count($r[1]) < 3 && 'p' === $r[1][0][0]) {
+                                if (\in_array($r[1][1][0] ?? 0, ['dl', 'ol', 'ul'], true)) {
+                                    $r[1][0] = $r[1][0][1]; // Remove the surrounding paragraph
+                                    continue;
+                                }
+                                $r[1][0] = $r[1][0][1]; // Remove the surrounding paragraph
+                                continue;
+                            }
+                        }
+                        unset($r);
                     }
                     continue;
                 }
@@ -1162,22 +1204,21 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                         }
                     }
                     if (!($v[4][3] = $loose) && $v[1]) {
-                        foreach ($v[1] as &$vv) {
-                            if (\is_array($vv[1] ?: 0) && \count($vv[1]) < 3 && 'p' === $vv[1][0][0]) {
-                                if (\in_array($vv[1][1][0] ?? 0, ['ol', 'ul'], true)) {
-                                    $vv[1][0] = $vv[1][0][1]; // Remove the surrounding paragraph
+                        foreach ($v[1] as &$r) {
+                            if (\is_array($r[1] ?: 0) && \count($r[1]) < 3 && 'p' === $r[1][0][0]) {
+                                if (\in_array($r[1][1][0] ?? 0, ['dl', 'ol', 'ul'], true)) {
+                                    $r[1][0] = $r[1][0][1]; // Remove the surrounding paragraph
                                     continue;
                                 }
-                                $vv[1][0] = $vv[1][0][1]; // Remove the surrounding paragraph
+                                $r[1][0] = $r[1][0][1]; // Remove the surrounding paragraph
                                 continue;
                             }
                         }
-                        unset($vv);
+                        unset($r);
                     }
                     continue;
                 }
                 // TODO
-                // $v[1] = row($v[1], $lot);
                 if (false !== $v[1]) {
                     $v[1] = row($v[1], $lot, $deep - 1);
                 }
