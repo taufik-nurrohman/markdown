@@ -1,7 +1,9 @@
 <?php
 
 namespace x\markdown {
-    function from(?string $value, $block = true): ?string {}
+    function from(?string $value, $block = true): ?string {
+        return ""; // TODO
+    }
 }
 
 /*
@@ -43,9 +45,8 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
     const c5 = c3 . c4 . '-';
     const c6 = c3 . ':_';
     const c7 = c5 . '.:_';
-    // This is the maximum parsing recursion. Regular user(s) would likely never reach this level. They would only do so
-    // if they were to create an extremely deep quote or list block.
-    const deep = 25;
+    const c8 = '!"#$%&()*+,-./:;<=>?@[]^_`{|}~' . "'\\";
+    const deep = 25; // A regular user would likely never reach this maximum level of recursion.
     function a(string $row) {
         $r = [$row, []];
         if (false === \strpos($row, '{')) {
@@ -183,8 +184,11 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             return []; // Link label cannot be empty
         }
         $limit = \strlen($r[0]);
+        // <https://spec.commonmark.org/0.31.2#character>
+        // Link label can have at most 999 character(s) inside the `[` and `]` character(s). It originally considers
+        // line(s) to be composed of character(s) rather than byte(s), but this one counts byte(s) for simplicity.
         if ($limit > 999) {
-            return []; // Link label can have at most 999 character(s) inside the `[` and `]` character(s)
+            return [];
         }
         for ($j = 0; $j < $limit; ++$j) {
             if ("\\" === $r[0][$j]) {
@@ -1141,16 +1145,22 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             if ($deep > 0) {
                 // Put the abbreviation, reference, and note block(s) into the batch!
                 if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {
+                    if (1 === $v[0]) {
+                        // Collect all abbreviations’ first character(s) to be used later by the `row()` function. This
+                        // function reads the line character by character, letting me quickly determine when a character
+                        // might start an abbreviation. I want to avoid using regular expression for this task.
+                        $lot["\x2"] ??= [];
+                        $lot["\x2"][$v[4][0][0]][$v[4][0]] = 1;
+                        // <https://spec.commonmark.org/0.31.2#example-204>
+                        if (!isset($lot[$v[0]][$v[4][0]])) {
+                            $lot[$v[0]][$v[4][0]] = \rtrim($v[4][1]);
+                        }
+                        unset($rows[$k]);
+                        continue;
+                    }
                     // <https://spec.commonmark.org/0.31.2#example-204>
                     if (!isset($lot[$v[0]][$v[4][0]])) {
                         $lot[$v[0]][$v[4][0]] = $v[4][1];
-                    }
-                    // Collect all abbreviations’ first character(s) to be used later by the `row()` function. This
-                    // function reads the line character by character, letting me quickly determine when a character
-                    // might start an abbreviation. I want to avoid using regular expression for this task.
-                    if (1 === $v[0]) {
-                        $lot["\x2"] ??= [];
-                        $lot["\x2"][$v[4][0][0]][$v[4][0]] = 1;
                     }
                     unset($rows[$k]);
                     continue;

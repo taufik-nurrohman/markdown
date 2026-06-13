@@ -309,7 +309,7 @@ foreach (['raw', 'result', 'source'] as $v) {
 $r .= '</select>';
 $r .= ' ';
 $r .= '<button name="test" type="submit" value="' . htmlspecialchars($test) . '">';
-$r .= 'Update';
+$r .= 'View';
 $r .= '</button>';
 $r .= '</p>';
 $r .= '</fieldset>';
@@ -329,6 +329,7 @@ foreach (glob(PATH . D . 'from' . D . $test . D . '*', GLOB_ONLYDIR) as $v) {
 $r .= '</p>';
 $r .= '</fieldset>';
 $r .= '<input name="test" type="hidden" value="' . htmlspecialchars($test) . '">';
+$r .= '<input name="view" type="hidden" value="' . htmlspecialchars($view) . '">';
 $r .= '</form>';
 
 $r .= '<main>';
@@ -347,10 +348,19 @@ foreach ($files as $file) {
     $r .= '<pre>';
     $r .= htmlspecialchars($raws);
     $r .= '</pre>';
-    $r .= '<pre>';
-    $lot = [];
-    $r .= view_raw("<?php\n\nreturn " . export(x\markdown\from\raws($raws)) . ';');
-    $r .= '</pre>';
+    if ('result' === $view) {
+        $r .= '<div>';
+        $r .= view_result(x\markdown\from($raws));
+        $r .= '</div>';
+    } else if ('source' === $view) {
+        $r .= '<pre>';
+        $r .= view_source(x\markdown\from($raws));
+        $r .= '</pre>';
+    } else {
+        $r .= '<pre>';
+        $r .= view_raw("<?php\n\nreturn " . export(x\markdown\from\raws($raws)) . ';');
+        $r .= '</pre>';
+    }
     $r .= '</div>';
 }
 
