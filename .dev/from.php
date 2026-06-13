@@ -439,7 +439,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // paragraph, consider it as a continuation of the link reference definition, which is to be validated
                 // later.
                 $now = rows($raw, $lot)[0][0] ?? null;
-                if ($now && 'p' === $now[0] && "" !== $now[1]) {
+                if ($now && 'p' === $now[0]) {
                     $r[1] .= $now[1];
                     continue;
                 }
@@ -469,7 +469,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 }
                 // Check if the current line can continue the abbreviation definition.
                 $now = rows($raw, $lot)[0][0] ?? null;
-                if ($now && 'p' === $now[0] && "" !== $now[1]) {
+                if ($now && 'p' === $now[0]) {
                     $r[1] .= $now[1];
                     continue;
                 }
@@ -510,7 +510,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     continue;
                 }
                 $now = rows($raw, $lot)[0][0] ?? null;
-                if ($now && 'p' === $now[0] && "" !== $now[1] && "\n\n" !== \substr($r[1], -2)) {
+                if ($now && 'p' === $now[0] && "\n\n" !== \substr($r[1], -2)) {
                     $r[1] .= $now[1];
                     continue;
                 }
@@ -567,12 +567,12 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                if ($now && (\in_array($now[0], [0, 1, 2, 'p'], true) || 'pre' === $now[0] && "\t" === $now[4][1]) && "" !== $now[1]) {
+                if ($now && (false === $now[0] && 7 === $now[4][0] || 'pre' === $now[0] && "\t" === $now[4][1] || \in_array($now[0], [0, 1, 2, 'p'], true))) {
                     // <https://spec.commonmark.org/0.31.2#example-238>
                     // Also, check if the last block type in the block quote stream accepts paragraph continuation text.
                     // If it does accept it, treat the current potential paragraph continuation text as a new block.
                     $test = \end(rows($r[1], $lot)[0]) ?: null;
-                    if ($test && !\in_array($test[0], [0, 1, 2, 'p'], true)) {
+                    if ($test && !\in_array($test[0], [0, 1, 2, 'dl', 'ol', 'ul', 'p'], true)) {
                         $rows[] = $r;
                         $r = $now;
                         continue;
@@ -601,7 +601,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     $r[1] .= \substr(s($raw, $r[3] + $r[4][0]), $r[3] + $r[4][0]) . "\n";
                     continue;
                 }
-                if ($now && 'p' === $now[0] && "" !== $now[1] && "\n\n" !== \substr($r[1], -2)) {
+                if ($now && (false === $now[0] && 7 === $now[4][0] || 'p' === $now[0]) && "\n\n" !== \substr($r[1], -2)) {
                     if (':' === $now[1][0]) {
                         $now[1] = s($now[1], 6);
                         if (\strspn($now[1] = s($now[1], 6), ' ', 1)) {
@@ -658,7 +658,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#lazy-continuation-line>
-                if ($now && 'p' === $now[0] && "" !== $now[1] && "\n\n" !== \substr($r[1], -2)) {
+                if ($now && (false === $now[0] && 7 === $now[4][0] || 'p' === $now[0]) && "\n\n" !== \substr($r[1], -2)) {
                     $r[1] .= $now[1];
                     continue;
                 }
@@ -712,13 +712,13 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 continue;
             }
             if ($d >= 4 && (!$r || 'p' !== $r[0])) {
-                $r = ['pre', $row . "\n", [], 4, [1, "\t"]];
+                $r = ['pre', \substr(s($raw, 4), 4) . "\n", [], 4, [1, "\t"]];
                 continue;
             }
             $c = $row[0] ?? "\x2";
             // <https://spec.commonmark.org/0.31.2#atx-heading>
             if ('#' === $c && ($n = \strspn($row, $c)) && $n < 7 && \strspn($row . ' ', c1, $n)) {
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     // <https://spec.commonmark.org/0.31.2#example-70>
                     if ('p' === $r[0] && $d >= 4) {
                         $r[1] .= $raw . "\n";
@@ -744,7 +744,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             // span multiple line(s), but it cannot contain any blank line(s).
             if ('*' === $c && '[' === ($row[1] ?? 0)) {
                 // <https://spec.commonmark.org/0.31.2#example-213>
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     if ('p' === $r[0]) {
                         $r[1] .= $raw . "\n";
                         continue;
@@ -759,7 +759,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             if (($n = \strspn($row, c4)) && $n < 10 && false !== \strpos(').', $row[$n] ?? "\x3") && ($w = \strspn($row . ' ', c1, $n + 1))) {
                 // <https://spec.commonmark.org/0.31.2#start-number>
                 $start = (int) \substr($row, 0, $n);
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     // <https://spec.commonmark.org/0.31.2#example-285>
                     // <https://spec.commonmark.org/0.31.2#example-304>
                     if (1 !== $start || $n + 1 === \strlen($row)) {
@@ -780,14 +780,14 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // If previous block was closed with a blank line, try to capture the last block in queue. It should be
                 // a paragraph. Otherwise, the current line is not a valid candidate for the description details block.
                 if (!$r && $rows && \is_array($last = $rows[\array_key_last($rows)])) {
-                    if ('p' === $last[0] && "" !== $last[1]) {
+                    if ('p' === $last[0]) {
                         $r = \array_pop($rows);
                         if ($void > 0) {
                             --$void;
                         }
                     }
                 }
-                if ($r && 'p' === $r[0] && "" !== $r[1]) {
+                if ($r && 'p' === $r[0]) {
                     $r[0] = 'dl';
                     $r[1] .= "\x3\x1e" . \substr($now, $w) . "\n";
                     $r[4] = [$w, $c, ""];
@@ -804,7 +804,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             if ('<' === $c && ($b = \substr($row, 1, \strcspn($row, c1 . '>', 1)))) {
                 if ('!' === ($b[0] ?? 0) && '>' !== ($b[1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#example-185>
-                    if ($r && "" !== $r[1]) {
+                    if ($r) {
                         $rows[] = $r;
                     }
                     // <https://spec.commonmark.org/0.31.2#example-179>
@@ -847,7 +847,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // <https://spec.commonmark.org/0.31.2#processing-instruction>
                 if ('?' === ($b[0] ?? 0) && '>' !== ($b[1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#example-185>
-                    if ($r && "" !== $r[1]) {
+                    if ($r) {
                         $rows[] = $r;
                     }
                     $r = [false, $raw . "\n", [], $d, [3]];
@@ -860,7 +860,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 }
                 if (isset(b1[$b = \strtolower($b)])) {
                     // <https://spec.commonmark.org/0.31.2#example-185>
-                    if ($r && "" !== $r[1]) {
+                    if ($r) {
                         $rows[] = $r;
                     }
                     $r = [false, $raw . "\n", [], $d, [1, $b]];
@@ -876,7 +876,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // like `<div <?asdf [asdf] --`, is still considered a valid HTML block type 6.
                 if (isset(b6[$b6 = \trim($b, '/')])) {
                     // <https://spec.commonmark.org/0.31.2#example-185>
-                    if ($r && "" !== $r[1]) {
+                    if ($r) {
                         $rows[] = $r;
                     }
                     $r = [false, $raw . "\n", [], $d, [6, $b6]];
@@ -900,7 +900,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     if (\strspn($test = \trim($test), c3) && ($n = \strspn($test, c5, 1))) {
                         // An opening or closing tag with no attribute(s)
                         if ("" === ($test = \trim(\substr($test, $n + 1)))) {
-                            if ($r && "" !== $r[1]) {
+                            if ($r) {
                                 // <https://spec.commonmark.org/0.31.2#example-187>
                                 if ('p' === $r[0]) {
                                     $r[1] .= $raw . "\n";
@@ -976,7 +976,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                                 }
                             }
                             if ($e) {
-                                if ($r && "" !== $r[1]) {
+                                if ($r) {
                                     // <https://spec.commonmark.org/0.31.2#example-187>
                                     if ('p' === $r[0]) {
                                         $r[1] .= $raw . "\n";
@@ -993,7 +993,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             // <https://spec.commonmark.org/0.31.2#block-quote-marker>
             if ('>' === $c) {
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     $rows[] = $r;
                 }
                 // Expand the `\t` after the block quote marker to 4 column(s), and then normalize the required
@@ -1012,7 +1012,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             // it will also be treated in the same way, so that it cannot interrupt a paragraph.
             if ('[' === $c && '^' === ($row[1] ?? 0)) {
                 // <https://spec.commonmark.org/0.31.2#example-213>
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     if ('p' === $r[0]) {
                         $r[1] .= $raw . "\n";
                         continue;
@@ -1025,7 +1025,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             if ('[' === $c) {
                 // <https://spec.commonmark.org/0.31.2#example-213>
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     if ('p' === $r[0]) {
                         $r[1] .= $raw . "\n";
                         continue;
@@ -1038,7 +1038,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             // <https://spec.commonmark.org/0.31.2#thematic-break>
             if (('*' === $c || '-' === $c || '_' === $c) && \strspn($row, $c . c1) == \strlen($row) && ($n = \substr_count($row, $c)) >= 3) {
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     $rows[] = $r;
                 }
                 $rows[] = ['hr', false, [], $d, [$c, $n]];
@@ -1048,7 +1048,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             // <https://spec.commonmark.org/0.31.2#bullet-list>
             if (('*' === $c || '+' === $c || '-' === $c) && ($w = \strspn($row . ' ', c1, 1))) {
                 $vo = $c === \trim($row);
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     // <https://spec.commonmark.org/0.31.2#example-285>
                     if ($vo) {
                         $r[1] .= $row . "\n";
@@ -1070,13 +1070,13 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 $rest = \trim(\substr($row, $n));
                 // <https://spec.commonmark.org/0.31.2#example-145>
                 if ('`' === $c && false !== \strpos($rest, $c)) {
-                    if ($r && "" !== $r[1]) {
+                    if ($r) {
                         $r[1] .= $raw . "\n";
                     }
                     $r = ['p', $raw . "\n", [], $d];
                     continue;
                 }
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     // <https://spec.commonmark.org/0.31.2#example-140>
                     $rows[] = $r;
                 }
@@ -1084,7 +1084,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#setext-heading>
-            if (('-' === $c || '=' === $c) && \strspn($row, $c) === \strlen($row) && $r && 'p' === $r[0] && "" !== $r[1]) {
+            if (('-' === $c || '=' === $c) && \strspn($row, $c) === \strlen($row) && $r && 'p' === $r[0]) {
                 [$row, $a] = a(\substr($r[1], 0, -1));
                 $r[0] = 'h' . ($n = '-' === $c ? 2 : 1);
                 $r[1] = $row . "\n";
@@ -1096,7 +1096,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             if (false !== \strpos($row, '|')) {}
             if ("" === $row) {
-                if ($r && "" !== $r[1]) {
+                if ($r) {
                     $rows[] = $r;
                 }
                 $r = null;
@@ -1105,13 +1105,13 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 }
                 continue;
             }
-            if ($r && "" !== $r[1]) {
+            if ($r) {
                 $r[1] .= $row . "\n";
                 continue;
             }
             $r = ['p', $row . "\n", [], $d];
         }
-        if ($r && "" !== $r[1]) {
+        if ($r) {
             // At this point, there is probably an open block that has reached the forced last `\n` character. It should
             // be removed; otherwise, the result will have too many extra `\n` character(s) at the end of the block.
             if (\in_array($r[0], [2, 'dl', 'ol', 'ul'], true)) {
