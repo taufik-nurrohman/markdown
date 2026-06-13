@@ -1137,6 +1137,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 $rows[] = $r;
             }
         }
+        $lot["\x2"] ??= []; // List of abbreviation(s) organized by their first character.
         foreach ($rows as $k => &$v) {
             if (false === $v[0]) {
                 $v[1] = \trim($v[1], "\n");
@@ -1149,7 +1150,6 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                         // Collect all abbreviations’ first character(s) to be used later by the `row()` function. This
                         // function reads the line character by character, letting me quickly determine when a character
                         // might start an abbreviation. I want to avoid using regular expression for this task.
-                        $lot["\x2"] ??= [];
                         $lot["\x2"][$v[4][0][0]][$v[4][0]] = 1;
                         // <https://spec.commonmark.org/0.31.2#example-204>
                         if (!isset($lot[$v[0]][$v[4][0]])) {
