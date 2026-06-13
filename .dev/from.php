@@ -1134,6 +1134,10 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
         }
         foreach ($rows as $k => &$v) {
+            if (false === $v[0]) {
+                $v[1] = \trim($v[1], "\n");
+                continue;
+            }
             if ($deep > 0) {
                 // Put the abbreviation, reference, and note block(s) into the batch!
                 if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {

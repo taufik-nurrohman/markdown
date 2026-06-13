@@ -129,7 +129,7 @@ function export($value, $dent = "", $key_as_string = false, $is_object = null) {
     if ('NULL' === $value) {
         return 'null';
     }
-    if (false !== strpos($value, "\n") || false !== strpos($value, "\t")) {
+    if (false !== strpos($value, "\n")) {
         $value = "<<<TEXT\n" . substr($value, 1, -1) . "\nTEXT";
     }
     return $value;
