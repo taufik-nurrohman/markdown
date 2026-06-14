@@ -59,7 +59,6 @@ function view_raw(string $text) {
             }
             $r .= '<span style="color:#' . $color . ';">' . strtr(htmlspecialchars($t[1]), [
                 "\t" => "<span style=\"color:#400;\">\\t</span>",
-                "\x1a" => "<span style=\"color:#400;\">\\x1a</span>",
                 "\x1e" => "<span style=\"color:#400;\">\\x1e</span>",
                 "\x2" => "<span style=\"color:#400;\">\\x2</span>",
                 "\x3" => "<span style=\"color:#400;\">\\x3</span>"
@@ -68,7 +67,6 @@ function view_raw(string $text) {
         }
         $r .= '<span style="color:#070;">' . strtr(htmlspecialchars($t), [
             "\t" => "<span style=\"color:#400;\">\\t</span>",
-            "\x1a" => "<span style=\"color:#400;\">\\x1a</span>",
             "\x1e" => "<span style=\"color:#400;\">\\x1e</span>",
             "\x2" => "<span style=\"color:#400;\">\\x2</span>",
             "\x3" => "<span style=\"color:#400;\">\\x3</span>"
@@ -130,7 +128,12 @@ function export($value, $dent = "", $key_as_string = false, $is_object = null) {
         return 'null';
     }
     if (false !== strpos($value, "\n")) {
-        $value = "<<<TEXT\n" . substr($value, 1, -1) . "\nTEXT";
+        $value = "<<<TEXT\n" . implode("\n", array_map(function ($v) use ($dent) {
+            if ("" !== $v) {
+                return $dent . $v;
+            }
+            return "";
+        }, explode("\n", substr($value, 1, -1)))) . "\n" . $dent . 'TEXT';
     }
     return $value;
 }

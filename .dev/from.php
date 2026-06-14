@@ -27,7 +27,7 @@ namespace x\markdown {
 */
 
 namespace x\markdown\from {
-const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
+    const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
     const b6 = [
         'address' => 1, 'article' => 1, 'aside' => 1, 'base' => 1, 'basefont' => 1, 'blockquote' => 1, 'body' => 1,
         'caption' => 1, 'center' => 1, 'col' => 1, 'colgroup' => 1, 'dd' => 1, 'details' => 1, 'dialog' => 1,
@@ -47,6 +47,9 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
     const c7 = c5 . '.:_';
     const c8 = '!"#$%&()*+,-./:;<=>?@[]^_`{|}~' . "'\\";
     const deep = 25; // A regular user would likely never reach this maximum level of recursion.
+    const x1e = "\x1e";
+    const x2 = "\x2";
+    const x3 = "\x3";
     function a(string $row) {
         $r = [$row, []];
         if (false === \strpos($row, '{')) {
@@ -236,7 +239,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             $text = \substr($text, $n + 1);
         } else {
-            if (!$n = \strcspn($text, " \n\t")) {
+            if (!$n = \strcspn($text, c2)) {
                 return [];
             }
             $r[1][0] = \substr($text, 0, $n);
@@ -384,8 +387,122 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
         return $r;
     }
     function row(string $value, array &$lot = [], int $deep = 0) {
-        // TODO
-        return \trim($value);
+        // Determine if the entire text is an abbreviation for optimal performance.
+        if (\is_string($v = $lot[1][$value = \trim($value, "\n")] ?? 0)) {
+            return [['abbr', $value, ['title' => $v]]];
+        }
+        $limit = \strlen($value = \trim($value));
+        $r = [];
+        $s = "";
+        for ($i = 0; $i < $limit; ++$i) {
+            $c = $value[$i];
+            if ("\\" === $c && $i < $limit - 1) {
+                if ("\n" === $value[$i + 1]) {
+                    "" !== $s && ($r[] = \htmlspecialchars($s));
+                    $r[] = ['br', false, []];
+                    $s = "";
+                    $value = \substr_replace($value, "", $i + 1, 1);
+                    --$limit;
+                    continue;
+                }
+                if (false !== \strpos(c8, $value[$i + 1])) {
+                    $s .= $value[$i + 1];
+                    ++$i; // Consume
+                    continue;
+                }
+                $s .= $c;
+                continue;
+            }
+            if ("\n" === $c) {
+                $s .= ' ';
+                continue;
+            }
+            if ("\t" === $c && $i < $limit - 1 && "\n" === $value[$i + 1]) {
+                "" !== $s && ($r[] = \htmlspecialchars($s));
+                $r[] = ['br', false, []];
+                $s = "";
+                $value = \substr_replace($value, "", $i + 1, 1);
+                --$limit;
+                continue;
+            }
+            if (' ' === $c && $i < $limit - 1 && "\n" === $value[$i + 1] && false !== \strpos(c1, $value[$i - 1] ?? x2)) {
+                "" !== ($s = \rtrim($s)) && ($r[] = \htmlspecialchars($s));
+                $r[] = ['br', false, []];
+                $s = "";
+                $value = \substr_replace($value, "", $i + 1, 1);
+                --$limit;
+                continue;
+            }
+            if ('!' === $c && '[' === ($value[$i + 1] ?? 0)) {}
+            if ('&' === $c) {}
+            if ('*' === $c) {}
+            if ('<' === $c && false !== ($n = \strpos($value, '>', $i + 2))) {
+                $text = \substr($value, $i + 1, $n - $i - 1);
+                // <https://spec.commonmark.org/0.31.2#autolink>
+                if (false === \strpos($text, ' ') && \strpos($text, ':') > 1 && false !== \strpos(c3, $text[0]) && \strspn($text, c5 . '+.', 1)) {
+                    "" !== $s && ($r[] = \htmlspecialchars($s));
+                    $text = u($text);
+                    $r[] = ['a', \htmlspecialchars($text), ['href' => $text]];
+                    $s = "";
+                    $i = $n + 2;
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.31.2#email-address>
+                // <https://spec.commonmark.org/0.31.2#email-autolink>
+                if (false !== \strpos($text, '@') && \preg_match('~^[\w.!#$%&\'*+/=?^`{|}\~-]+@[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?(?>\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*$~i', $text)) {
+                    "" !== $s && ($r[] = \htmlspecialchars($s));
+                    $text = u($text);
+                    $r[] = ['a', \htmlspecialchars($text), ['href' => 'mailto:' . $text]];
+                    $s = "";
+                    $i = $n + 2;
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.31.2#raw-html>
+                // Should be a HTML element (TODO)
+                $s .= $c;
+                continue;
+            }
+            if ('[' === $c) {}
+            if ('_' === $c) {}
+            // <https://spec.commonmark.org/0.31.2#code-span>
+            if ('`' === $c) {
+                $tok = \str_repeat($c, $n = \strspn($value, $c, $i));
+                $w = $i + $n;
+                $z = false;
+                while (false !== ($x = \strpos($value, $tok, $w))) {
+                    if ($c !== ($value[$x + $n] ?? 0)) {
+                        $z = $x;
+                        break;
+                    }
+                    $w = $x + \strspn($value, $c, $x);
+                }
+                if (false !== $z) {
+                    "" !== $s && ($r[] = \htmlspecialchars($s));
+                    $text = \substr($value, $i + $n, $z - ($i + $n));
+                    // Line break(s) are converted to space(s)
+                    $text = \strtr($text, "\n", ' ');
+                    // If the resulting string both begins and ends with a space character, but does not consist
+                    // entirely of space character(s), a single space character is removed from the front and back.
+                    if ("" !== \trim($text) && ' ' === $text[0] && ' ' === \substr($text, -1)) {
+                        $text = \substr($text, 1, -1);
+                    }
+                    $r[] = ['code', \htmlspecialchars($text), []];
+                    $s = "";
+                    $i = $z + $n - 1;
+                    continue;
+                }
+                $s .= $tok;
+                $i = $i + $n - 1;
+                continue;
+            }
+            if (!empty($lot[x2][$c])) {
+                echo json_encode($lot[x2][$c]);
+                echo '<br>';
+            }
+            $s .= $c;
+        }
+        "" !== $s && ($r[] = \htmlspecialchars($s));
+        return $r;
     }
     function rows(string $value, array &$lot = [], int $deep = 0) {
         $lot = \array_replace([[], [], []], $lot);
@@ -411,6 +528,9 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                         $r[4] = $r0;
                         $rows[] = $r;
                         $r = null;
+                        if ($at === $max) {
+                            break;
+                        }
                         ++$void;
                         continue;
                     }
@@ -419,6 +539,9 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     $r[0] = 'p';
                     $rows[] = $r;
                     $r = null;
+                    if ($at === $max) {
+                        break;
+                    }
                     ++$void;
                     continue;
                 }
@@ -462,12 +585,18 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                         $r[4] = $r1;
                         $rows[] = $r;
                         $r = null;
+                        if ($at === $max) {
+                            break;
+                        }
                         ++$void;
                         continue;
                     }
                     $r[0] = 'p';
                     $rows[] = $r;
                     $r = null;
+                    if ($at === $max) {
+                        break;
+                    }
                     ++$void;
                     continue;
                 }
@@ -517,6 +646,9 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 if ($now && 'p' === $now[0] && "\n\n" !== \substr($r[1], -2)) {
                     $r[1] .= $now[1];
                     continue;
+                }
+                if ("\n\n" === \substr($r[1], -2)) {
+                    ++$void;
                 }
                 $r[1] = \trim($r[1], "\n") . "\n";
                 if ($r2 = r2($r[1])) {
@@ -595,39 +727,39 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 }
                 $now = rows($raw, $lot)[0][0] ?? null;
                 if ($d >= $r[3] + $r[4][0]) {
-                    if (\strspn($r[1], "\n") === ($n = \strlen($r[1])) && $n > 1) {
-                        $r[1] = "\n";
-                        $rows[] = $r;
-                        $r = $now;
-                        ++$void;
-                        continue;
-                    }
                     $r[1] .= \substr(s($raw, $r[3] + $r[4][0]), $r[3] + $r[4][0]) . "\n";
                     continue;
                 }
                 if ($now && (false === $now[0] && 7 === $now[4][0] || 'p' === $now[0]) && "\n\n" !== \substr($r[1], -2)) {
+                    if (':' === $row) {
+                        $r[1] .= x1e;
+                        continue;
+                    }
                     if (':' === $now[1][0]) {
-                        $now[1] = s($now[1], 6);
                         if (\strspn($now[1] = s($now[1], 6), ' ', 1)) {
-                            $now[1] = "\x1e" . \substr($now[1], $r[4][0]);
+                            $now[1] = x1e . \substr($now[1], $r[4][0]);
                         }
                     }
                     $r[1] .= $now[1];
                     continue;
                 }
+                if ($now && 'p' === $now[0] && ':' === ($now[1][0] ?? 0) && \strspn($now[1], c2, 1)) {
+                    $r[1] .= x1e . \substr($now[1], $r[3] + $r[4][0]);
+                    continue;
+                }
+                if ("\n\n" === \substr($r[1], -2)) {
+                    ++$void;
+                }
                 $r[1] = \trim($r[1], "\n") . "\n";
                 // If previous block was closed with a blank line, try to capture the last block in queue. If it is a
                 // description list, combine the current definition list with the last block.
-                if ($rows && \is_array($last =& $rows[\array_key_last($rows)])) {
-                    if ('dl' === $last[0]) {
-                        $last[1] .= "\x1e" . $r[1];
-                        $r = null;
-                        if ($void > 0) {
-                            --$void;
-                        }
-                        unset($last);
-                        continue;
+                if ($rows && ($test = $rows[$k = \array_key_last($rows)]) && 'dl' === $test[0]) {
+                    $rows[$k][1] .= "\n" . x1e . $r[1];
+                    $r = $now;
+                    if ($void > 0) {
+                        --$void;
                     }
+                    continue;
                 }
                 $rows[] = $r;
                 $r = $now;
@@ -673,11 +805,14 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     // behavior, you can comment out this line so that any number can continue the list.
                     $r[4][1] = $now[4][1];
                     // Merge list item with a special separator so that it will be easy to split them later.
-                    $r[1] .= "\x1e" . $now[1];
+                    $r[1] .= x1e . $now[1];
                     continue;
                 }
                 // At this point, the list block should end due to insufficient indentation level, different list item
                 // type, or a new block that interrupts the list.
+                if ("\n\n" === \substr($r[1], -2)) {
+                    ++$void;
+                }
                 $r[1] = \trim($r[1], "\n") . "\n";
                 $rows[] = $r;
                 $r = $now;
@@ -719,7 +854,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 $r = ['pre', \substr(s($raw, 4), 4) . "\n", [], 4, [1, "\t"]];
                 continue;
             }
-            $c = $row[0] ?? "\x2";
+            $c = $row[0] ?? x2;
             // <https://spec.commonmark.org/0.31.2#atx-heading>
             if ('#' === $c && ($n = \strspn($row, $c)) && $n < 7 && \strspn($row . ' ', c1, $n)) {
                 if ($r) {
@@ -760,7 +895,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#ordered-list>
-            if (($n = \strspn($row, c4)) && $n < 10 && false !== \strpos(').', $row[$n] ?? "\x3") && ($w = \strspn($row . ' ', c1, $n + 1))) {
+            if (($n = \strspn($row, c4)) && $n < 10 && false !== \strpos(').', $row[$n] ?? x3) && ($w = \strspn($row . ' ', c1, $n + 1))) {
                 // <https://spec.commonmark.org/0.31.2#start-number>
                 $start = (int) \substr($row, 0, $n);
                 if ($r) {
@@ -772,7 +907,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     }
                     $rows[] = $r;
                 }
-                $r = ['ol', \substr($row, $n + 1 + $w) . "\n", ['start' => $start], $d, [$n + 1 + $w, $start, $row[$n]]];
+                $r = ['ol', \substr($row, $n + 1 + $w) . "\n", 1 === $start ? [] : ['start' => $start], $d, [$n + 1 + $w, $start, $row[$n]]];
                 // <https://spec.commonmark.org/0.31.2#example-284>
                 continue;
             }
@@ -781,24 +916,27 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             // description details will be treated as a container block, identical to an unordered list, where the
             // bullet marker is a `:`.
             if (':' === $c && ($w = \strspn(($now = s($row, 6)) . ' ', c1, 1))) {
-                // If previous block was closed with a blank line, try to capture the last block in queue. It should be
-                // a paragraph. Otherwise, the current line is not a valid candidate for the description details block.
-                if (!$r && $rows && \is_array($last = $rows[\array_key_last($rows)])) {
-                    if ('p' === $last[0]) {
-                        $r = \array_pop($rows);
-                        if ($void > 0) {
-                            --$void;
-                        }
+                $w += 1;
+                if ($r) {
+                    if ('p' === $r[0]) {
+                        $r[0] = 'dl';
+                        $r[1] .= x3 . x1e . \substr($now, $w) . "\n";
+                        $r[4] = [$w, $c, ""];
+                        continue;
                     }
-                }
-                if ($r && 'p' === $r[0]) {
-                    $r[0] = 'dl';
-                    $r[1] .= "\x3\x1e" . \substr($now, $w) . "\n";
-                    $r[4] = [$w, $c, ""];
+                    $r[1] .= $raw . "\n";
                     continue;
                 }
-                if ($r) {
-                    $r[1] .= $raw . "\n";
+                // If previous block was closed with a blank line, try to capture the last block in queue. It should be
+                // a paragraph. Otherwise, the current line is not a valid candidate for the description details block.
+                if ($rows && ($test = $rows[$k = \array_key_last($rows)]) && 'p' === $test[0]) {
+                    $rows[$k][0] = 'dl';
+                    $rows[$k][1] .= x3 . "\n\n" . x1e . \substr($now, $w) . "\n";
+                    $rows[$k][4] = [$w, $c, ""];
+                    $r = \array_pop($rows);
+                    if ($void > 0) {
+                        --$void;
+                    }
                     continue;
                 }
                 $r = ['p', $raw . "\n", [], $d];
@@ -808,9 +946,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             if ('<' === $c && ($b = \substr($row, 1, \strcspn($row, c1 . '>', 1)))) {
                 if ('!' === ($b[0] ?? 0) && '>' !== ($b[1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#example-185>
-                    if ($r) {
-                        $rows[] = $r;
-                    }
+                    $r && ($rows[] = $r);
                     // <https://spec.commonmark.org/0.31.2#example-179>
                     // <https://spec.commonmark.org/0.31.2#html-comment>
                     if ('--' === \substr($b, 1, 2)) {
@@ -851,9 +987,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // <https://spec.commonmark.org/0.31.2#processing-instruction>
                 if ('?' === ($b[0] ?? 0) && '>' !== ($b[1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#example-185>
-                    if ($r) {
-                        $rows[] = $r;
-                    }
+                    $r && ($rows[] = $r);
                     $r = [false, $raw . "\n", [], $d, [3]];
                     if (false !== \strpos($row, '?>')) {
                         // End on its own line
@@ -864,9 +998,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 }
                 if (isset(b1[$b = \strtolower($b)])) {
                     // <https://spec.commonmark.org/0.31.2#example-185>
-                    if ($r) {
-                        $rows[] = $r;
-                    }
+                    $r && ($rows[] = $r);
                     $r = [false, $raw . "\n", [], $d, [1, $b]];
                     if (false !== \stripos($row, '</' . $b . '>')) {
                         // End on its own line
@@ -880,9 +1012,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 // like `<div <?asdf [asdf] --`, is still considered a valid HTML block type 6.
                 if (isset(b6[$b6 = \trim($b, '/')])) {
                     // <https://spec.commonmark.org/0.31.2#example-185>
-                    if ($r) {
-                        $rows[] = $r;
-                    }
+                    $r && ($rows[] = $r);
                     $r = [false, $raw . "\n", [], $d, [6, $b6]];
                     continue;
                 }
@@ -997,9 +1127,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             // <https://spec.commonmark.org/0.31.2#block-quote-marker>
             if ('>' === $c) {
-                if ($r) {
-                    $rows[] = $r;
-                }
+                $r && ($rows[] = $r);
                 // Expand the `\t` after the block quote marker to 4 column(s), and then normalize the required
                 // 4-column(s) indentation of an indented-style code block into space(s).
                 $row = s(\substr($row, 1), 8, 1);
@@ -1042,9 +1170,7 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             // <https://spec.commonmark.org/0.31.2#thematic-break>
             if (('*' === $c || '-' === $c || '_' === $c) && \strspn($row, $c . c1) == \strlen($row) && ($n = \substr_count($row, $c)) >= 3) {
-                if ($r) {
-                    $rows[] = $r;
-                }
+                $r && ($rows[] = $r);
                 $rows[] = ['hr', false, [], $d, [$c, $n]];
                 $r = null;
                 continue;
@@ -1074,16 +1200,12 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 $rest = \trim(\substr($row, $n));
                 // <https://spec.commonmark.org/0.31.2#example-145>
                 if ('`' === $c && false !== \strpos($rest, $c)) {
-                    if ($r) {
-                        $r[1] .= $raw . "\n";
-                    }
+                    $r && ($r[1] .= $raw . "\n");
                     $r = ['p', $raw . "\n", [], $d];
                     continue;
                 }
-                if ($r) {
-                    // <https://spec.commonmark.org/0.31.2#example-140>
-                    $rows[] = $r;
-                }
+                // <https://spec.commonmark.org/0.31.2#example-140>
+                $r && ($rows[] = $r);
                 $r = ['pre', "\n", a1($rest), $d, [$n, $c]];
                 continue;
             }
@@ -1100,13 +1222,12 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             if (false !== \strpos($row, '|')) {}
             if ("" === $row) {
-                if ($r) {
-                    $rows[] = $r;
-                }
+                $r && ($rows[] = $r);
                 $r = null;
-                if ($at < $max) {
-                    ++$void;
+                if ($at === $max) {
+                    break;
                 }
+                ++$void;
                 continue;
             }
             if ($r) {
@@ -1115,42 +1236,34 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             }
             $r = ['p', $row . "\n", [], $d];
         }
-        if ($r) {
-            // At this point, there is probably an open block that has reached the forced last `\n` character. It should
-            // be removed; otherwise, the result will have too many extra `\n` character(s) at the end of the block.
-            if (\in_array($r[0], [2, 'dl', 'ol', 'ul'], true)) {
-                $r[1] = \trim($r[1], "\n") . "\n";
+        // This is the final step. Not all document(s) contain more than one block, which allows the parser to know when
+        // to close the current block due to an interruption from next block. This step finalizes the result(s).
+        if ($r && 'dl' === $r[0]) {
+            $r[1] = \trim($r[1], "\n") . "\n";
+            if ($rows && ($test = $rows[$k = \array_key_last($rows)]) && 'dl' === $test[0]) {
+                $rows[$k][1] .= "\n" . x1e . $r[1];
+                $r = null;
             }
-            if (2 === $r[0]) {
-                if ($r2 = r2($r[1])) {
-                    $r[4] = $r2;
-                } else {
-                    $r[0] = 'p';
-                }
-            } else if ('pre' === $r[0]) {
-                if ('`' === $r[4][1] || '~' === $r[4][1]) {
-                    $r[1] = \substr($r[1], 1);
-                }
-                $r[1] = \substr($r[1], 0, -1);
+        } else if ($r && 'pre' === $r[0]) {
+            if ('`' === $r[4][1] || '~' === $r[4][1]) {
+                $r[1] = \substr($r[1], 1);
             }
-            if ($r) {
-                $rows[] = $r;
-            }
+            $r[1] = \substr($r[1], 0, -1);
+        } else if ($r && \in_array($r[0], ['ol', 'ul'], true)) {
+            $r[1] = \trim($r[1], "\n") . "\n";
         }
-        $lot["\x2"] ??= []; // List of abbreviation(s) organized by their first character.
-        foreach ($rows as $k => &$v) {
-            if (false === $v[0]) {
-                $v[1] = \trim($v[1], "\n");
-                continue;
-            }
-            if ($deep > 0) {
-                // Put the abbreviation, reference, and note block(s) into the batch!
+        $r && ($rows[] = $r);
+        if ($deep > 0) {
+            // List of abbreviation(s) organized by their first character (byte)
+            $lot[x2] ??= [];
+            // Move the abbreviation, reference, and note block(s) to the reference bucket
+            foreach ($rows as $k => &$v) {
                 if (0 === $v[0] || 1 === $v[0] || 2 === $v[0]) {
                     if (1 === $v[0]) {
-                        // Collect all abbreviations’ first character(s) to be used later by the `row()` function. This
-                        // function reads the line character by character, letting me quickly determine when a character
-                        // might start an abbreviation. I want to avoid using regular expression for this task.
-                        $lot["\x2"][$v[4][0][0]][$v[4][0]] = 1;
+                        // Collect all abbreviation(s)’ first character(s) to be used later by the `row()` function.
+                        // This function reads the line character by character, letting me quickly determine when a
+                        // character might start an abbreviation. I want to avoid using regular expression.
+                        $lot[x2][$v[4][0][0]][$v[4][0]] = 1;
                         // <https://spec.commonmark.org/0.31.2#example-204>
                         if (!isset($lot[$v[0]][$v[4][0]])) {
                             $lot[$v[0]][$v[4][0]] = \rtrim($v[4][1]);
@@ -1165,6 +1278,14 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     unset($rows[$k]);
                     continue;
                 }
+            }
+        }
+        foreach ($rows as $k => &$v) {
+            if (false === $v[0]) {
+                $v[1] = \trim($v[1], "\n");
+                continue;
+            }
+            if ($deep > 0) {
                 if ('blockquote' === $v[0]) {
                     $v[1] = rows($v[1], $lot, $deep - 1)[0] ?: "";
                     continue;
@@ -1172,14 +1293,14 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                 if ('dl' === $v[0]) {
                     $text = $v[1];
                     $v[1] = [];
-                    $loose = false !== \strpos($text, "\n\n\x1e");
-                    foreach (\explode("\x1e", $text) as $r) {
-                        if ("\x3" === \substr($r, -1)) {
+                    $loose = false !== \strpos($text, x3 . "\n\n" . x1e);
+                    foreach (\explode(x1e, $text) as $r) {
+                        if (x3 === \substr($r = \rtrim($r), -1)) {
                             // The description term block comes with a special case. A description term block that
                             // contains line break(s) will be treated as if it consisted of more than one description
                             // term. This behavior differs from how most block(s) in CommonMark are treated.
                             foreach (\explode("\n", \trim(\substr($r, 0, -1))) as $t) {
-                                $v[1][] = ['dt', row($t, $lot, $deep - 1), []];
+                                $v[1][] = ['dt', row($t, $lot, $deep - 1)[0], []];
                             }
                             continue;
                         }
@@ -1193,10 +1314,18 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                         foreach ($v[1] as &$r) {
                             if (\is_array($r[1] ?: 0) && \count($r[1]) < 3 && 'p' === $r[1][0][0]) {
                                 if (\in_array($r[1][1][0] ?? 0, ['dl', 'ol', 'ul'], true)) {
-                                    $r[1][0] = $r[1][0][1]; // Remove the surrounding paragraph
+                                    $rr = $r[1][0][1]; // Remove the surrounding paragraph
+                                    if (\is_array($rr) && 1 === \count($rr) && \is_string($rr[0])) {
+                                        $rr = $rr[0];
+                                    }
+                                    $r[1][0] = $rr;
                                     continue;
                                 }
-                                $r[1][0] = $r[1][0][1]; // Remove the surrounding paragraph
+                                $rr = $r[1][0][1]; // Remove the surrounding paragraph
+                                if (\is_array($rr) && 1 === \count($rr) && \is_string($rr[0])) {
+                                    $rr = $rr[0];
+                                }
+                                $r[1] = $rr;
                                 continue;
                             }
                         }
@@ -1214,8 +1343,8 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                     $v[1] = [];
                     // <https://spec.commonmark.org/0.31.2#loose>
                     // A list is loose if any of its constituent list item(s) are separated by blank line(s) …
-                    $loose = false !== \strpos($text, "\n\n\x1e");
-                    foreach (\explode("\x1e", $text) as $r) {
+                    $loose = false !== \strpos($text, "\n\n" . x1e);
+                    foreach (\explode(x1e, $text) as $r) {
                         $r = rows($r, $lot, $deep - 1);
                         $v[1][] = ['li', $r[0] ?: "", []];
                         // … or if any of its constituent list item(s) directly contain two block-level element(s) with
@@ -1228,10 +1357,18 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
                         foreach ($v[1] as &$r) {
                             if (\is_array($r[1] ?: 0) && \count($r[1]) < 3 && 'p' === $r[1][0][0]) {
                                 if (\in_array($r[1][1][0] ?? 0, ['dl', 'ol', 'ul'], true)) {
-                                    $r[1][0] = $r[1][0][1]; // Remove the surrounding paragraph
+                                    $rr = $r[1][0][1]; // Remove the surrounding paragraph
+                                    if (\is_array($rr) && 1 === \count($rr) && \is_string($rr[0])) {
+                                        $rr = $rr[0];
+                                    }
+                                    $r[1][0] = $rr;
                                     continue;
                                 }
-                                $r[1][0] = $r[1][0][1]; // Remove the surrounding paragraph
+                                $rr = $r[1][0][1]; // Remove the surrounding paragraph
+                                if (\is_array($rr) && 1 === \count($rr) && \is_string($rr[0])) {
+                                    $rr = $rr[0];
+                                }
+                                $r[1] = $rr;
                                 continue;
                             }
                         }
@@ -1301,6 +1438,22 @@ const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
             $r .= $v . "\n";
         }
         return \substr($r, 0, -1);
+    }
+    function u(string $text) {
+        $c1 = c4 . 'ABCDEFabcdef';
+        $c2 = c7 . ';/?@&=+$,!~*()#' . "'";
+        $limit = \strlen($text);
+        $r = "";
+        for ($i = 0; $i < $limit; ++$i) {
+            $c = $text[$i];
+            if ('%' === $c && $i + 2 < $limit && false !== \strpos($c1, $text[$i + 1]) && false !== \strpos($c1, $text[$i + 2])) {
+                $r .= $c . $text[$i + 1] . $text[$i + 2];
+                $i += 2;
+                continue;
+            }
+            $r .= false !== \strpos($c2, $c) ? $c : '%' . \strtoupper(\bin2hex($c));
+        }
+        return $r;
     }
     function v(string $text) {
         // <https://spec.commonmark.org/0.31.2#ascii-punctuation-character>
