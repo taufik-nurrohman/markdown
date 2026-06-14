@@ -80,6 +80,10 @@ namespace x\markdown\from {
             }
         }
         if (false !== $at) {
+            // Empty attribute(s)
+            if ("" === \trim(\substr($row, $at + 1, $limit - $at - 2))) {
+                return $r;
+            }
             $r[0] = \rtrim(\substr($row, 0, $at));
             $r[1] = a1(\substr($row, $at));
         }
@@ -1347,7 +1351,20 @@ namespace x\markdown\from {
                 $r = [0, $row . "\n", [], $d, []];
                 continue;
             }
+            // <https://spec.commonmark.org/0.31.2#setext-heading>
+            // Must come before thematic break parser
+            if (('-' === $c || '=' === $c) && \strspn($row, $c) === \strlen($row) && $r && 'p' === $r[0]) {
+                [$row, $a] = a(\substr($r[1], 0, -1));
+                $r[0] = 'h' . ($n = '-' === $c ? 2 : 1);
+                $r[1] = $row . "\n";
+                $r[2] = $a;
+                $r[4] = [$n, $c];
+                $rows[] = $r;
+                $r = null;
+                continue;
+            }
             // <https://spec.commonmark.org/0.31.2#thematic-break>
+            // Must come before list parser
             if (('*' === $c || '-' === $c || '_' === $c) && \strspn($row, $c . c1) == \strlen($row) && ($n = \substr_count($row, $c)) >= 3) {
                 $r && ($rows[] = $r);
                 $rows[] = ['hr', false, [], $d, [$c, $n]];
@@ -1386,17 +1403,6 @@ namespace x\markdown\from {
                 // <https://spec.commonmark.org/0.31.2#example-140>
                 $r && ($rows[] = $r);
                 $r = ['pre', "\n", a1($rest), $d, [$n, $c]];
-                continue;
-            }
-            // <https://spec.commonmark.org/0.31.2#setext-heading>
-            if (('-' === $c || '=' === $c) && \strspn($row, $c) === \strlen($row) && $r && 'p' === $r[0]) {
-                [$row, $a] = a(\substr($r[1], 0, -1));
-                $r[0] = 'h' . ($n = '-' === $c ? 2 : 1);
-                $r[1] = $row . "\n";
-                $r[2] = $a;
-                $r[4] = [$n, $c];
-                $rows[] = $r;
-                $r = null;
                 continue;
             }
             if (false !== \strpos($row, '|')) {}
