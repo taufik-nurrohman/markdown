@@ -1577,7 +1577,7 @@ namespace x\markdown\from {
                 }
                 // TODO
                 if (false !== $v[1]) {
-                    $v[1] = row($v[1], $lot, $deep - 1);
+                    $v[1] = row(\rtrim($v[1]), $lot, $deep - 1);
                 }
             }
         }
