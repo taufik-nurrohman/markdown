@@ -168,6 +168,171 @@ namespace x\markdown\from {
         \ksort($r);
         return $r;
     }
+    function h(string $text) {
+        return \strtr($text, ['&' => '&amp;', '<' => '&lt;', '>' => '&gt;']);
+    }
+    // <https://spec.commonmark.org/0.31.2#links>
+    function l(string $value, array &$lot, int $deep, int $i, int $limit, int &$n) {
+        if ('[' !== ($c = $value[$i] ?? 0)) {
+            $n = $i;
+            return false;
+        }
+        $d = 1;
+        $n = $i + 1; // Start after `[`
+        $r = ['a', "", []];
+        $valid = true;
+        while ($n < $limit) {
+            $c = $value[$n];
+            if ("\\" === $c && $n + 1 < $limit) {
+                $n += 2;
+                continue;
+            }
+            if ('[' === $c) {
+                ++$d;
+                ++$n;
+                continue;
+            }
+            if (']' === $c) {
+                // Validate the link text right before it reaches the `]`
+                if (0 === --$d) {
+                    break;
+                }
+                ++$n;
+                continue;
+            }
+            ++$n;
+        }
+        // <https://spec.commonmark.org/0.31.2#link-text>
+        $k = \trim($text = \substr($value, $i + 1, $n - ($i + 1)));
+        if ($deep > 0) {
+            $text = row($text, $lot, $deep - 1);
+        }
+        $r[1] = $text;
+        // <https://spec.commonmark.org/0.31.2#matches>
+        if (\defined("\\MB_CASE_FOLD")) {
+            $k = \mb_convert_case($k, \MB_CASE_FOLD, 'UTF-8');
+        } else {
+            $k = \strtolower($k);
+        }
+        // if (isset($lot[0][$k])) {
+        //     [$href, $title, $a] = $lot[0][$k];
+        //     $r[2] = \array_replace([
+        //         'href' => u(v($href)),
+        //         'title' => $title ? v($title) : $title
+        //     ], $a);
+        // }
+        // if (++$n === $limit) {
+        //     return $r;
+        // }
+        if (']' === $value[$n]) {
+            ++$n; // Go to one character after `]`
+        }
+        // <https://spec.commonmark.org/0.31.2#inline-link>
+        if ($n < $limit && '(' === $value[$n]) {
+            ++$n; // Start after `(`
+            $n += \strspn($value, c2, $n);
+            // <https://spec.commonmark.org/0.31.2/#link-destination>
+            $href = "";
+            if ('<' === $value[$n]) {
+                // TODO
+            } else {
+                $d = 0;
+                while ($n < $limit) {
+                    $c = $value[$n];
+                    if ("\\" === $c && $n + 1 < $limit) {
+                        $href .= $c . $value[$n + 1];
+                        $n += 2;
+                        continue;
+                    }
+                    if ('(' === $c) {
+                        $href .= $c;
+                        ++$d;
+                        ++$n;
+                        continue;
+                    }
+                    if (')' === $c) {
+                        // Validate the link destination right before it reaches a `)` or a white-space
+                        if (0 === $d) {
+                            break;
+                        }
+                        $href .= $c;
+                        --$d;
+                        ++$n;
+                    }
+                    // It must not contain control character(s) and white-space(s). The `)` marks the end of the
+                    // link destination
+                    if (false !== \strpos(c2 . c9 . ')', $c)) {
+                        break;
+                    }
+                    $href .= $c;
+                    ++$n;
+                }
+                $n += \strspn($value, c2, $n);
+                $r[2]['href'] = u($href);
+                // <https://spec.commonmark.org/0.31.2#link-title>
+                if (false !== \strpos("'" . '"(', $enter = $value[$n])) {
+                    $exit = '(' === $enter ? ')' : $enter;
+                    $title = "";
+                    $valid = false;
+                    ++$n; // Start after `"`, `'`, or `(`
+                    while ($n < $limit) {
+                        $c = $value[$n];
+                        if ("\\" === $c && $n + 1 < $limit) {
+                            $title .= $c . $value[$n + 1];
+                            $n += 2;
+                            continue;
+                        }
+                        if ('(' === $enter) {
+                            // Cannot contain unescaped `(`
+                            if ('(' === $c) {
+                                $valid = false;
+                                break;
+                            }
+                            // Cannot contain unescaped `)` unless it marks the end of the title
+                            if (')' === $c) {
+                                $next = $value[$n + 1] ?? 0;
+                                if (')' !== $next && false === \strpos(c2, $next)) {
+                                    $valid = false;
+                                    break;
+                                }
+                            }
+                        } else {
+                            // Cannot contain unescaped `"` or `'` unless it marks the end of the title
+                            if ($exit === $c) {
+                                $next = $value[$n + 1] ?? 0;
+                                if (')' !== $next && false === \strpos(c2, $next)) {
+                                    $valid = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if ($exit === $c) {
+                            $valid = true;
+                            ++$n;
+                            break;
+                        }
+                        $title .= $c;
+                        ++$n;
+                    }
+                    if ($valid) {
+                        $n += \strspn($value, c2, $n);
+                        $r[2]['title'] = v($title);
+                    }
+                }
+                if ($n === $limit || ')' !== $value[$n]) {
+                    $valid = false;
+                }
+                if ($valid) {
+                    // TODO: Do attribute(s)
+                }
+            }
+        }
+        if ($valid) {
+            return $r;
+        }
+        $n = $i;
+        return false;
+    }
     // <https://spec.commonmark.org/0.31.2#link-reference-definition>
     function r0(string $text) {
         if ('[' !== ($text[0] ?? 0)) {
@@ -403,7 +568,7 @@ namespace x\markdown\from {
             $c = $value[$i];
             if ("\\" === $c && $i < $limit - 1) {
                 if ("\n" === $value[$i + 1]) {
-                    "" !== $s && ($r[] = \htmlspecialchars($s));
+                    "" !== $s && ($r[] = h($s));
                     $r[] = ['br', false, []];
                     $s = "";
                     $value = \substr_replace($value, "", $i + 1, 1);
@@ -423,7 +588,7 @@ namespace x\markdown\from {
                 continue;
             }
             if ("\t" === $c && $i < $limit - 1 && "\n" === $value[$i + 1]) {
-                "" !== $s && ($r[] = \htmlspecialchars($s));
+                "" !== $s && ($r[] = h($s));
                 $r[] = ['br', false, []];
                 $s = "";
                 $value = \substr_replace($value, "", $i + 1, 1);
@@ -431,7 +596,7 @@ namespace x\markdown\from {
                 continue;
             }
             if (' ' === $c && $i < $limit - 1 && "\n" === $value[$i + 1] && false !== \strpos(c1, $value[$i - 1] ?? x2)) {
-                "" !== ($s = \rtrim($s)) && ($r[] = \htmlspecialchars($s));
+                "" !== ($s = \rtrim($s)) && ($r[] = h($s));
                 $r[] = ['br', false, []];
                 $s = "";
                 $value = \substr_replace($value, "", $i + 1, 1);
@@ -445,9 +610,9 @@ namespace x\markdown\from {
                 $text = \substr($value, $i + 1, $n - $i - 1);
                 // <https://spec.commonmark.org/0.31.2#autolink>
                 if (false === \strpos($text, ' ') && \strpos($text, ':') > 1 && false !== \strpos(c3, $text[0]) && \strspn($text, c5 . '+.', 1)) {
-                    "" !== $s && ($r[] = \htmlspecialchars($s));
+                    "" !== $s && ($r[] = h($s));
                     $text = u($text);
-                    $r[] = ['a', \htmlspecialchars($text), ['href' => $text]];
+                    $r[] = ['a', h($text), ['href' => $text]];
                     $s = "";
                     $i = $n + 2;
                     continue;
@@ -455,9 +620,9 @@ namespace x\markdown\from {
                 // <https://spec.commonmark.org/0.31.2#email-address>
                 // <https://spec.commonmark.org/0.31.2#email-autolink>
                 if (false !== \strpos($text, '@') && \preg_match('~^[\w.!#$%&\'*+/=?^`{|}\~-]+@[a-z\d](?>[a-z\d-]{0,61}[a-z\d])?(?>\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*$~i', $text)) {
-                    "" !== $s && ($r[] = \htmlspecialchars($s));
+                    "" !== $s && ($r[] = h($s));
                     $text = u($text);
-                    $r[] = ['a', \htmlspecialchars($text), ['href' => 'mailto:' . $text]];
+                    $r[] = ['a', h($text), ['href' => 'mailto:' . $text]];
                     $s = "";
                     $i = $n + 2;
                     continue;
@@ -469,190 +634,16 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.31.2#links>
             if ('[' === $c) {
-                $d = 1;
-                $n = $i + 1; // Start after `[`
-                while ($n < $limit) {
-                    $cc = $value[$n];
-                    if ("\\" === $cc) {
-                        $n += 2;
-                        continue;
-                    }
-                    if ('[' === $cc) {
-                        ++$d;
-                        ++$n;
-                        continue;
-                    }
-                    if (']' === $cc) {
-                        // Validate the link text right before it reaches the `]`
-                        if (0 === --$d) {
-                            break;
-                        }
-                        ++$n;
-                        continue;
-                    }
-                    ++$n;
-                }
-                // <https://spec.commonmark.org/0.31.2#link-text>
-                $k = \trim($text = \substr($value, $i + 1, $n - ($i + 1)));
-                if ($deep > 0) {
-                    $text = row($text, $lot, $deep - 1);
-                }
-                // <https://spec.commonmark.org/0.31.2#matches>
-                if (\defined("\\MB_CASE_FOLD")) {
-                    $k = \mb_convert_case($k, \MB_CASE_FOLD, 'UTF-8');
-                } else {
-                    $k = \strtolower($k);
-                }
-                if (isset($lot[0][$k])) {
-                    "" !== $s && ($r[] = \htmlspecialchars($s));
-                    $s = "";
-                    $r[] = ['a', $text, [
-                        'href' => u($lot[0][$k][0]),
-                        'title' => $lot[0][$k][1]
-                    ]];
+                $n = 0;
+                if ($l = l($value, $lot, $deep, $i, $limit, $n)) {
+                    "" !== $s && ($r[] = h($s));
                     $i = $n;
+                    $r[] = $l;
+                    $s = "";
                     continue;
                 }
-                // <https://spec.commonmark.org/0.31.2#inline-link>
-                if ($n < $limit - 1 && '(' === $value[$n + 1]) {
-                    $n += 2; // Start after `(`
-                    // Skip white-space(s)
-                    while ($n < $limit) {
-                        if (false !== \strpos(c2, $value[$n])) {
-                            ++$n;
-                        }
-                        break;
-                    }
-                    // <https://spec.commonmark.org/0.31.2/#link-destination>
-                    $href = "";
-                    if ('<' === $value[$n]) {
-                        // TODO
-                    } else {
-                        $d = 0;
-                        while ($n < $limit) {
-                            $cc = $value[$n];
-                            if ("\\" === $cc && $n + 1 < $limit) {
-                                $href .= $cc . $value[$n + 1];
-                                $n += 2;
-                                continue;
-                            }
-                            if ('(' === $cc) {
-                                $href .= $cc;
-                                ++$d;
-                                ++$n;
-                                continue;
-                            }
-                            if (')' === $cc) {
-                                // Validate the link destination right before it reaches a `)` or a white-space
-                                if (0 === $d) {
-                                    break;
-                                }
-                                $href .= $cc;
-                                --$d;
-                                ++$n;
-                            }
-                            // It must not contain control character(s) and white-space(s). The `)` marks the end of the
-                            // link destination
-                            if (false !== \strpos(c2 . c9 . ')', $cc)) {
-                                break;
-                            }
-                            $href .= $cc;
-                            ++$n;
-                        }
-                        if ($n >= $limit || false === \strpos(c2 . ')', $value[$n])) {
-                            $s .= \substr($value, $i, $n + ($i + 1));
-                            $i = $n;
-                            continue;
-                        }
-                        // Skip white-space(s)
-                        while ($n < $limit) {
-                            if (false !== \strpos(c2, $value[$n])) {
-                                ++$n;
-                            }
-                            break;
-                        }
-                        $href = v($href);
-                        if ($n < $limit && ')' === $value[$n]) {
-                            "" !== $s && ($r[] = \htmlspecialchars($s));
-                            $s = "";
-                            $r[] = ['a', $text, ['href' => u($href)]];
-                            $i = $n;
-                            continue;
-                        }
-                        if ($n < $limit && false !== \strpos("'" . '"(', $enter = $value[$n])) {
-                            ++$n; // Start after `"`, `'`, or `(`
-                            $exit = '(' === $enter ? ')' : $enter;
-                            $title = "";
-                            while ($n < $limit) {
-                                $cc = $value[$n];
-                                if ("\\" === $cc && $n + 1 < $limit) {
-                                    $title .= $cc . $value[$n + 1];
-                                    $n += 2;
-                                    continue;
-                                }
-                                if ('(' === $enter) {
-                                    // Cannot contain unescaped `(`
-                                    if ('(' === $cc) {
-                                        break;
-                                    }
-                                    // Cannot contain unescaped `)` unless it marks the end of the title
-                                    if (')' === $cc) {
-                                        $next = $value[$n + 1] ?? 0;
-                                        if (')' !== $next && false === \strpos(c2, $next)) {
-                                            $s .= \substr($value, $i, $n + 1);
-                                            $i = $n;
-                                            continue 2;
-                                        }
-                                    }
-                                } else {
-                                    // Cannot contain unescaped `"` or `'` unless it marks the end of the title
-                                    if ($exit === $cc) {
-                                        $next = $value[$n + 1] ?? 0;
-                                        if (')' !== $next && false === \strpos(c2, $next)) {
-                                            $s .= \substr($value, $i, $n + 1);
-                                            $i = $n;
-                                            continue 2;
-                                        }
-                                    }
-                                }
-                                if ($exit === $cc) {
-                                    ++$n;
-                                    break;
-                                }
-                                if (')' === $cc) { // Found unclosed title
-                                    $s .= \substr($value, $i, $n + 1);
-                                    $i = $n;
-                                    continue 2;
-                                }
-                                $title .= $cc;
-                                ++$n;
-                            }
-                            // Skip white-space(s)
-                            while ($n < $limit) {
-                                if (false !== \strpos(c2, $value[$n])) {
-                                    ++$n;
-                                }
-                                break;
-                            }
-                            if ($n >= $limit || ')' !== $value[$n]) {
-                                $s .= \substr($value, $i, $n + 1);
-                                $i = $n;
-                                continue;
-                            }
-                            "" !== $s && ($r[] = \htmlspecialchars($s));
-                            $s = "";
-                            $r[] = ['a', $text, [
-                                'href' => u($href),
-                                'title' => v($title)
-                            ]];
-                            $i = $n;
-                            continue;
-                        }
-                    }
-                }
-                if ($n < $limit - 1 && '[' === $value[$n + 1]) {
-                    // TODO
-                }
+                $s .= $c;
+                continue;
             }
             if ('_' === $c) {}
             // <https://spec.commonmark.org/0.31.2#code-span>
@@ -668,7 +659,7 @@ namespace x\markdown\from {
                     $w = $x + \strspn($value, $c, $x);
                 }
                 if (false !== $z) {
-                    "" !== $s && ($r[] = \htmlspecialchars($s));
+                    "" !== $s && ($r[] = h($s));
                     $text = \substr($value, $i + $n, $z - ($i + $n));
                     // Line break(s) are converted to space(s)
                     $text = \strtr($text, "\n", ' ');
@@ -677,7 +668,7 @@ namespace x\markdown\from {
                     if ("" !== \trim($text) && ' ' === $text[0] && ' ' === \substr($text, -1)) {
                         $text = \substr($text, 1, -1);
                     }
-                    $r[] = ['code', \htmlspecialchars($text), []];
+                    $r[] = ['code', h($text), []];
                     $s = "";
                     $i = $z + $n - 1;
                     continue;
@@ -692,7 +683,7 @@ namespace x\markdown\from {
             }
             $s .= $c;
         }
-        "" !== $s && ($r[] = \htmlspecialchars($s));
+        "" !== $s && ($r[] = h($s));
         return $r;
     }
     function rows(string $value, array &$lot = [], int $deep = 0) {
@@ -1533,7 +1524,7 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ('pre' === $v[0]) {
-                    $v[1] = ['code', \htmlspecialchars($v[1]), $v[2]];
+                    $v[1] = ['code', h($v[1]), $v[2]];
                     $v[2] = [];
                     continue;
                 }
@@ -1638,6 +1629,7 @@ namespace x\markdown\from {
         }
         return \substr($r, 0, -1);
     }
+    function t(string $value, int &$i, int &$limit) {}
     function u(string $text) {
         $c1 = c4 . 'ABCDEFabcdef';
         $c2 = c7 . ';/?@&=+$,!~*()#' . "'";
