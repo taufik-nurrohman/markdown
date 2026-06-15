@@ -127,10 +127,10 @@ function export($value, $dent = "", $key_as_string = false, $is_object = null) {
     if ('NULL' === $value) {
         return 'null';
     }
-    if (false !== strpos($value, "\n")) {
+    if (false !== strpos($value, "\n") || false !== strpos(substr($value, 1, -1), "'")) {
         $value = "<<<TEXT\n" . implode("\n", array_map(function ($v) use ($dent) {
             if ("" !== $v) {
-                return $dent . $v;
+                return $dent . strtr($v, ["\\'" => "'"]);
             }
             return "";
         }, explode("\n", substr($value, 1, -1)))) . "\n" . $dent . 'TEXT';
