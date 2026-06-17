@@ -138,6 +138,101 @@ function export($value, $dent = "", $key_as_string = false, $is_object = null) {
     return $value;
 }
 
+function b(string $value, int $i, int $limit) {
+    if (($m = \strspn($value, '#', $i)) && $m < 7 && ($w = \strspn($value, " \n\r\t", $i + $m))) {
+        $r = ['h' . $m, $i + $m + $w]; // Block type and block’s content start
+        // Case for empty header block(s)
+        if ($r[1] > $i + $m && ("\n" === $value[$i + $m] || "\r" === $value[$i + $m])) {
+            $r[1] = $i + $m;
+        }
+        // Block’s content end
+        $r[] = $i += \strcspn($value, "\n\r", $i);
+        // Next line after current block
+        if ($i < $limit) {
+            $i += "\r" === $value[$i] && "\n" === ($value[$i + 1] ?? 0) ? 2 : 1;
+        }
+        $r[] = $i;
+        return $r;
+    }
+    return false;
+}
+
+function rows(string $value, array &$lot = [], int $deep = 0) {
+    $lot = \array_replace([[], [], []], $lot);
+    if ("" === \trim($value)) {
+        return [[], $lot, 0];
+    }
+    $i = $start = \strspn($value, "\r\n");
+    $limit = \strlen($value);
+    $rows = [];
+    $s = "";
+    $void = 0;
+    while ($i < $limit) {
+        $c = $value[$i];
+        if ($i === $start || ("\n" === $value[$i - 1] || "\r" === $value[$i - 1])) {
+            $d = \strspn($value, ' ', $i);
+            if ($d >= 4) {
+                $s .= \substr($value, $i, $d);
+                $i += $d;
+                continue;
+            }
+            if ("" !== $s && \strspn($s, ' ') >= 4) {
+                $rows[] = ['pre', \substr(\strtr($s, ["\n   " => "\n"]), 4, -1), []];
+                $s = "";
+                continue;
+            }
+            $i += $d;
+            if ($b = b($value, $i, $limit)) {
+                "" !== $s && ($rows[] = \substr($s, 0, -1)) && ($s = "");
+                $rows[] = [$b[0], \substr($value, $b[1], $b[2] - $b[1]), []];
+                $i = $b[3];
+                continue;
+            }
+            if (('-' === $c || '=' === $c) && "" !== $s) {
+                $n = ($i + ($m = \strspn($value, $c, $i)));
+                if ($n < $limit && "\n" !== $value[$i + $m] && "\r" !== $value[$i + $m]) {
+                    $s .= \substr($value, $i, $m);
+                    $i = $n;
+                    continue;
+                }
+                $i = $n;
+                $rows[] = ['h' . ('-' === $c ? 2 : 1), \substr($s, 0, -1), []];
+                $s = "";
+                continue;
+            }
+        }
+        if ("\n" === $c || "\r" === $c) {
+            if ("\r" === $c && $i + 1 < $limit && "\n" === $value[$i + 1]) {
+                ++$i;
+            }
+            ++$i;
+            // Blank line
+            if ($i >= $limit || "\n" === $value[$i] || "\r" === $value[$i]) {
+                if (\strspn($s, ' ') >= 4) {
+                    $s = \substr(\strtr($s, ["\n    " => "\n"]), 4);
+                    $rows[] = ['pre', $s, []];
+                    $s = "";
+                    continue;
+                }
+                "" !== $s && ($rows[] = $s) && ($s = "");
+                continue;
+            }
+            "" !== $s && ($s .= "\n");
+            continue;
+        }
+        $s .= $c;
+        ++$i;
+    }
+    if ("" !== $s) {
+        if (\strspn($s, ' ') >= 4) {
+            $rows[] = ['pre', \substr(\strtr($s, ["\n    " => "\n"]), 4), []];
+        } else {
+            $rows[] = $s;
+        }
+    }
+    return [$rows, $lot, $void];
+}
+
 if ('LICENSE' === $test) {
     $files = [PATH . D . '..' . D . 'LICENSE'];
 } else if ('README' === $test) {
@@ -236,8 +331,8 @@ button, select {
   border: 1px solid #000;
   cursor: pointer;
   display: inline-block;
-  height: 1.5;
-  line-height: 1.5;
+  height: calc(1.5em + (0.125em * 2) + 2px);
+  line-height: 1.5em;
   padding: 0.125em 0.5em;
 }
 select {
@@ -357,7 +452,8 @@ foreach ($files as $file) {
         $r .= '</div>';
     } else if ('source' === $view) {
         $r .= '<pre>';
-        $r .= view_source(x\markdown\from($raws));
+        // $r .= view_source(x\markdown\from($raws));
+        $r .= view_raw("<?php\n\nreturn " . export(rows($raws)[0]) . ';');
         $r .= '</pre>';
     } else {
         $r .= '<pre>';
