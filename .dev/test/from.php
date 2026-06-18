@@ -528,9 +528,67 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 echo json_encode($value[$d+$i]);
                 echo '<br>';
             }
-            if (($n = \strspn($value, '0123456789', $d + $i)) && $n < 10 && false !== \strpos(').', $m = $value[$d + $i + $n]) && ($w = \strspn($value, " \n\t", $d + $i + $n + 1))) {
-                echo json_encode($value[$d + $i + $n]);
-                echo '<br>';
+            if (($n1 = \strspn($value, '0123456789', $d + $i)) && $n1 < 10 && false !== \strpos(').', $m = $value[$d + $i + $n1]) && ($w = \strspn($value, " \n\t", $d + $i + $n1 + 1))) {
+                $start = (int) \substr($value, $d + $i, $n1);
+                if (1 !== $start && "" !== $s) {
+                    $s .= $c;
+                    continue;
+                }
+                "" !== $s && ($rows[] = ['p', \substr($s, 0, -1), []]) && ($s = "");
+                $dent = $d + $n1 + 1 + 1; // TODO: Check for `\t`
+                $n = $dent;
+                while ($i + $n < $limit) {
+                    $text = \strcspn($value, "\n", $i + $n);
+                    $s .= \substr($value, $i + $n, $text);
+                    $n += $text;
+                    if ($i + $n >= $limit) {
+                        break;
+                    }
+                    if ("\n" === $value[$i + $n]) {
+                        $next_line_start = $i + $n + 1;
+                        $next_line_length = \strcspn($value, "\n", $next_line_start);
+                        $spaces = \strspn($value, " \t", $next_line_start);
+                        if ($next_line_length === $spaces) {
+                            $s .= "\n";
+                            $n += 1 + $next_line_length;
+                            continue;
+                        }
+                        $n2 = \strspn($value, '0123456789', $next_line_start);
+                        if ($n2 && $n2 < 10 && $m === ($value[$next_line_start + $n2] ?? 0)) {
+                            $next_start = (int) \substr($value, $next_line_start, $n2);
+                            if ($next_start >= $start) {
+                                $marker_spaces = \strspn($value, ' ', $next_line_start + $n2 + 1); // TODO: Check for `\t`
+                                $prefix_length = $n2 + 1 + $marker_spaces;
+                                $content_start = $next_line_start + $prefix_length;
+                                $content_length = $next_line_length - $prefix_length;
+                                $line_content = $content_length > 0 ? \substr($value, $content_start, $content_length) : "";
+                                $s .= "\n\x1e" . $line_content;
+                                $n += 1 + $next_line_length;
+                                continue;
+                            }
+                        }
+                        if (($n2 = \strspn($value, '0123456789', $next_line_start)) && $n2 < 10 && $m === $value[$i + $n2] && ((int) \substr($value, $next_line_start, $n2)) >= $start) {
+                            $s .= "\n" . \substr($value, $next_line_start + $n2 + 1 + 1, $next_line_start + $n2 + 1 + 1 + $next_line_length);
+                            $n += 1 + $next_line_length;
+                            continue;
+                        }
+                        $next_line_start = $i + $n + 1;
+                        $next_line_length = \strcspn($value, "\n", $next_line_start);
+                        $test = rows($value, $lot, 0, $next_line_start, $next_line_start + $next_line_length);
+                        if ('p' === ($test[0][0][0] ?? 0)) {
+                            $s .= "\n" . \substr($value, $next_line_start, $next_line_length);
+                            $n += 1 + $next_line_length;
+                            continue;
+                        }
+                        $rows[] = ['ol', $s, ['start' => $start]];
+                        $s = "";
+                        break;
+                    }
+                    $s .= $c;
+                }
+                $i += $n;
+                "" !== $s && ($rows[] = ['ol', $s, ['start' => $start]]) && ($s = "");
+                continue;
             }
             // <https://spec.commonmark.org/0.31.2#atx-heading>
             if (($n = \strspn($value, '#', $d + $i)) && $n < 7) {
