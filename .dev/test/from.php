@@ -58,18 +58,18 @@ function view_raw(string $text) {
                     break;
             }
             $r .= '<span style="color:#' . $color . ';">' . strtr(htmlspecialchars($t[1]), [
-                "\t" => "<span style=\"color:#400;\">\\t</span>",
-                "\x1e" => "<span style=\"color:#400;\">\\x1e</span>",
-                "\x2" => "<span style=\"color:#400;\">\\x2</span>",
-                "\x3" => "<span style=\"color:#400;\">\\x3</span>"
+                "\t" => "<span class=\"c c-t\">\t</span>",
+                "\x1e" => "<span class=\"c\">\x1e</span>",
+                "\x2" => "<span class=\"c\">\x2</span>",
+                "\x3" => "<span class=\"c\">\x3</span>"
             ]) . '</span>';
             continue;
         }
         $r .= '<span style="color:#070;">' . strtr(htmlspecialchars($t), [
-            "\t" => "<span style=\"color:#400;\">\\t</span>",
-            "\x1e" => "<span style=\"color:#400;\">\\x1e</span>",
-            "\x2" => "<span style=\"color:#400;\">\\x2</span>",
-            "\x3" => "<span style=\"color:#400;\">\\x3</span>"
+            "\t" => "<span class=\"c c-t\">\t</span>",
+            "\x1e" => "<span class=\"c\">\x1e</span>",
+            "\x2" => "<span class=\"c\">\x2</span>",
+            "\x3" => "<span class=\"c\">\x3</span>"
         ]) . '</span>';
     }
     return $r;
@@ -215,61 +215,43 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // <https://spec.commonmark.org/0.31.2#indented-code-block>
             if ($d >= 4) {
                 // <https://spec.commonmark.org/0.31.2#example-113>
+                // An indented code block cannot interrupt a paragraph
                 if ("" !== $s) {
                     $s .= $c;
                     continue;
                 }
                 $n = 0;
                 while ($i + $n < $limit) {
-                    $prefix = "";
-                    $shift = 1;
-                    $text = \strcspn($value, "\n\r", $i + $n);
+                    $bar = \strcspn($value, "\n\r", $i + $n);
+                    $x = 1; // Assume this line starts with a `\t`
                     if ("\t" !== $value[$i + $n]) {
-                        $w = \strspn($value, ' ', $i + $n);
-                        if ($w >= 4) {
-                            $shift = 4;
-                        } else {
-                            $shift = $w;
-                            if ("\t" === ($value[$i + $n + $shift] ?? 0)) {
-                                if (($j = $w + (4 - ($w % 4))) > 4) {
-                                    $prefix = \str_repeat(' ', $j - 4);
-                                }
-                                $shift += 1;
+                        $x = \min($w = \strspn($value, ' ', $i + $n), 4);
+                        if ($x < 4 && "\t" === ($value[$i + $n + $x] ?? 0)) {
+                            ++$x;
+                            if ($tab = $w + (4 - ($w % 4)) - 4) {
+                                $s .= \str_repeat(' ', $tab);
                             }
                         }
                     }
-                    if ($text > $shift) {
-                        $s .= $prefix . \substr($value, $i + $n + $shift, $text - $shift);
-                    }
-                    $n += $text;
+                    $s .= \substr($value, $i + $n + $x, $bar - $x);
+                    $n += $bar;
                     if ($i + $n >= $limit) {
                         break;
                     }
                     if ($r = r($value, $i + $n, $limit)) {
                         $n += $r;
                         $s .= "\n";
-                        // Next line is a blank line
-                        if ($r = r($value, $i + $n, $limit)) {
-                            $n += $r;
-                            $s .= "\n";
-                            if (d($value, $i + $n, $limit)[0] < 4) {
-                                $rows[] = ['pre', h(\substr($s, 0, -2)), [], [4, "\t"]];
-                                $s = "";
-                                ++$void;
-                                --$n;
-                                break;
-                            }
-                        }
-                        if (d($value, $i + $n, $limit)[0] < 4) {
-                            $rows[] = ['pre', h(\substr($s, 0, -1)), [4, "\t"]];
+                        if ($i + $n < $limit && d($value, $i + $n, $limit)[0] < 4 && !r($value, $i + $n, $limit)) {
+                            $n -= $r;
+                            $rows[] = ['pre', [['code', h(\rtrim($s, "\n") . "\n"), []]], [], [0, ""]];
                             $s = "";
-                            --$n;
                             break;
                         }
+                        continue;
                     }
                 }
+                "" !== $s && ($rows[] = ['pre', [['code', h($s . "\n"), []]], [], [0, ""]]) && ($s = "");
                 $i += $n;
-                "" !== $s && ($rows[] = ['pre', h($s), [], [4, "\t"]]) && ($s = "");
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#html-block>
@@ -354,8 +336,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                             }
                         }
                     }
-                    $i += $n;
                     "" !== $s && ($rows[] = [false, $s, [], [6, $b]]) && ($s = "");
+                    $i += $n;
                     continue;
                 }
                 // Type 7
@@ -385,8 +367,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                     $n += $r;
                                     $s .= "\n";
                                     $test = \strspn($value, " \t", $i + $n);
-                                    if ($i + $n + $test >= $limit || ($test = r($value, $i + $n + $test))) {
-                                        $n += $test;
+                                    if ($i + $n + $test >= $limit || ($test = r($value, $i + $n + $test, $limit))) {
+                                        $n -= $test;
                                         $rows[] = [false, \substr($s, 0, -1), [], [7]];
                                         $s = "";
                                         ++$void;
@@ -394,8 +376,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                     }
                                 }
                             }
-                            $i += $n;
                             "" !== $s && ($rows[] = [false, $s, [], [7]]) && ($s = "");
+                            $i += $n;
                             continue;
                         }
                     }
@@ -421,8 +403,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                     $n += $r;
                                     $s .= "\n";
                                     $test = \strspn($value, " \t", $i + $n);
-                                    if ($i + $n + $test >= $limit || ($test = r($value, $i + $n + $test))) {
-                                        $n += $test;
+                                    if ($i + $n + $test >= $limit || ($test = r($value, $i + $n + $test, $limit))) {
+                                        $n -= $test;
                                         $rows[] = [false, \substr($s, 0, -1), [], [7]];
                                         $s = "";
                                         ++$void;
@@ -430,8 +412,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                     }
                                 }
                             }
-                            $i += $n;
                             "" !== $s && ($rows[] = [false, $s, [], [7]]) && ($s = "");
+                            $i += $n;
                             continue;
                         }
                     }
@@ -454,7 +436,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     }
                 }
                 if ($i >= $limit) {
-                    $rows[] = ['blockquote', "", []]; // An empty block quote
+                    $rows[] = ['blockquote', "", []]; // An empty quote block
                     break;
                 }
                 $n = 0;
@@ -489,20 +471,20 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                         }
                         $b = rows($value, $lot, 0, $i + $n, $i + $n + $r + \strcspn($value, "\n\r", $i + $n + $r))[0][0] ?? 0;
                         // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                        if ($b && ('p' === $b[0] || 'pre' === $b[0] && "\t" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                        if ($b && ('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                             $bar = \strcspn($value, "\n\r", $i + $n);
                             $s .= \substr($value, $i + $n, $bar);
                             $n += $bar + 1;
                             continue;
                         }
-                        // A blank line or other block that is not a paragraph continuation text ends the block quote
+                        // A blank line or other block that is not a paragraph continuation text ends the quote block
                         $rows[] = ['blockquote', \substr($s, 0, -1), []];
                         $s = "";
                         break;
                     }
                 }
-                $i += $n;
                 "" !== $s && ($rows[] = ['blockquote', $s, []]) && ($s = "");
+                $i += $n;
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#setext-heading>
@@ -524,7 +506,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             if (false !== \strpos('*-_', $m = $value[$d + $i]) && \strspn($value, $m . " \t", $d + $i) === ($bar = \strcspn($value, "\n\r", $d + $i)) && ($n = \substr_count($value, $m, $d + $i, $bar)) >= 3) {
                 "" !== $s && ($rows[] = ['p', \substr($s, 0, -1), []]) && ($s = "");
                 $rows[] = ['hr', false, [], [$n, $m]];
-                $i += $n;
+                $i += $bar;
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#bullet-list-marker>
@@ -562,8 +544,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     --$n; // :(
                     break;
                 }
-                $i += $n;
                 "" !== $s && ($rows[] = ['ul', $s, [], [1, $m]]) && ($s = "");
+                $i += $n;
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#ordered-list-marker>
@@ -625,19 +607,15 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     }
                     $s .= $c;
                 }
-                $i += $n;
                 "" !== $s && ($rows[] = ['ol', $s, ['start' => $start]]) && ($s = "");
+                $i += $n;
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#atx-heading>
-            if (($n = \strspn($value, '#', $d + $i)) && $n < 7) {
-                if (false !== \strpos(" \n\r\t", $value[$d + $i + $n] ?? "\n")) {
-                    "" !== $s && ($rows[] = ['p', \substr($s, 0, -1), []]) && ($s = "");
-                    $rows[] = ['h' . $n, \substr($value, $i += $d + $n + \strspn($value, " \t", $d + $i + $n), $j = \strcspn($value, "\n\r", $i)), [], [$n, '#']];
-                    $i += $j;
-                    continue;
-                }
-                $s .= $c;
+            if (($n = \strspn($value, '#', $d + $i)) && $n < 7 && false !== \strpos(" \n\r\t", $value[$d + $i + $n] ?? "\n")) {
+                "" !== $s && ($rows[] = ['p', \substr($s, 0, -1), []]) && ($s = "");
+                $rows[] = ['h' . $n, \substr($value, $i += $d + $n + \strspn($value, " \t", $d + $i + $n), $bar = \strcspn($value, "\n\r", $i)), [], [$n, '#']];
+                $i += $bar;
                 continue;
             }
         }
@@ -719,7 +697,6 @@ body > main > div > pre {
 body > main > div > pre {
   background: #ffc;
   border-width: 1px;
-  font: normal normal 12px/1.25 'Courier New', monospace;
 }
 body > main > div + div {
   margin-top: 1em;
@@ -750,6 +727,9 @@ button, select {
   height: calc(1.5em + (0.125em * 2) + 2px);
   line-height: 1.5em;
   padding: 0.125em 0.5em;
+}
+code {
+  font: normal normal 12px/1.25 'Courier New', monospace;
 }
 select {
   background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjAgMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTQgN0wxMCAxM0wxNiA3IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS1saW5lY2FwPSJidXR0IiBzdHJva2UtbGluZWpvaW49Im1pdGVyIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=');
@@ -795,7 +775,11 @@ legend {
   padding: 0 0.25em;
 }
 pre {
+  overflow: auto;
   tab-size: 4;
+}
+pre code {
+  display: block;
 }
 :disabled {
   cursor: not-allowed;
@@ -900,12 +884,14 @@ foreach ($files as $file) {
     // $raws = strtr($raws, ["\n" => "\r\n"]);
     $r .= '<div>';
     $r .= '<pre>';
+    $r .= '<code>';
     $r .= strtr(htmlspecialchars($raws), [
         "\n" => "<span class=\"c c-n\">\n</span>",
         "\r" => "<span class=\"c c-r\"></span>",
         "\t" => "<span class=\"c c-t\">\t</span>",
         ' ' => "<span class=\"c c-s\"> </span>"
     ]);
+    $r .= '</code>';
     $r .= '</pre>';
     if ('result' === $view) {
         $r .= '<div>';
@@ -913,13 +899,17 @@ foreach ($files as $file) {
         $r .= '</div>';
     } else if ('source' === $view) {
         $r .= '<pre>';
+        $r .= '<code>';
         // $r .= view_source(x\markdown\from($raws));
         $lot = [];
         $r .= view_raw("<?php\n\nreturn " . export(rows($raws, $lot, 25, 0, \strlen($raws))) . ';');
+        $r .= '</code>';
         $r .= '</pre>';
     } else {
         $r .= '<pre>';
+        $r .= '<code>';
         $r .= view_raw("<?php\n\nreturn " . export(x\markdown\from\raws($raws)) . ';');
+        $r .= '</code>';
         $r .= '</pre>';
     }
     $r .= '</div>';
