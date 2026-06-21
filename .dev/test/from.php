@@ -514,8 +514,9 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     }
                     // <https://spec.commonmark.org/0.31.2#example-93>
                     // <https://spec.commonmark.org/0.31.2#example-106>
-                    if ($d[0] < 4 && ($peek = \strspn($value, '=', $d[1] + $i + $n))) {
-                        if ($peek += \strspn($value, " \t", $d[1] + $i + $n + $peek) === $bar) {
+                    if ($d[0] < 4 && ($peek = $d[1] + \strspn($value, '=', $d[1] + $i + $n))) {
+                        $peek += \strspn($value, " \t", $i + $n + $peek);
+                        if ($peek === $bar) {
                             $s .= "\n" . \str_repeat(' ', $d[0]) . "\\" . \substr($value, $d[1] + $i + $n, $bar);
                             $n += $bar;
                             continue;
@@ -523,7 +524,9 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     }
                     // <https://spec.commonmark.org/0.31.2#example-235>
                     // <https://spec.commonmark.org/0.31.2#example-236>
-                    if ('p' !== (\end(rows($s, $lot, 0, 0, \strlen($s))[0])[0] ?? 0)) {
+                    // <https://spec.commonmark.org/0.31.2#example-250>
+                    $b = \end(rows($s, $lot, 0, 0, \strlen($s))[0]) ?: [];
+                    if ('blockquote' !== $b[0] && 'p' !== $b[0]) {
                         $n -= $r;
                         break;
                     }
@@ -540,11 +543,16 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // Since `-` can also be used as a list or thematic break marker, it is necessary to verify that the
             // previously identified block is a paragraph that is not followed by any blank line(s). Any other case is
             // considered invalid and will therefore fall through the list or thematic break parser.
-            if (false !== \strpos('-=', $m = $value[$d + $i]) && "" !== $s && \strspn($value, $m, $d + $i) === ($bar = \strcspn($value, "\n\r", $d + $i))) {
-                $rows[] = ['h' . ('-' === $m ? 2 : 1), \substr($s, 0, -1), [], ['-' === $m ? 2 : 1, $m]];
-                $i += $bar;
-                $s = "";
-                continue;
+            if (false !== \strpos('-=', $m = $value[$d + $i]) && "" !== $s) {
+                if ($peek = \strspn($value, $m, $d + $i)) {
+                    $peek += \strspn($value, " \t", $d + $i + $peek);
+                    if ($peek === ($bar = \strcspn($value, "\n\r", $d + $i))) {
+                        $rows[] = ['h' . ('-' === $m ? 2 : 1), \substr($s, 0, -1), [], ['-' === $m ? 2 : 1, $m]];
+                        $i += $bar;
+                        $s = "";
+                        continue;
+                    }
+                }
             }
             // <https://spec.commonmark.org/0.31.2#thematic-break>
             // This must come before the list parser. Since `-` can also be used as a thematic break marker where the
