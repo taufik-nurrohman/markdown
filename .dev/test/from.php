@@ -138,6 +138,50 @@ function export($value, $dent = "", $r = "\n", $key_as_string = false, $is_objec
     return $value;
 }
 
+function a(string $text) {
+    $limit = \strlen($text);
+    $r = [];
+    $s = "";
+    for ($i = 0; $i < $limit; ++$i) {
+        $c = $text[$i];
+        if ('#' === $c) {
+            $r['id'] = \substr($text, $i += 1, $n = \strcspn($text, " \t", $i));
+            $i += $n;
+            continue;
+        }
+        if ('.' === $c) {
+            $r['class'][] = \substr($text, $i += 1, $n = \strcspn($text, " \t", $i));
+            $i += $n;
+            continue;
+        }
+        if ('=' === $c) {
+            $r[$s] = "";
+            $s = "";
+            ++$i; // Go past `=`
+            if ('"' === $text[$i]) {
+                echo 'ok';
+                echo '<br>';
+            }
+            continue;
+        }
+        if ($n = \strspn($text, " \t", $i)) {
+            if ("" !== $s) {
+                $r[$s] = true;
+                $s = "";
+            }
+            $i += $n - 1;
+            continue;
+        }
+        $s .= $c;
+    }
+    if ("" !== $s) {
+        $r[$s] = true;
+    }
+    return $r;
+}
+
+// echo json_encode(a('a b="" #c .d'));
+
 function d(string $value, int $i, int $limit) {
     if (' ' !== $value[$i] && "\t" !== $value[$i]) {
         return [0, 0];
@@ -227,6 +271,9 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
     if ("" !== $s) {
         $row[] = $s;
     }
+    if (1 === \count($row) && \is_string($row[0])) {
+        return $row[0];
+    }
     return $row;
 }
 
@@ -281,7 +328,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 while ($r = r($value, $i + $n, $limit)) {
                     $n += $r;
                     $bar = \strcspn($value, "\n\r", $i + $n);
-                    if ($bar = \strspn($value, " \t", $i + $n)) {
+                    if (\strspn($value, " \t", $i + $n)) {
                         if ("\t" !== $value[$i + $n]) {
                             $x = \min($w = \strspn($value, ' ', $i + $n), 4);
                             if ($x < 4 && "\t" === ($value[$i + $n + $x] ?? 0)) {
@@ -623,7 +670,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                 --$bar;
                                 $s .= \str_repeat(' ', 4 - $d);
                                 // A tab at the start of a line immediately satisfies the “preceded by up to 3 space(s)
-                                // of indentation” rule because it already occupies 4 space(s).
+                                // of indentation” rule because it already occupies 4 character(s).
                                 break;
                             }
                             // Not a white-space, stop!
@@ -648,7 +695,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 if ($peek = \strspn($value, $m, $d + $i)) {
                     $peek += \strspn($value, " \t", $d + $i + $peek);
                     if ($peek === ($bar = \strcspn($value, "\n\r", $d + $i))) {
-                        $rows[] = ['h' . ('-' === $m ? 2 : 1), \trim($s), [], ['-' === $m ? 2 : 1, $m]];
+                        $rows[] = ['h' . ('-' === $m ? 2 : 1), row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s)), [], ['-' === $m ? 2 : 1, $m]];
                         $i += $bar;
                         $s = "";
                         continue;
@@ -658,7 +705,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // <https://spec.commonmark.org/0.31.2#thematic-break>
             // This must come before the list parser. Since `-` can also be used as a thematic break marker where the
             // next character is allowed to be a white-space, it is necessary to verify that the current line contains
-            // more than two `-`, and consists solely of `-` and white-space(s). Any other combination is considered
+            // more than 2 `-`, and consists solely of `-` and white-space(s). Any other combination is considered
             // invalid and will therefore fall through the list parser.
             if (false !== \strpos('*-_', $m = $value[$d + $i]) && \strspn($value, $m . " \t", $i) === ($bar = \strcspn($value, "\n\r", $i)) && ($n = \substr_count($value, $m, $i, $bar)) >= 3) {
                 "" !== $s && ($rows[] = ['p', row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s)), []]) && ($s = "");
@@ -770,9 +817,11 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             }
             // <https://spec.commonmark.org/0.31.2#atx-heading>
             if (($n = \strspn($value, '#', $d + $i)) && $n < 7 && false !== \strpos(" \n\r\t", $value[$d + $i + $n] ?? "\n")) {
-                "" !== $s && ($rows[] = ['p', row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s)), []]) && ($s = "");
-                $rows[] = ['h' . $n, \substr($value, $i += $d + $n + \strspn($value, " \t", $d + $i + $n), $bar = \strcspn($value, "\n\r", $i)), [], [$n, '#']];
+                "" !== $s && ($rows[] = ['p', row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s)), []]);
+                $s = \substr($value, $i += $d + $n + \strspn($value, " \t", $d + $i + $n), $bar = \strcspn($value, "\n\r", $i));
+                $rows[] = ['h' . $n, row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s)), [], [$n, '#']];
                 $i += $bar;
+                $s = "";
                 continue;
             }
         }
