@@ -220,10 +220,48 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     $s .= $c;
                     continue;
                 }
-                $n = 0;
-                while ($i + $n < $limit) {
+                $x = 1;
+                if ("\t" !== $value[$i]) {
+                    $x = \min($w = \strspn($value, ' ', $i), 4);
+                    if ($x < 4 && "\t" === ($value[$i + $x] ?? 0)) {
+                        ++$x;
+                        if ($tab = $w + (4 - ($w % 4)) - 4) {
+                            $s .= \str_repeat(' ', $tab);
+                        }
+                    }
+                }
+                $bar = \strcspn($value, "\n\r", $i);
+                $s .= \substr($value, $i + ($n = 0) + $x, $bar - $x);
+                $n += $bar;
+                if ($i + $n >= $limit) {
+                    $rows[] = ['pre', [['code', h($s), []]], [], [0, ""]];
+                    $s = "";
+                    break;
+                }
+                while ($r = r($value, $i + $n, $limit)) {
+                    $n += $r;
                     $bar = \strcspn($value, "\n\r", $i + $n);
-                    $x = 1; // Assume this line starts with a `\t`
+                    if (\strspn($value, " \t", $i + $n) === $bar) {
+                        $x = 1;
+                        if ("\t" !== $value[$i + $n]) {
+                            $x = \min($w = \strspn($value, ' ', $i + $n), 4);
+                            if ($x < 4 && "\t" === ($value[$i + $n + $x] ?? 0)) {
+                                ++$x;
+                                if ($tab = $w + (4 - ($w % 4)) - 4) {
+                                    $s .= \str_repeat(' ', $tab);
+                                }
+                            }
+                        }
+                        $s .= "\n" . \substr($value, $i + $n + $x, $bar - $x);
+                        $n += $bar;
+                        continue;
+                    }
+                    if (d($value, $i + $n, $limit)[0] < 4) {
+                        $rows[] = ['pre', [['code', h(\rtrim($s, "\n") . "\n"), []]], [], [0, ""]];
+                        $s = "";
+                        break;
+                    }
+                    $x = 1;
                     if ("\t" !== $value[$i + $n]) {
                         $x = \min($w = \strspn($value, ' ', $i + $n), 4);
                         if ($x < 4 && "\t" === ($value[$i + $n + $x] ?? 0)) {
@@ -233,27 +271,12 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                             }
                         }
                     }
-                    $s .= \substr($value, $i + $n + $x, $bar - $x);
+                    $s .= "\n" . \substr($value, $i + $n + $x, $bar - $x);
                     $n += $bar;
-                    if ($i + $n >= $limit) {
-                        break;
-                    }
-                    // A blank line ends the current block
-                    if ($r = r($value, $i + $n, $limit)) {
-                        $n += $r;
-                        $s .= "\n";
-                        if ($i + $n < $limit && d($value, $i + $n, $limit)[0] < 4 && !r($value, $i + $n, $limit)) {
-                            $n -= $r;
-                            $rows[] = ['pre', [['code', h(\rtrim($s, "\n") . "\n"), []]], [], [0, ""]];
-                            $s = "";
-                            ++$void;
-                            break;
-                        }
-                        continue;
-                    }
+                    continue;
                 }
-                "" !== $s && ($rows[] = ['pre', [['code', h($s . "\n"), []]], [], [0, ""]]) && ($s = "");
-                $i += $n;
+                "" !== $s && ($rows[] = ['pre', [['code', h($s), []]], [], [0, ""]]) && ($s = "");
+                $i += $n - $r;
                 continue;
             }
             $d = $d[1]; // The actual number of initial white-space character(s)
