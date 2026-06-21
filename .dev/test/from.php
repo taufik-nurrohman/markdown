@@ -220,7 +220,6 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     $s .= $c;
                     continue;
                 }
-                $x = 1;
                 if ("\t" !== $value[$i]) {
                     $x = \min($w = \strspn($value, ' ', $i), 4);
                     if ($x < 4 && "\t" === ($value[$i + $x] ?? 0)) {
@@ -229,10 +228,11 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                             $s .= \str_repeat(' ', $tab);
                         }
                     }
+                } else {
+                    $x = 1;
                 }
-                $bar = \strcspn($value, "\n\r", $i);
-                $s .= \substr($value, $i + ($n = 0) + $x, $bar - $x);
-                $n += $bar;
+                $bar = $n = \strcspn($value, "\n\r", $i);
+                $s .= \substr($value, $i + $x, $bar - $x);
                 if ($i + $n >= $limit) {
                     $rows[] = ['pre', [['code', h($s), []]], [], [0, ""]];
                     $s = "";
@@ -242,7 +242,6 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     $n += $r;
                     $bar = \strcspn($value, "\n\r", $i + $n);
                     if (\strspn($value, " \t", $i + $n) === $bar) {
-                        $x = 1;
                         if ("\t" !== $value[$i + $n]) {
                             $x = \min($w = \strspn($value, ' ', $i + $n), 4);
                             if ($x < 4 && "\t" === ($value[$i + $n + $x] ?? 0)) {
@@ -251,6 +250,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                     $s .= \str_repeat(' ', $tab);
                                 }
                             }
+                        } else {
+                            $x = 1;
                         }
                         $s .= "\n" . \substr($value, $i + $n + $x, $bar - $x);
                         $n += $bar;
@@ -261,7 +262,6 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                         $s = "";
                         break;
                     }
-                    $x = 1;
                     if ("\t" !== $value[$i + $n]) {
                         $x = \min($w = \strspn($value, ' ', $i + $n), 4);
                         if ($x < 4 && "\t" === ($value[$i + $n + $x] ?? 0)) {
@@ -270,6 +270,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                 $s .= \str_repeat(' ', $tab);
                             }
                         }
+                    } else {
+                        $x = 1;
                     }
                     $s .= "\n" . \substr($value, $i + $n + $x, $bar - $x);
                     $n += $bar;
@@ -463,114 +465,75 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // <https://spec.commonmark.org/0.31.2#block-quote-marker>
             if ('>' === $value[$d + $i]) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                $n = ($peek = $d + 1); // Start after `>`
-                while ($i + $n < $limit) {
-                    $bar = \strcspn($value, "\n\r", $i + $n);
-                    if (' ' === ($value[$i + $n] ?? 0)) {
-                        ++$n;
-                        ++$peek;
-                    }
-                    if ("\t" === ($value[$i + $n] ?? 0) && ($tab = 4 - ($peek % 4))) {
-                        $s .= \str_repeat(' ', $tab - 1);
-                        ++$n;
-                    }
-                    $s .= \substr($value, $i + $n, $bar);
-                    $n += $bar;
-                    if ($i + $n >= $limit) {
-                        break;
-                    }
-                    // A blank line ends the current block
-                    if ($r = r($value, $i + $n + \strspn($value, " \t", $i + $n), $limit)) {
-                        $rows[] = ['blockquote', \substr($s, 0, -1), []];
-                        $s = "";
-                        ++$void;
-                        break;
-                    }
-                    if (d($value, $i + $n, $limit)[0] < 4 && '>' === $value[$i + $n + d($value, $i + $n, $limit)[1]]) {
-                        echo json_encode(substr($value, $i + $n));
-                        echo '<br>';
-                    }
-                    $b = rows($value, $lot, 0, $i + $n, $i + $n + \strcspn($value, "\n\r", $i + $n))[0][0] ?? 0;
-                    // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                    if ($b && ('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                        $bar = \strcspn($value, "\n\r", $i + $n);
-                        $s .= \substr($value, $i + $n, $bar);
-                        $n += $bar;
-                        if ($r = r($value, $i + $n, $limit)) {
-                            $n += $r;
-                            $s .= "\n";
-                        }
-                        continue;
-                    }
+                $bar = $n = \strcspn($value, "\n\r", $i);
+                $x = $d + 1; // Start after `>`
+                if (' ' === ($value[$i + $x] ?? 0)) {
+                    ++$x;
                 }
-                "" !== $s && ($rows[] = ['blockquote', $s, []]) && ($s = "");
-                $i += $n;
-                continue;
-
-                /*
-                $i += ($dd = $d + 1); // Start after `>`
-                if (' ' === ($value[$i] ?? 0)) {
-                    ++$dd;
-                    ++$i;
+                if ("\t" === ($value[$i + $x] ?? 0)) {
+                    $s .= \str_repeat(' ', (4 - ($x % 4)) - 1);
+                    ++$x;
                 }
-                if ("\t" === ($value[$i] ?? 0)) {
-                    if ($tab = 4 - ($dd % 4)) {
-                        $s .= \str_repeat(' ', $tab - 1);
-                        ++$i;
-                    }
-                }
-                if ($i >= $limit) {
-                    $rows[] = ['blockquote', "", []]; // An empty quote block
+                $s .= \substr($value, $i + $x, $bar - $x);
+                if ($i + $n >= $limit) {
+                    $rows[] = ['blockquote', $s, []];
+                    $s = "";
                     break;
                 }
-                $n = 0;
-                while ($i + $n < $limit) {
+                while ($r = r($value, $i + $n, $limit)) {
+                    $n += $r;
                     $bar = \strcspn($value, "\n\r", $i + $n);
-                    $s .= \substr($value, $i + $n, $bar);
-                    $n += $bar;
-                    if ($i + $n >= $limit) {
-                        break;
-                    }
-                    if ($r = r($value, $i + $n, $limit)) {
-                        $ii = $i + $n + $r + \strspn($value, " \t", $i + $n + $r);
-                        $s .= "\n";
-                        $dd = d($value, $i + $n + $r, $limit)[0];
-                        if ($dd < 4 && '>' === $value[$ii]) {
-                            $ddd = $dd + 1;
-                            ++$ii;
-                            if (' ' === ($value[$ii] ?? 0)) {
-                                ++$ddd;
-                                ++$ii;
-                            }
-                            if ("\t" === ($value[$ii] ?? 0)) {
-                                if ($tab = 4 - ($ddd % 4)) {
-                                    $s .= \str_repeat(' ', $tab - 1);
-                                    ++$ii;
-                                }
-                            }
-                            $bar = \strcspn($value, "\n\r", $ii);
-                            $n += ($ii - ($i + $n)) + $bar;
-                            $s .= \substr($value, $ii, $bar);
-                            continue;
-                        }
-                        $b = rows($value, $lot, 0, $i + $n, $i + $n + $r + \strcspn($value, "\n\r", $i + $n + $r))[0][0] ?? 0;
-                        // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                        if ($b && ('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                            $bar = \strcspn($value, "\n\r", $i + $n);
-                            $s .= \substr($value, $i + $n, $bar);
-                            $n += $bar + 1;
-                            continue;
-                        }
-                        // A blank line or other block that is not a paragraph continuation text ends the quote block
-                        $rows[] = ['blockquote', \substr($s, 0, -1), []];
+                    // A blank line ends the current block
+                    if (\strspn($value, " \t", $i + $n) === $bar) {
+                        $n += $bar;
+                        $rows[] = ['blockquote', $s, []];
                         $s = "";
                         break;
                     }
+                    $d = d($value, $i + $n, $limit);
+                    if ($d[0] < 4 && '>' === $value[$d[1] + $i + $n]) {
+                        $s .= "\n";
+                        $x = ($peek = $d[1] + 1); // Start after `>`
+                        if (' ' === ($value[$i + $n + $x] ?? 0)) {
+                            ++$peek;
+                            ++$x;
+                        }
+                        if ("\t" === ($value[$i + $n + $x] ?? 0)) {
+                            $s .= \str_repeat(' ', (4 - ($peek % 4)) - 1);
+                            ++$x;
+                        }
+                        $s .= \substr($value, $i + $n + $x, $bar - $x);
+                        $n += $bar;
+                        continue;
+                    }
+                    // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
+                    $b = rows($value, $lot, 0, $i + $n, $i + $n + \strcspn($value, "\n\r", $i + $n))[0][0] ?? 0;
+                    if (!$b || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                        $n -= $r;
+                        break;
+                    }
+                    // <https://spec.commonmark.org/0.31.2#example-93>
+                    // <https://spec.commonmark.org/0.31.2#example-106>
+                    if ($d[0] < 4 && ($peek = \strspn($value, '=', $d[1] + $i + $n))) {
+                        if ($peek += \strspn($value, " \t", $d[1] + $i + $n + $peek) === $bar) {
+                            $s .= "\n" . \str_repeat(' ', $d[0]) . "\\" . \substr($value, $d[1] + $i + $n, $bar);
+                            $n += $bar;
+                            continue;
+                        }
+                    }
+                    // <https://spec.commonmark.org/0.31.2#example-235>
+                    // <https://spec.commonmark.org/0.31.2#example-236>
+                    if ('p' !== (\end(rows($s, $lot, 0, 0, \strlen($s))[0])[0] ?? 0)) {
+                        $n -= $r;
+                        break;
+                    }
+                    $s .= "\n" . \substr($value, $i + $n, $bar);
+                    $n += $bar;
+                    continue;
                 }
                 "" !== $s && ($rows[] = ['blockquote', $s, []]) && ($s = "");
                 $i += $n;
                 continue;
-                */
             }
             // <https://spec.commonmark.org/0.31.2#setext-heading>
             // This must come before the list and the thematic break parser because it uses `-` for heading level 2.
