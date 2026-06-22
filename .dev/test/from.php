@@ -139,48 +139,124 @@ function export($value, $dent = "", $r = "\n", $key_as_string = false, $is_objec
 }
 
 function a(string $text) {
-    $limit = \strlen($text);
+    // Force a space at the end of the text. This will make processing easier.
+    $limit = \strlen($text = \trim($text) . ' ');
     $r = [];
     $s = "";
+    // With attribute syntax wrapped by `{` and `}`, an attribute name immediately followed by white-space will be
+    // treated as a toggle attribute. Alternatively, without such wrapping, an attribute name immediately followed
+    // by white-space will be treated as a class name preceded by the `language-` prefix.
+    if ($b = '{' === $text[0] && '}' === \substr($text, -2, 1) && "\\" !== \substr($text, -3, 1)) {
+        $limit = \strlen($text = \trim(\substr($text, 1, -2)) . ' ');
+    }
     for ($i = 0; $i < $limit; ++$i) {
         $c = $text[$i];
-        if ('#' === $c) {
-            $r['id'] = \substr($text, $i += 1, $n = \strcspn($text, " \t", $i));
-            $i += $n;
-            continue;
-        }
-        if ('.' === $c) {
-            $r['class'][] = \substr($text, $i += 1, $n = \strcspn($text, " \t", $i));
-            $i += $n;
+        if ("\\" === $c && $i + 1 < $limit) {
+            $s .= $text[++$i];
             continue;
         }
         if ('=' === $c) {
-            $r[$s] = "";
+            $k = $s;
             $s = "";
-            ++$i; // Go past `=`
-            if ('"' === $text[$i]) {
-                echo 'ok';
-                echo '<br>';
+            if (++$i >= $limit) {
+                $r[$k] = "";
+                break;
             }
+            $c = $text[$i];
+            $q = 0;
+            if ('"' === $c || "'" === $c) {
+                $q = $c;
+                ++$i;
+            }
+            while ($i < $limit) {
+                $c = $text[$i];
+                if ("\\" === $c && $i + 1 < $limit) {
+                    $s .= $text[++$i];
+                    continue;
+                }
+                if ($q) {
+                    if ($c === $q) {
+                        break;
+                    }
+                } else if ("\t" === $c || ' ' === $c) {
+                    --$i; // Let outer loop to process white-space(s)
+                    break;
+                }
+                $s .= $c;
+                ++$i;
+            }
+            if ('class' === $k) {
+                // $r[$k] = \array_replace($r[$k] ?? [], \array_flip(s1($s)));
+                $r[$k] = [$s => 1];
+            } else {
+                $r[$k] = $s;
+            }
+            $s = "";
             continue;
         }
-        if ($n = \strspn($text, " \t", $i)) {
-            if ("" !== $s) {
-                $r[$s] = true;
-                $s = "";
+        if ("" === $s && false !== \strpos(" \t", $c)) {
+            continue;
+        }
+        if ("" !== $s && false !== \strpos(" \t" . '#.', $c)) {
+            if ('#' === $s[0] && "" !== ($s = \substr($s, 1))) {
+                $r['id'] = $s;
+            } else if ('.' === $s[0] && "" !== ($s = \substr($s, 1))) {
+                $r['class'][$s] = 1;
+            } else {
+                $b ? ($r[$s] = true) : ($r['class']['language-' . $s] = 1);
             }
-            $i += $n - 1;
+            $s = false !== \strpos(" \t", $c) ? "" : $c;
             continue;
         }
         $s .= $c;
     }
-    if ("" !== $s) {
-        $r[$s] = true;
+    if (\is_array($set = $r['class'] ?? 0)) {
+        \ksort($set);
+        $r['class'] = \implode(' ', \array_keys($set));
     }
+    \ksort($r);
     return $r;
 }
 
-// echo json_encode(a('a b="" #c .d'));
+function a1(string $text) {
+    $r = [$text, []];
+    if (false === \strpos($text, '{')) {
+        return $r;
+    }
+    $at = -1;
+    $limit = \strlen($text);
+    if ('}' !== $text[$limit - 1] || "\\" === $text[$limit - 2]) {
+        return $r;
+    }
+    // Start from the character just before the trailing `}`
+    for ($i = $limit - 2; $i >= 0; --$i) {
+        $c = $text[$i];
+        // Check if the current character is escaped by an odd number of back-slash(es)
+        $x = 0;
+        for ($b = $i - 1; $b >= 0 && "\\" === $text[$b]; --$b) {
+            ++$x;
+        }
+        if (0 !== $x % 2) {
+            continue;
+        }
+        // Capture the first unescaped `{` that meets the white-space condition
+        if ('{' === $c) {
+            if (0 === $i || false !== \strpos(" \t", $text[$i - 1])) {
+                $at = $i;
+            }
+            break;
+        }
+    }
+    if (-1 !== $at) {
+        // Empty attribute(s)
+        if ("" === \trim(\substr($text, $at + 1, $limit - $at - 2))) {
+            return $r;
+        }
+        $r[0] = \rtrim(\substr($text, 0, $at));
+        $r[1] = a(\substr($text, $at + 1, -1));
+    }
+    return $r;
+}
 
 function d(string $value, int $i, int $limit) {
     if (' ' !== $value[$i] && "\t" !== $value[$i]) {
@@ -244,11 +320,14 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
     $s = "";
     for ($i = $at; $i < $limit; ++$i) {
         $c = $value[$i];
+        if ("\\" === $c && $i + 1 < $limit && false !== \strpos('!"#$%&()*+,-./:;<=>?@[]^_`{|}~' . "'\\", $value[$i + 1])) {
+            continue;
+        }
         if ($r = r($value, $i, $limit)) {
             // <https://spec.commonmark.org/0.31.2#hard-line-break>
             if ("\\" === ($value[$i - 1] ?? 0)) {
                 $i += \strspn($value, " \t", $i + $r); // <https://spec.commonmark.org/0.31.2#example-637>
-                $row[] = \substr($s, 0, -1);
+                $row[] = h(\substr($s, 0, -1));
                 $row[] = ['br', false, []];
                 $s = "";
                 continue;
@@ -256,7 +335,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             // <https://spec.commonmark.org/0.31.2#hard-line-break>
             if ("\t" === ($value[$i - 1] ?? 0) || (' ' === ($value[$i - 1] ?? 0) && ' ' === ($value[$i - 2] ?? 0))) {
                 $i += \strspn($value, " \t", $i + $r); // <https://spec.commonmark.org/0.31.2#example-636>
-                $row[] = \rtrim($s);
+                $row[] = h(\rtrim($s));
                 $row[] = ['br', false, []];
                 $s = "";
                 continue;
@@ -269,12 +348,12 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
         $s .= $c;
     }
     if ("" !== $s) {
-        $row[] = $s;
+        $row[] = h($s);
     }
     if (1 === \count($row) && \is_string($row[0])) {
         return $row[0];
     }
-    return $row;
+    return $row ?: "";
 }
 
 function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limit) {
@@ -297,8 +376,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 continue;
             }
             $d = d($value, $i, $limit);
-            // A tab, 4 space(s), or space(s) less than 4 followed by a tab should occupy at minimum 4 character(s),
-            // which will start an indented code block.
+            // A tab, 4 space(s), or less than 4 of space(s) followed by a tab should occupy at minimum 4 character(s)
             // <https://spec.commonmark.org/0.31.2#indented-code-block>
             if ($d[0] >= 4) {
                 // An indented code block cannot interrupt a paragraph
@@ -316,7 +394,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                         }
                     }
                 } else {
-                    $x = 1; // A tab character
+                    $x = 1; // A tab
                 }
                 $bar = $n = \strcspn($value, "\n\r", $i);
                 $s .= \substr($value, $i + $x, $bar - $x);
@@ -328,7 +406,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 while ($r = r($value, $i + $n, $limit)) {
                     $n += $r;
                     $bar = \strcspn($value, "\n\r", $i + $n);
-                    if (\strspn($value, " \t", $i + $n)) {
+                    if ($bar === \strspn($value, " \t", $i + $n)) {
                         if ("\t" !== $value[$i + $n]) {
                             $x = \min($w = \strspn($value, ' ', $i + $n), 4);
                             if ($x < 4 && "\t" === ($value[$i + $n + $x] ?? 0)) {
@@ -445,13 +523,18 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                         }
                         if ($r = r($value, $i + $n, $limit)) {
                             $n += $r;
+                            $peek = \strspn($value, " \t", $i + $n);
                             $s .= "\n";
-                            $test = \strspn($value, " \t", $i + $n);
-                            if ($i + $n + $test >= $limit || ($test = r($value, $i + $n + $test, $limit))) {
-                                $n += $test;
+                            if ($i + $n + $peek >= $limit) {
                                 $rows[] = [false, \substr($s, 0, -1), [], [6, $b]];
                                 $s = "";
-                                ++$void;
+                                break;
+                            }
+                            // A blank line ends the current block
+                            if (r($value, $i + $n + $peek, $limit)) {
+                                $n -= $r;
+                                $rows[] = [false, \substr($s, 0, -1), [], [6, $b]];
+                                $s = "";
                                 break;
                             }
                         }
@@ -486,10 +569,9 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                 }
                                 if ($r = r($value, $i + $n, $limit)) {
                                     $n += $r;
-                                    $s .= "\n";
                                     $peek = \strspn($value, " \t", $i + $n);
+                                    $s .= "\n";
                                     if ($i + $n + $peek >= $limit) {
-                                        $n -= $r;
                                         $rows[] = [false, \substr($s, 0, -1), [], [7]];
                                         $s = "";
                                         break;
@@ -528,10 +610,9 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                                 }
                                 if ($r = r($value, $i + $n, $limit)) {
                                     $n += $r;
-                                    $s .= "\n";
                                     $peek = \strspn($value, " \t", $i + $n);
+                                    $s .= "\n";
                                     if ($i + $n + $peek >= $limit) {
-                                        $n -= $r;
                                         $rows[] = [false, \substr($s, 0, -1), [], [7]];
                                         $s = "";
                                         break;
@@ -568,7 +649,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 }
                 $s .= \substr($value, $i + $x, $bar - $x);
                 if ($i + $n >= $limit) {
-                    $rows[] = ['blockquote', $s, []];
+                    $rows[] = ['blockquote', rows($s, $lot, $deep - 1, 0, \strlen($s))[0], []];
                     $s = "";
                     break;
                 }
@@ -577,15 +658,15 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     $bar = \strcspn($value, "\n\r", $i + $n);
                     // A blank line ends the current block
                     if ($bar === \strspn($value, " \t", $i + $n)) {
-                        $n += $bar;
-                        $rows[] = ['blockquote', $s, []];
+                        $n -= $r;
+                        $rows[] = ['blockquote', rows($s, $lot, $deep - 1, 0, \strlen($s))[0], []];
                         $s = "";
                         break;
                     }
-                    $d = d($value, $i + $n, $limit);
-                    if ($d[0] < 4 && '>' === $value[$d[1] + $i + $n]) {
+                    $d = d($value, $i + $n, $limit)[1];
+                    if ($d < 4 && '>' === $value[$d + $i + $n]) {
                         $s .= "\n";
-                        $x = ($peek = $d[1] + 1); // Start after `>`
+                        $x = ($peek = $d + 1); // Start after `>`
                         if (' ' === ($value[$i + $n + $x] ?? 0)) {
                             ++$peek;
                             ++$x;
@@ -606,9 +687,9 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     }
                     // <https://spec.commonmark.org/0.31.2#example-93>
                     // <https://spec.commonmark.org/0.31.2#example-106>
-                    if ($d[0] < 4 && ($peek = $d[1] + \strspn($value, '=', $d[1] + $i + $n))) {
+                    if ($d < 4 && ($peek = $d + \strspn($value, '=', $d + $i + $n))) {
                         if ($bar === ($peek += \strspn($value, " \t", $i + $n + $peek))) {
-                            $s .= "\n" . \str_repeat(' ', $d[0]) . "\\" . \substr($value, $d[1] + $i + $n, $bar);
+                            $s .= "\n" . \str_repeat(' ', $d) . "\\" . \substr($value, $d + $i + $n, $bar);
                             $n += $bar;
                             continue;
                         }
@@ -625,7 +706,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     $n += $bar;
                     continue;
                 }
-                "" !== $s && ($rows[] = ['blockquote', $s, []]) && ($s = "");
+                "" !== $s && ($rows[] = ['blockquote', rows($s, $lot, $deep - 1, 0, \strlen($s))[0], []]) && ($s = "");
                 $i += $n;
                 continue;
             }
@@ -633,9 +714,9 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             if (false !== \strpos('`~', $m = $value[$d + $i]) && ($f = \strspn($value, $m, $d + $i)) >= 3) {
                 $bar = $n = \strcspn($value, "\n\r", $i);
                 // <https://spec.commonmark.org/0.31.2#info-string>
-                $info = \trim(\substr($value, $d + $f + $i, $n - $f));
+                $rest = \trim(\substr($value, $d + $f + $i, $n - $f));
                 // <https://spec.commonmark.org/0.31.2#example-145>
-                if ('`' === $m && false !== \strpos($info, $m)) {
+                if ('`' === $m && false !== \strpos($rest, $m)) {
                     $s .= $c;
                     continue;
                 }
@@ -643,12 +724,11 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 while ($r = r($value, $i + $n, $limit)) {
                     $n += $r;
                     $bar = \strcspn($value, "\n\r", $i + $n);
-                    $o = d($value, $i + $n, $limit);
-                    if ($o[0] < 4) {
-                        if ($f === ($peek = \strspn($value, $m, $i + $n + $o[1]))) {
-                            if ($bar === ($peek += $o[1] + \strspn($value, " \t", $i + $n + $o[1] + $peek))) {
+                    if (($w = d($value, $i + $n, $limit)[1]) < 4) {
+                        if ($f === ($peek = \strspn($value, $m, $i + $n + $w))) {
+                            if ($bar === ($peek += $w + \strspn($value, " \t", $i + $n + $w + $peek))) {
                                 $i += $n + $peek;
-                                $rows[] = ['pre', [['code', h($s), []]], ['data-info' => $info], [$f, $m]];
+                                $rows[] = ['pre', [['code', h($s), []]], ['data-info' => $rest], [$f, $m]];
                                 $s = "";
                                 continue 2;
                             }
@@ -657,32 +737,31 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     // <https://spec.commonmark.org/0.31.2#example-131>
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
-                    if ($x = $d) {
-                        while ($x > 0) {
-                            if (' ' === ($value[$i + $n] ?? 0)) {
-                                ++$n;
-                                --$bar;
-                                --$x;
-                                continue;
-                            }
-                            if ("\t" === ($value[$i + $n] ?? 0)) {
-                                ++$n;
-                                --$bar;
-                                $s .= \str_repeat(' ', 4 - $d);
-                                // A tab at the start of a line immediately satisfies the “preceded by up to 3 space(s)
-                                // of indentation” rule because it already occupies 4 character(s).
-                                break;
-                            }
-                            // Not a white-space, stop!
+                    $peek = $d;
+                    while ($peek) {
+                        if (' ' === ($value[$i + $n] ?? 0)) {
+                            ++$n;
+                            --$bar;
+                            --$peek;
+                            continue;
+                        }
+                        if ("\t" === ($value[$i + $n] ?? 0)) {
+                            ++$n;
+                            --$bar;
+                            $s .= \str_repeat(' ', 4 - $d);
+                            // A tab at the start of a line immediately satisfies the “preceded by up to 3 space(s)
+                            // of indentation” rule because it already occupies 4 character(s).
                             break;
                         }
+                        // Not a white-space, stop!
+                        break;
                     }
                     $s .= \substr($value, $i + $n, $bar) . "\n";
                     $n += $bar;
                     continue;
                 }
                 $i += $n;
-                $rows[] = ['pre', [['code', h($s), []]], ['data-info' => $info], [$f, $m]];
+                $rows[] = ['pre', [['code', h($s), []]], ['data-info' => $rest], [$f, $m]];
                 $s = "";
                 continue;
             }
@@ -695,7 +774,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 if ($peek = \strspn($value, $m, $d + $i)) {
                     $peek += \strspn($value, " \t", $d + $i + $peek);
                     if ($peek === ($bar = \strcspn($value, "\n\r", $d + $i))) {
-                        $rows[] = ['h' . ('-' === $m ? 2 : 1), row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s)), [], ['-' === $m ? 2 : 1, $m]];
+                        [$s, $a1] = a1(\trim($s));
+                        $rows[] = ['h' . ('-' === $m ? 2 : 1), row($s, $lot, $deep - 1, 0, \strlen($s)), $a1, ['-' === $m ? 2 : 1, $m]];
                         $i += $bar;
                         $s = "";
                         continue;
@@ -818,8 +898,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // <https://spec.commonmark.org/0.31.2#atx-heading>
             if (($n = \strspn($value, '#', $d + $i)) && $n < 7 && false !== \strpos(" \n\r\t", $value[$d + $i + $n] ?? "\n")) {
                 "" !== $s && ($rows[] = ['p', row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s)), []]);
-                $s = \substr($value, $i += $d + $n + \strspn($value, " \t", $d + $i + $n), $bar = \strcspn($value, "\n\r", $i));
-                $rows[] = ['h' . $n, row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s)), [], [$n, '#']];
+                [$s, $a1] = a1(\trim(\substr($value, $i += $d + $n + \strspn($value, " \t", $d + $i + $n), $bar = \strcspn($value, "\n\r", $i))));
+                $rows[] = ['h' . $n, row($s, $lot, $deep - 1, 0, \strlen($s)), $a1, [$n, '#']];
                 $i += $bar;
                 $s = "";
                 continue;
