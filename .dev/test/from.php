@@ -141,18 +141,18 @@ function export($value, $dent = "", $r = "\n", $key_as_string = false, $is_objec
 // Currently, there is no official attribute syntax specification in CommonMark except for raw HTML attribute(s). To
 // make it as close as possible to the CommonMark specification or to prepare for the possibility of such specification
 // in the future, I will make the attribute syntax rule(s) as close as possible to the raw HTML attribute specification.
-function a(string $value, int $i, int $limit, int $z = 1) {
+function a(string $value, int $i, int $limit, $bare = false, string $z = "") {
     if ($i >= $limit) {
         return [];
     }
-    if ($z && '{' !== $value[$i]) {
+    if (!$bare && '{' !== $value[$i]) {
         return [];
     }
-    $n = $z + \strspn($value, " \t", $i + $z);
+    $n = ($bare ? 0 : 1) + \strspn($value, " \t", $i + ($bare ? 0 : 1));
     $r = [];
     while ($i + $n < $limit) {
         $c = $value[$i + $n];
-        if ($z && '}' === $c) {
+        if (!$bare && '}' === $c) {
             if (\is_array($a = $r['class'] ?? 0)) {
                 \ksort($a);
                 $r['class'] = \implode(' ', \array_keys($a));
@@ -161,7 +161,7 @@ function a(string $value, int $i, int $limit, int $z = 1) {
         }
         if ('#' === $c) {
             ++$n; // Move past `#`
-            $peek = \strcspn($value, " \t#'.=`{}" . '"', $i + $n);
+            $peek = \strcspn($value, " \t#'.<=>`{}" . '"', $i + $n);
             if (isset($r['id'])) {
                 $n += $peek;
                 continue;
@@ -174,8 +174,8 @@ function a(string $value, int $i, int $limit, int $z = 1) {
             continue;
         }
         if ('.' === $c) {
-            ++$n; // Move past `#`
-            $peek = \strcspn($value, " \t#'.=`{}" . '"', $i + $n);
+            ++$n; // Move past `.`
+            $peek = \strcspn($value, " \t#'.<=>`{}" . '"', $i + $n);
             if (\is_string($r['class'] ?? 0)) {
                 $n += $peek;
                 continue;
@@ -190,13 +190,14 @@ function a(string $value, int $i, int $limit, int $z = 1) {
         // <https://spec.commonmark.org/0.31.2#attribute-name>
         if ($peek = \strspn($value, ':_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', $i + $n)) {
             $peek += \strspn($value, '.:_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-0123456789', $i + $n + $peek);
-            $k = \substr($value, $i + $n, $peek);
-            if ($z) {
-                if (!$exist = ('class' === $k || 'id' === $k) && isset($r[$k])) {
-                    $r[$k] = true;
+            $exist = isset($r[$k = \substr($value, $i + $n, $peek)]);
+            if ($bare) {
+                if ("" === $z) {
+                    return [];
                 }
+                $r['class'][\sprintf($z, $k)] = 1;
             } else {
-                $r['class']['language-' . $k] = true;
+                $exist || ($r[$k] = true);
             }
             $n += $peek;
             // <https://spec.commonmark.org/0.31.2#attribute-value-specification>
@@ -219,21 +220,27 @@ function a(string $value, int $i, int $limit, int $z = 1) {
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#unquoted-attribute-value>
-                // With the exception that `<` and `>` are allowed but `{` and `}` are not, because attribute syntax is
-                // surrounded by `{` and `}`, unlike HTML attribute(s), which are always written inside of `<` and `>`.
-                if ($peek = \strcspn($value, " \t'=`{}" . '"', $i + $n)) {
+                if ($peek = \strcspn($value, " \t'<=>`{}" . '"', $i + $n)) {
                     $exist || ($r[$k] = \substr($value, $i + $n, $peek));
                     $n += $peek;
                 }
                 continue;
             }
-            $i += $n;
-            $n = \strspn($value, " \t", $i);
+            $n += \strspn($value, " \t", $i + $n);
             continue;
         }
-        ++$n;
+        if ($peek = \strcspn($value, " \t}", $i + $n)) {
+            if ("" === $z) {
+                return [];
+            }
+            if (!\is_string($r['class'] ?? 0)) {
+                $r['class'][\sprintf($z, \substr($value, $i + $n, $peek))] = 1;
+            }
+            $n += $peek;
+        }
+        $n += \strspn($value, " \t", $i + $n);
     }
-    if ($z && '}' !== ($value[$i + $n - 1] ?? 0)) {
+    if (!$bare && '}' !== ($value[$i + $n - 1] ?? 0)) {
         return [];
     }
     if (\is_array($a = $r['class'] ?? 0)) {
@@ -700,7 +707,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 $bar = $n = \strcspn($value, "\n\r", $i);
                 // <https://spec.commonmark.org/0.31.2#info-string>
                 $rest = \trim(\substr($value, $d + $f + $i, $n - $f));
-                $a = $rest ? (a($rest, 0, \strlen($rest), '{' === $rest[0] ? 1 : 0)[0] ?? []) : [];
+                $a = a($rest, 0, \strlen($rest), '{' !== ($rest[0] ?? 0), 'language-%s')[0] ?? [];
                 // <https://spec.commonmark.org/0.31.2#example-145>
                 if ('`' === $m && false !== \strpos($rest, $m)) {
                     $s .= $c;
@@ -757,14 +764,17 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // previously identified block is a paragraph that is not followed by any blank line(s). Any other case is
             // considered invalid and will therefore fall through the list or thematic break parser.
             if (false !== \strpos('-=', $m = $value[$d + $i]) && "" !== $s) {
-                $s = \trim($s);
                 if ($peek = \strspn($value, $m, $d + $i)) {
+                    $a = [];
                     $peek += \strspn($value, " \t", $d + $i + $peek);
-                    if ($a = a($value, $d + $i + $peek, $limit, '{' === ($value[$d + $i + $peek] ?? 0) ? 1 : 0)) {
-                        $peek += $a[1];
+                    if (!r($value, $d + $i + $peek, $limit)) {
+                        if ($a = a($value, $d + $i + $peek, $limit, '{' !== ($value[$d + $i + $peek] ?? 0))) {
+                            $peek += $a[1];
+                        }
                     }
                     $peek += \strspn($value, " \t", $d + $i + $peek);
                     if ($peek === ($bar = \strcspn($value, "\n\r", $d + $i))) {
+                        $s = \trim($s);
                         if (!$a && ($start = \strrpos($s, '{'))) {
                             $x = 0;
                             while ($start - 1 - $x >= 0 && "\\" === $s[$start - 1 - $x]) {
@@ -772,7 +782,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                             }
                             $n = $start - 1 - $x;
                             if ($n >= 0 && (' ' === $s[$n] || "\t" === $s[$n]) && 0 === $x % 2) {
-                                if ($a = a($s, $start, $max = \strlen($s), 1)) {
+                                if ($a = a($s, $start, $max = \strlen($s))) {
                                     if ($max === $start + $a[1]) {
                                         $s = \substr($s, 0, $start - 1);
                                     } else {
@@ -902,11 +912,56 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#atx-heading>
-            if (($n = \strspn($value, '#', $d + $i)) && $n < 7 && false !== \strpos(" \n\r\t", $value[$d + $i + $n] ?? "\n")) {
+            if (($f = \strspn($value, '#', $d + $i)) && $f < 7 && false !== \strpos(" \n\r\t", $value[$d + $f + $i] ?? "\n")) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]);
-                $s = \trim(\substr($value, $i += $d + $n + \strspn($value, " \t", $d + $i + $n), $bar = \strcspn($value, "\n\r", $i)));
-                // [$s, $a1] = a1();
-                $rows[] = ['h' . $n, \trim($s), [], [$n, '#']];
+                $s = \trim(\substr($value, $i += $d + $f + \strspn($value, " \t", $d + $f + $i), $bar = \strcspn($value, "\n\r", $i)));
+                if ("" !== $s && false !== ($start = \strrpos($s, '{'))) {
+                    $x = 0;
+                    while ($start - 1 - $x >= 0 && "\\" === $s[$start - 1 - $x]) {
+                        ++$x;
+                    }
+                    $n = $start - 1 - $x;
+                    echo json_encode([$n,$s,$s[$n]]);
+                    echo '<br/>';
+                    if ($n >= 0 && (' ' === $s[$n] || "\t" === $s[$n]) && 0 === $x % 2) {
+                        if ($a = a($s, $start, $max = \strlen($s))) {
+                            if ($max === $start + $a[1]) {
+                                $s = \substr($s, 0, $start - 1);
+                            } else {
+                                $a = [];
+                            }
+                        }
+                    }
+
+                    // TODO
+                    $len = \strlen($s);
+                    if ($len > 0 && '#' === $s[$len - 1]) {
+                        // Find where the trailing sequence of '#' starts
+                        $lastHashPos = \strlen(\rtrim($s, '#'));
+                        if (0 === $lastHashPos) {
+                            // The entire string was just hashes (e.g., "###")
+                            $s = "";
+                        } else {
+                            // The character right before the first trailing '#'
+                            $j = $lastHashPos - 1;
+                            $prevChar = $s[$j];
+                            // Rule: Must be preceded by a space or tab
+                            if (' ' === $prevChar || "\t" === $prevChar) {
+                                // Rule: Ensure the delimiter space wasn't escaped by an odd number of backslashes
+                                $slashes = 0;
+                                while ($j - 1 - $slashes >= 0 && "\\" === $s[$j - 1 - $slashes]) {
+                                    ++$slashes;
+                                }
+                                // If backslashes are even, the space is unescaped -> sequence is a valid trailing block
+                                if (0 === $slashes % 2) {
+                                    $s = \trim(\substr($s, 0, $lastHashPos));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $rows[] = ['h' . $f, \trim($s), $a[0] ?? [], [$f, '#']];
                 $i += $bar;
                 $s = "";
                 continue;
