@@ -141,19 +141,19 @@ function export($value, $dent = "", $r = "\n", $key_as_string = false, $is_objec
 // Currently, there is no official attribute syntax specification in CommonMark except for raw HTML attribute(s). To
 // make it as close as possible to the CommonMark specification or to prepare for the possibility of such specification
 // in the future, I will make the attribute syntax rule(s) as close as possible to the raw HTML attribute specification.
-function a(string $value, int $i, int $limit, $bare = false, string $z = "") {
+function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
     if ($i >= $limit) {
         return [];
     }
-    if (!$bare && '{' !== $value[$i]) {
+    if (!$raw && '{' !== $value[$i]) {
         return [];
     }
-    $n = ($bare ? 0 : 1) + \strspn($value, c1, $i + ($bare ? 0 : 1));
+    $n = ($raw ? 0 : 1) + \strspn($value, c1, $i + ($raw ? 0 : 1));
     $r = [];
     $skip = c1 . '"#.<=>`{}' . "'";
     while ($i + $n < $limit) {
         $c = $value[$i + $n];
-        if (!$bare && '}' === $c) {
+        if (!$raw && '}' === $c) {
             if (\is_array($a = $r['class'] ?? 0)) {
                 \ksort($a);
                 $r['class'] = \implode(' ', \array_keys($a));
@@ -192,11 +192,11 @@ function a(string $value, int $i, int $limit, $bare = false, string $z = "") {
         if ($peek = \strspn($value, c7, $i + $n)) {
             $peek += \strspn($value, c8, $i + $n + $peek);
             $exist = isset($r[$k = \substr($value, $i + $n, $peek)]);
-            if ($bare) {
-                if ("" === $z) {
+            if ($raw) {
+                if ("" === $f) {
                     return [];
                 }
-                $r['class'][\sprintf($z, $k)] = 1;
+                $r['class'][\sprintf($f, $k)] = 1;
             } else {
                 $exist || ($r[$k] = true);
             }
@@ -231,19 +231,20 @@ function a(string $value, int $i, int $limit, $bare = false, string $z = "") {
             continue;
         }
         if ($peek = \strcspn($value, c1 . '}', $i + $n)) {
-            // An invalid attribute name was found in the wrapped attribute syntax. Since there is no class format
-            // provided, the entire syntax needs to be marked as invalid.
-            if (!$bare || "" === $z) {
+            // If there is an invalid attribute name found in the wrapped or non-wrapped attribute syntax where no class
+            // format is provided, the entire attribute syntax must be marked as invalid.
+            if (!$raw || "" === $f) {
                 return [];
             }
+            // If a class format is provided, treat it as part of the class name and put it in the class queue.
             if (!\is_string($r['class'] ?? 0)) {
-                $r['class'][\sprintf($z, \substr($value, $i + $n, $peek))] = 1;
+                $r['class'][\sprintf($f, \substr($value, $i + $n, $peek))] = 1;
             }
             $n += $peek;
         }
         $n += \strspn($value, c1, $i + $n);
     }
-    if (!$bare && '}' !== ($value[$i + $n - 1] ?? 0)) {
+    if (!$raw && '}' !== ($value[$i + $n - 1] ?? 0)) {
         return [];
     }
     if (\is_array($a = $r['class'] ?? 0)) {
