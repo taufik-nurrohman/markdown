@@ -354,8 +354,36 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             $s .= ' ';
             continue;
         }
-
-        if ('<' === $c) {}
+        if ('<' === $c) {
+            // <https://spec.commonmark.org/0.31.2#raw-html>
+            if ('<!--' === \substr($value, $i, 4) && false !== ($n = \strpos($value, '-->', $i + 2))) {
+                "" !== $s && ($row[] = h($s)) && ($s = "");
+                $row[] = [false, \substr($value, $i, $n += 3 - $i), [2]];
+                $i += $n - 1;
+                continue;
+            }
+            if ('<?' === \substr($value, $i, 2) && false !== ($n = \strpos($value, '?>', $i + 2))) {
+                "" !== $s && ($row[] = h($s)) && ($s = "");
+                $row[] = [false, \substr($value, $i, $n += 2 - $i), [3]];
+                $i += $n - 1;
+                continue;
+            }
+            if ('<![CDATA[' === \substr($value, $i, 9) && false !== ($n = \strpos($value, ']]>', $i + 9))) {
+                "" !== $s && ($row[] = h($s)) && ($s = "");
+                $row[] = [false, \substr($value, $i, $n += 3 - $i), [], [5]];
+                $i += $n - 1;
+                continue;
+            }
+            if ('<!' === \substr($value, $i, 2) && \strspn($value, c4, $i + 2) && false !== ($n = \strpos($value, '>', $i + 3))) {
+                "" !== $s && ($row[] = h($s)) && ($s = "");
+                $row[] = [false, \substr($value, $i, $n += 1 - $i), [], [4]];
+                $i += $n - 1;
+                continue;
+            }
+            // TODO: autolinks, HTML tag(s)
+            $s .= $c;
+            continue;
+        }
         // <https://spec.commonmark.org/0.31.2#code-span>
         if ('`' === $c) {
             $n = \strspn($value, $c, $i);
@@ -808,6 +836,11 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     // <https://spec.commonmark.org/0.31.2#example-235>
                     // <https://spec.commonmark.org/0.31.2#example-236>
                     // <https://spec.commonmark.org/0.31.2#example-250>
+                    if ("" === $s) {
+                        $n -= $r;
+                        $rows[] = ['blockquote', $s, []];
+                        break;
+                    }
                     $b = \end(rows($s, $lot, 0, 0, \strlen($s))[0]) ?: [];
                     if ('blockquote' !== $b[0] && 'p' !== $b[0]) {
                         $n -= $r;
