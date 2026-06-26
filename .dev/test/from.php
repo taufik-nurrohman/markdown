@@ -231,8 +231,8 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
             continue;
         }
         if ($peek = \strcspn($value, c1 . '}', $i + $n)) {
-            // If there is an invalid attribute name found in the wrapped or non-wrapped attribute syntax where no class
-            // format is provided, the entire attribute syntax must be marked as invalid.
+            // If there is an invalid attribute name found in the wrapped attribute syntax, or in the raw attribute
+            // syntax where no class format is provided, the entire attribute syntax must be marked as invalid.
             if (!$raw || "" === $f) {
                 return [];
             }
@@ -323,8 +323,10 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
     if ($deep < 1) {
         return $value;
     }
+    $last = -1;
     $row = [];
     $s = "";
+    $stack = [];
     for ($i = $at; $i < $limit; ++$i) {
         $c = $value[$i];
         if ("\\" === $c && $i + 1 < $limit && false !== \strpos(c99, $value[$i + 1])) {
@@ -352,11 +354,113 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             $s .= ' ';
             continue;
         }
+
+        if ('<' === $c) {}
+        // <https://spec.commonmark.org/0.31.2#code-span>
+        if ('`' === $c) {
+            $n = \strspn($value, $c, $i);
+            $z = $i + $n;
+            while (false !== ($z = \strpos($value, $c, $z))) {
+                if ($n === \strspn($value, $c, $z) && $c !== ($value[$n + $z] ?? 0)) {
+                    $text = \substr($value, $i + $n, $z - ($i + $n));
+                    // Line break(s) are converted to space(s)
+                    $text = \strtr($text, [
+                        "\n" => ' ',
+                        "\r\n" => ' ',
+                        "\r" => ' '
+                    ]);
+                    // If the resulting string both begins and ends with a space character, but does not consist
+                    // entirely of space character(s), a single space character is removed from the front and back.
+                    if (\strlen($text) > 1 && ' ' === $text[0] && ' ' === \substr($text, -1) && "" !== \trim($text, ' ')) {
+                        $text = \substr($text, 1, -1);
+                    }
+                    "" !== $s && ($row[] = h($s)) && ($s = "");
+                    $row[] = ['code', h($text), []];
+                    $i = $n + $z - 1;
+                    break;
+                }
+                $z += \strspn($value, $c, $z);
+            }
+            if (false === $z) {
+                $s .= $c;
+            }
+            continue;
+        }
+
+        // <https://spec.commonmark.org/0.31.2#delimiter-stack>
+        if ('*' === $c || '[' === $c || '_' === $c) {
+            "" !== $s && ($row[] = h($s)) && ($s = "");
+            $current = \count($stack);
+            $row[] = $c;
+            $stack[] = [$c, [
+                '*' === $c || '_' === $c ? \strspn($value, $c, $i) : 1, // The number of delimiter(s)
+                true, // Whether the delimiter is “active” (all are active to start)
+                true, // Whether the delimiter is a potential opener
+                true, // Whether the delimiter is a potential closer
+            ], [\array_key_last($row), $last, -1], false];
+            if (-1 !== $last) {
+                $stack[$last][2][2] = $current;
+            }
+            if ('!' === ($value[$i - 1] ?? 0)) {
+                $stack[$last][3] = true; // An image
+            }
+            $last = $current;
+            continue;
+        }
+
+        // <https://spec.commonmark.org/0.31.2#look-for-link-or-image>
+        if (']' === $c) {
+            "" !== $s && ($row[] = h($s)) && ($s = "");
+            // No opening `[`
+            if (-1 === $last) {
+                $s .= ']';
+                continue;
+            }
+            // Find nearest `[`
+            for ($z = $last; -1 !== $z; $z = $stack[$z][2][1]) {
+                if ('[' === $stack[$z][0] && $stack[$z][1][1]) {
+                    break;
+                }
+            }
+            // Not an inline link
+            if ('(' !== ($value[$i + 1] ?? 0)) {
+                $s .= ']';
+                continue;
+            }
+            // Parse destination (simplified)
+            $j = $i + 2;
+            $n = \strpos($value, ')', $j);
+            if (false === $n) {
+                $s .= ']';
+                continue;
+            }
+            $url = \substr($value, $j, $n - $j);
+            // Build children
+            $from = $stack[$z][2][0];
+            $children = [];
+            foreach ($row as $k => $v) {
+                if ($k <= $from) {
+                    continue;
+                }
+                $children[] = $v;
+                unset($row[$k]);
+            }
+            // Replace `[` node
+            $row[$from] = $stack[$z][3] ? ['img', false, [
+                'alt' => $children,
+                'src' => $url
+            ]] : ['a', $children, ['href' => $url]];
+            $stack[$z][1][1] = false;
+            $i = $n; // Move past `)`
+            continue;
+        }
+
         $s .= $c;
     }
     if ("" !== $s) {
         $row[] = h($s);
     }
+    $row = \array_values($row);
     if (1 === \count($row) && \is_string($row[0])) {
         return $row[0];
     }
@@ -736,7 +840,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                         if ($f === ($peek = \strspn($value, $m, $i + $n + $w))) {
                             if ($bar === ($peek += $w + \strspn($value, c1, $i + $n + $w + $peek))) {
                                 $i += $n + $peek;
-                                $rows[] = ['pre', [['code', h($s), []]], $a, [$f, $m]];
+                                $rows[] = ['pre', [['code', h($s), $a]], [], [$f, $m]];
                                 $s = "";
                                 continue 2;
                             }
@@ -769,7 +873,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     continue;
                 }
                 $i += $n;
-                $rows[] = ['pre', [['code', h($s), []]], $a, [$f, $m]];
+                $rows[] = ['pre', [['code', h($s), $a]], [], [$f, $m]];
                 $s = "";
                 continue;
             }
@@ -931,45 +1035,26 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                 "" !== $s && ($rows[] = ['p', \trim($s), []]);
                 $s = \trim(\substr($value, $i += $d + $f + \strspn($value, c1, $d + $f + $i), $bar = \strcspn($value, c2, $i)));
                 if ("" !== $s && false !== ($start = \strrpos($s, '{'))) {
-                    $x = 0;
-                    while ($start - 1 - $x >= 0 && "\\" === $s[$start - 1 - $x]) {
-                        ++$x;
-                    }
-                    $hash = 0;
-                    $n = $start - 1 - $x;
-                    if ($n >= 0 && '#' === $s[$n]) {
-                        $peek = $n;
-                        while ($peek >= 0 && '#' === $s[$peek]) {
-                            ++$hash;
-                            --$peek;
+                    for ($n = $start - 1, $o = 0; $n >= 0 && "\\" === $s[$n]; --$n, ++$o);
+                    if ($n >= 0 && 0 === $o % 2 && false !== \strpos(c1 . '#', $s[$n])) {
+                        if ('#' === $s[$n]) {
+                            for ($h = 0; $n >= 0 && '#' === $s[$n]; ++$h, --$n);
+                            for ($o = 0; $n >= 0 && "\\" === $s[$n]; --$n, ++$o);
+                            // For attribute syntax immediately preceded by any number of decorative `#` character(s),
+                            // the number of these character(s) must be equal to the number of the opening `#`
+                            // character, and they must be preceded by a white-space.
+                            if ($f !== $h || 0 !== $o % 2 || ($n >= 0 && false === \strpos(c1, $s[$n]))) {
+                                $n = -1; // Invalid trailing hash
+                            }
                         }
-                        $x1 = 0;
-                        while ($peek >= 0 && "\\" === $s[$peek]) {
-                            ++$x1;
-                            --$peek;
-                        }
-                        if ($peek >= 0 && 0 === $x1 % 2 && $hash === $f && false !== \strpos(c1, $s[$peek])) {} else {
-                            $hash = 0; // Invalid trailing hash
-                        }
-                    }
-                    if ($n >= 0 && 0 === $x % 2 && ($hash || false !== \strpos(c1, $s[$n]))) {
-                        if ($a = a($s, $start, $max = \strlen($s))) {
+                        if ($n >= 0 && ($a = a($s, $start, $max = \strlen($s)))) {
                             if ($max === $start + $a[1]) {
                                 // Remove attribute(s)
                                 $s = \substr($s, 0, $start - 1);
                                 $max = \strlen($s);
                                 if ($max > 0 && '#' === $s[$max - 1]) {
-                                    $hash = 0;
-                                    $peek = $max - 1;
-                                    while ($peek >= 0 && '#' === $s[$peek]) {
-                                        ++$hash;
-                                        --$peek;
-                                    }
-                                    $x = 0;
-                                    while ($peek >= 0 && "\\" === $s[$peek]) {
-                                        ++$x;
-                                        --$peek;
-                                    }
+                                    for ($peek = $max - 1; $peek >= 0 && '#' === $s[$peek]; --$peek);
+                                    for ($x = 0; $peek >= 0 && "\\" === $s[$peek]; --$peek, ++$x);
                                     if (0 === $x % 2 && ($peek < 0 || false !== \strpos(c1, $s[$peek]))) {
                                         // Remove trailing hash(es)
                                         $s = \trim(\substr($s, 0, $peek + 1));
@@ -992,6 +1077,12 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
     if ("" !== $s) {
         $rows[] = ['p', \trim($s), []];
     }
+    foreach ($rows as &$row) {
+        if (false !== $row[0] && \is_string($row[1])) {
+            $row[1] = row($row[1], $lot, $deep - 1, 0, \strlen($row[1]));
+        }
+    }
+    unset($row);
     return [$rows, $lot, $void];
 }
 
