@@ -271,7 +271,7 @@ function d(string $value, int $i, int $limit) {
             ++$n;
             continue;
         }
-        break; // Stop at the first non-white-space character
+        break; // Stop at the first character that is not a white-space
     }
     return [$d, $n];
 }
