@@ -329,7 +329,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
     if ($deep < 1) {
         return $value;
     }
-    $last = -1;
+    $last = null;
     $row = [];
     $s = "";
     $stack = []; // <https://spec.commonmark.org/0.31.2#delimiter-stack>
@@ -359,6 +359,11 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             $i += \strspn($value, c11, $i + $r);
             $s .= ' ';
             continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#decimal-numeric-character-references>
+        // <https://spec.commonmark.org/0.31.2#entity-references>
+        // <https://spec.commonmark.org/0.31.2#hexadecimal-numeric-character-references>
+        if ('&' === $c && false !== ($exit = \strpos($value, ';', $i + 2))) {
         }
         if ('<' === $c) {
             // <https://spec.commonmark.org/0.31.2#raw-html>
@@ -455,7 +460,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             $current = \count($stack);
             $row[] = $c .= '[';
             $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last], false];
-            if (-1 !== $last) {
+            if (null !== $last) {
                 $stack[$last][2][2] = $current;
             }
             $last = $current;
@@ -468,7 +473,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             $current = \count($stack);
             $row[] = $c;
             $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last], false];
-            if (-1 !== $last) {
+            if (null !== $last) {
                 $stack[$last][2][2] = $current;
             }
             $last = $current;
@@ -481,7 +486,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             $current = \count($stack);
             $row[] = $c;
             $stack[] = [$c, [\strspn($value, $c, $i), true, $can_open, $can_close], [\array_key_last($row), $last], false];
-            if (-1 !== $last) {
+            if (null !== $last) {
                 $stack[$last][2][2] = $current;
             }
             $last = $current;
@@ -494,7 +499,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             $current = \count($stack);
             $row[] = $c;
             $stack[] = [$c, [\strspn($value, $c, $i), true, $can_open, $can_close], [\array_key_last($row), $last], false];
-            if (-1 !== $last) {
+            if (null !== $last) {
                 $stack[$last][2][2] = $current;
             }
             $last = $current;
@@ -504,12 +509,12 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
         if (']' === $c) {
             "" !== $s && ($row[] = h($s)) && ($s = "");
             // No opening `[`
-            if (-1 === $last) {
+            if (null === $last) {
                 $s .= ']';
                 continue;
             }
             // Find nearest `[`
-            for ($z = $last; -1 !== $z; $z = $stack[$z][2][1]) {
+            for ($z = $last; null !== $z; $z = $stack[$z][2][1]) {
                 if (('![' === $stack[$z][0] || '[' === $stack[$z][0]) && $stack[$z][1][1]) {
                     break;
                 }
@@ -654,6 +659,53 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // than 4 character(s) must be made up of space(s) only. This variable can then be used to jump past the
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
+            // There is no formal specification for the abbreviation block in CommonMark, so I will treat it similarly
+            // to the link reference definition block. It acts as a leaf block that cannot interrupt a paragraph. It can
+            // span multiple line(s), but it cannot contain any blank line(s).
+            if ('*' === $value[$d + $i] && '[' === ($value[$d + $i + 1] ?? 0)) {
+                // <https://spec.commonmark.org/0.31.2#example-213>
+                if ("" !== $s) {
+                    $s .= $c;
+                    continue;
+                }
+                $n = $peek = $d + $i + 2; // Start after `*[`
+                while (false !== ($n = \strpos($value, ']:', $n))) {
+                    if ($n > 0 && "\\" === $value[$n - 1]) {
+                        $n += 2;
+                        continue;
+                    }
+                    $k = \substr($value, $peek, $n - $peek);
+                    $w = \strspn($value, " \t", $n + 2);
+                    $v = \substr($value, $n + 2 + $w, $bar = \strcspn($value, c22, $n + 2 + $w));
+                    $n = ($n + 2 + $w + $bar) - ($d + $i);
+                    while ($r = r($value, $i + $n, $limit)) {
+                        $n += $r;
+                        $bar = \strcspn($value, c22, $i + $n);
+                        if ($bar === \strspn($value, c11, $i + $n)) {
+                            $n -= $r;
+                            break;
+                        }
+                        $b = rows($value, $lot, 0, $i + $n, $i + $n + $bar)[0][0] ?? 0;
+                        if (!$b || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            $n -= $r;
+                            break;
+                        }
+                        $v .= "\n" . \substr($value, $i + $n, $bar);
+                        $n += $bar;
+                        continue;
+                    }
+                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                    $lot[1][$k] = $v;
+                    $i += $n;
+                    break;
+                }
+                if (false === $n) {
+                    $s .= $c;
+                }
+                continue;
+            }
+            if ('[' === $value[$d + $i] && '^' === ($value[$d + $i + 1] ?? 0)) {}
+            if ('[' === $value[$d + $i]) {}
             // I am so sorry about the order, especially for those of you with ADHD. This parser does not process HTML
             // block type 1 through 7 in order. It instead starts with a type of block that’s easier to spot.
             // <https://spec.commonmark.org/0.31.2#html-block>
@@ -882,7 +934,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                    $b = rows($value, $lot, 0, $i + $n, $i + $n + \strcspn($value, c22, $i + $n))[0][0] ?? 0;
+                    $b = rows($value, $lot, 0, $i + $n, $i + $n + $bar)[0][0] ?? 0;
                     if (!$b || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                         $n -= $r;
                         break;
