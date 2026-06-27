@@ -295,9 +295,14 @@ const b6 = [
 const c11 = " \t";
 const c22 = "\r\n";
 const c33 = c11 . c22;
-const c41 = 'ABCDEFabcdef';
-const c44 = c41 . 'GHIJKLMNOPQRSTUVWXYZghijklmnopqrstuvwxyz';
+const c31 = 'ABCDEF';
+const c32 = 'abcdef';
+const c41 = c31 . c32;
+const c42 = c31 . 'GHIJKLMNOPQRSTUVWXYZ';
+const c43 = c32 . 'ghijklmnopqrstuvwxyz';
+const c44 = c42 . c43;
 const c55 = '0123456789';
+const c56 = c41 . c55;
 const c66 = c44 . c55 . '-';
 const c77 = c44 . ':_';
 const c88 = c66 . ':_.';
@@ -327,7 +332,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
     $last = -1;
     $row = [];
     $s = "";
-    $stack = [];
+    $stack = []; // <https://spec.commonmark.org/0.31.2#delimiter-stack>
     for ($i = $at; $i < $limit; ++$i) {
         $c = $value[$i];
         if ("\\" === $c && $i + 1 < $limit && false !== \strpos(c99, $value[$i + 1])) {
@@ -444,28 +449,57 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             }
             continue;
         }
-
-        // <https://spec.commonmark.org/0.31.2#delimiter-stack>
-        if ('*' === $c || '[' === $c || '_' === $c) {
+        // <https://spec.commonmark.org/0.31.2#image-description>
+        if ('!' === $c && '[' === ($value[$i + 1] ?? 0)) {
             "" !== $s && ($row[] = h($s)) && ($s = "");
             $current = \count($stack);
-            $row[] = $c;
-            $stack[] = [$c, [
-                '*' === $c || '_' === $c ? \strspn($value, $c, $i) : 1, // The number of delimiter(s)
-                true, // Whether the delimiter is “active” (all are active to start)
-                true, // Whether the delimiter is a potential opener
-                true, // Whether the delimiter is a potential closer
-            ], [\array_key_last($row), $last, -1], false];
+            $row[] = $c .= '[';
+            $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last], false];
             if (-1 !== $last) {
                 $stack[$last][2][2] = $current;
             }
-            if ('!' === ($value[$i - 1] ?? 0)) {
-                $stack[$last][3] = true; // An image
+            $last = $current;
+            ++$i; // Move past `[`
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#link-text>
+        if ('[' === $c) {
+            "" !== $s && ($row[] = h($s)) && ($s = "");
+            $current = \count($stack);
+            $row[] = $c;
+            $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last], false];
+            if (-1 !== $last) {
+                $stack[$last][2][2] = $current;
             }
             $last = $current;
             continue;
         }
-
+        // <https://spec.commonmark.org/0.31.2#delimiter-run>
+        if ('*' === $c) {
+            "" !== $s && ($row[] = h($s)) && ($s = "");
+            $can_close = $can_open = true;
+            $current = \count($stack);
+            $row[] = $c;
+            $stack[] = [$c, [\strspn($value, $c, $i), true, $can_open, $can_close], [\array_key_last($row), $last], false];
+            if (-1 !== $last) {
+                $stack[$last][2][2] = $current;
+            }
+            $last = $current;
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#delimiter-run>
+        if ('_' === $c) {
+            "" !== $s && ($row[] = h($s)) && ($s = "");
+            $can_close = $can_open = true;
+            $current = \count($stack);
+            $row[] = $c;
+            $stack[] = [$c, [\strspn($value, $c, $i), true, $can_open, $can_close], [\array_key_last($row), $last], false];
+            if (-1 !== $last) {
+                $stack[$last][2][2] = $current;
+            }
+            $last = $current;
+            continue;
+        }
         // <https://spec.commonmark.org/0.31.2#look-for-link-or-image>
         if (']' === $c) {
             "" !== $s && ($row[] = h($s)) && ($s = "");
@@ -476,7 +510,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
             }
             // Find nearest `[`
             for ($z = $last; -1 !== $z; $z = $stack[$z][2][1]) {
-                if ('[' === $stack[$z][0] && $stack[$z][1][1]) {
+                if (('![' === $stack[$z][0] || '[' === $stack[$z][0]) && $stack[$z][1][1]) {
                     break;
                 }
             }
@@ -503,16 +537,15 @@ function row(string $value, array &$lot = [], int $deep = 0, int $at, int $limit
                 $children[] = $v;
                 unset($row[$k]);
             }
-            // Replace `[` node
-            $row[$from] = $stack[$z][3] ? ['img', false, [
+            // Replace `![` and `[` node
+            $row[$from] = '[' === $stack[$z][0] ? ['a', $children, ['href' => $url]] : ['img', false, [
                 'alt' => $children,
                 'src' => $url
-            ]] : ['a', $children, ['href' => $url]];
+            ]];
             $stack[$z][1][1] = false;
             $i = $n; // Move past `)`
             continue;
         }
-
         $s .= $c;
     }
     if ("" !== $s) {
