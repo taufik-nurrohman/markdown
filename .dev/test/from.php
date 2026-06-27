@@ -663,45 +663,59 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // to the link reference definition block. It acts as a leaf block that cannot interrupt a paragraph. It can
             // span multiple line(s), but it cannot contain any blank line(s).
             if ('*' === $value[$d + $i] && '[' === ($value[$d + $i + 1] ?? 0)) {
-                // <https://spec.commonmark.org/0.31.2#example-213>
                 if ("" !== $s) {
                     $s .= $c;
                     continue;
                 }
-                $n = $peek = $d + $i + 2; // Start after `*[`
-                while (false !== ($n = \strpos($value, ']:', $n))) {
-                    if ($n > 0 && "\\" === $value[$n - 1]) {
+                $min = $n = $d + $i + 2; // Go past `*[`
+                while ($n < $limit) {
+                    if ($r = r($value, $n, $limit)) {
+                        $n += $r;
+                        $w = \strspn($value, " \t", $n);
+                        if ($n + $w >= $limit || r($value, $n + $w, $limit)) {
+                            $n -= $r;
+                            break;
+                        }
+                        continue;
+                    }
+                    if ("\\" === $value[$n]) {
                         $n += 2;
                         continue;
                     }
-                    $k = \substr($value, $peek, $n - $peek);
-                    $w = \strspn($value, " \t", $n + 2);
-                    $v = \substr($value, $n + 2 + $w, $bar = \strcspn($value, c22, $n + 2 + $w));
-                    $n = ($n + 2 + $w + $bar) - ($d + $i);
-                    while ($r = r($value, $i + $n, $limit)) {
-                        $n += $r;
-                        $bar = \strcspn($value, c22, $i + $n);
-                        if ($bar === \strspn($value, c11, $i + $n)) {
-                            $n -= $r;
+                    if (']' === $value[$n]) {
+                        if (':' !== ($value[$n + 1] ?? 0)) {
                             break;
                         }
-                        $b = rows($value, $lot, 0, $i + $n, $i + $n + $bar)[0][0] ?? 0;
-                        if (!$b || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                            $n -= $r;
-                            break;
-                        }
-                        $v .= "\n" . \substr($value, $i + $n, $bar);
+                        $k = \trim(\substr($value, $min, $n - $min));
+                        $n += 2; // Go past `]:`
+                        $n += \strspn($value, " \t", $n);
+                        $bar = \strcspn($value, c22, $n);
+                        $v = \substr($value, $n, $bar);
                         $n += $bar;
-                        continue;
+                        while ($r = r($value, $n, $limit)) {
+                            $n += $r;
+                            $w = \strspn($value, " \t", $n);
+                            if ($n + $w >= $limit || r($value, $n + $w, $limit)) {
+                                break;
+                            }
+                            $bar = \strcspn($value, c22, $n);
+                            $b = rows($value, $lot, 0, $n, $n + $bar)[0][0] ?? 0;
+                            if (!$b || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                                $n -= $r;
+                                break;
+                            }
+                            $v .= "\n" . \substr($value, $n, $bar);
+                            $n += $bar;
+                        }
+                        if ($deep > 0) {
+                            $lot[1][$k] = $v;
+                        }
+                        $i = $n - $d;
+                        continue 2;
                     }
-                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                    $lot[1][$k] = $v;
-                    $i += $n;
-                    break;
+                    ++$n;
                 }
-                if (false === $n) {
-                    $s .= $c;
-                }
+                $s .= $c;
                 continue;
             }
             if ('[' === $value[$d + $i] && '^' === ($value[$d + $i + 1] ?? 0)) {}
