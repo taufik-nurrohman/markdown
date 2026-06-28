@@ -84,14 +84,6 @@ function view_source(string $text) {
     return htmlspecialchars($text);
 }
 
-function dent($value, $dent) {
-    $r = "";
-    foreach (explode("\n", $value) as $k => $v) {
-        $r .= "\n" . (0 !== $k && "" !== $v ? $dent . $v : $v);
-    }
-    return substr($r, 1);
-}
-
 // <https://github.com/mecha-cms/mecha/blob/v3.2.0/engine/f.php#L1606-L1671>
 function export($value, $dent = "", $r = "\n", $key_as_string = false, $is_object = null) {
     if (is_object($value)) {
@@ -686,19 +678,23 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                         if (':' !== ($value[$n + 1] ?? 0)) {
                             break;
                         }
-                        $k = \trim(\substr($value, $min, $n - $min));
-                        $n += 2; // Go past `]:`
-                        $n += \strspn($value, " \t", $n);
+                        $k = s($key = \substr($value, $min, $n - $min), ' ');
+                        $n += 2 + \strspn($value, c11, $n); // Go past `]:` and any optional white-space(s) after it
                         $bar = \strcspn($value, c22, $n);
                         $v = \substr($value, $n, $bar);
                         $n += $bar;
                         while ($r = r($value, $n, $limit)) {
                             $n += $r;
-                            $w = \strspn($value, " \t", $n);
+                            $w = \strspn($value, c11, $n);
                             if ($n + $w >= $limit || r($value, $n + $w, $limit)) {
                                 break;
                             }
                             $bar = \strcspn($value, c22, $n);
+                            if (d($value, $n, $limit)[0]) {
+                                $v .= "\n" . \substr($value, $n, $bar);
+                                $n += $bar;
+                                continue;
+                            }
                             $b = rows($value, $lot, 0, $n, $n + $bar)[0][0] ?? 0;
                             if (!$b || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                                 $n -= $r;
@@ -708,7 +704,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                             $n += $bar;
                         }
                         if ($deep > 0) {
-                            $lot[1][$k] = $v;
+                            $lot[1][$k] = s($v, ' ');
                         }
                         $i = $n - $d;
                         continue 2;
@@ -1241,6 +1237,21 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
     }
     unset($row);
     return [$rows, $lot, $void];
+}
+
+function s(string $text, $join = false) {
+    $i = 0;
+    $limit = \strlen($text);
+    $r = [];
+    while ($i < $limit) {
+        $i += \strspn($text, c33, $i);
+        if ($i >= $limit) {
+            break;
+        }
+        $r[] = \substr($text, $i, $n = \strcspn($text, c33, $i));
+        $i += $n;
+    }
+    return false !== $join ? \implode($join, $r) : $r;
 }
 
 if ('LICENSE' === $test) {
