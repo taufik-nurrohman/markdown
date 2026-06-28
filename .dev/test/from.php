@@ -154,7 +154,7 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
         }
         if ('#' === $c) {
             ++$n; // Move past `#`
-            $peek = \strcspn($value, $not, $i + $n);
+            $peek = \strcspn($value, $not, $i + $n, $limit - ($i + $n));
             if (isset($r['id'])) {
                 $n += $peek;
                 continue;
@@ -168,7 +168,7 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
         }
         if ('.' === $c) {
             ++$n; // Move past `.`
-            $peek = \strcspn($value, $not, $i + $n);
+            $peek = \strcspn($value, $not, $i + $n, $limit - ($i + $n));
             if (\is_string($r['class'] ?? 0)) {
                 $n += $peek;
                 continue;
@@ -222,7 +222,7 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
             $n += \strspn($value, c11, $i + $n);
             continue;
         }
-        if ($peek = \strcspn($value, c11 . '}', $i + $n)) {
+        if ($peek = \strcspn($value, c11 . ($raw ? "" : '}'), $i + $n)) {
             // If there is an invalid attribute name found in the wrapped attribute syntax, or in the raw attribute
             // syntax where no class format is provided, the entire attribute syntax must be marked as invalid.
             if (!$raw || "" === $f) {
@@ -234,7 +234,7 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
             }
             $n += $peek;
         }
-        $n += \strspn($value, c11, $i + $n);
+        $n += \strspn($value, c11, $i + $n) ?: 1;
     }
     if (!$raw && '}' !== ($value[$i + $n - 1] ?? 0)) {
         return [];
@@ -1040,17 +1040,17 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             // Since `-` can also be used as a list or thematic break marker, it is necessary to verify that the
             // previously identified block is a paragraph that is not followed by any blank line(s). Any other case is
             // considered invalid and will therefore fall through the list or thematic break parser.
-            if (false !== \strpos('-=', $m = $value[$d + $i]) && "" !== $s) {
-                if ($peek = \strspn($value, $m, $d + $i)) {
+            if (false !== \strpos('-=', $m = $value[$n = $d + $i]) && "" !== $s) {
+                if ($peek = \strspn($value, $m, $n)) {
                     $a = [];
-                    $peek += \strspn($value, c11, $d + $i + $peek);
-                    if (!r($value, $d + $i + $peek, $limit)) {
-                        if ($a = a($value, $d + $i + $peek, $limit, '{' !== ($value[$d + $i + $peek] ?? 0))) {
+                    $peek += \strspn($value, c11, $n + $peek);
+                    if (!r($value, $n + $peek, $limit)) {
+                        if ($a = a($value, $n + $peek, $n + \strcspn($value, c22, $n), '{' !== ($value[$n + $peek] ?? 0))) {
                             $peek += $a[1];
                         }
                     }
-                    $peek += \strspn($value, c11, $d + $i + $peek);
-                    if ($peek === ($bar = \strcspn($value, c22, $d + $i))) {
+                    $peek += \strspn($value, c11, $n + $peek);
+                    if ($peek === ($bar = \strcspn($value, c22, $n))) {
                         $s = \trim($s);
                         if (!$a && ($start = \strrpos($s, '{'))) {
                             $x = 0;
