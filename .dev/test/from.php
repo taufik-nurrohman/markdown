@@ -1094,12 +1094,13 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
             }
             // <https://spec.commonmark.org/0.31.2#bullet-list-marker>
             if (false !== \strpos('*+-', $m = $value[$d + $i]) && ($w = \strspn($value, c33, $d + $i + 1))) {
+                "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
                 // The minimum indentation to continue the list is 0 to 3 column(s) of white-space(s), followed by the
                 // bullet list marker and a column of white-space.
                 $i += ($min = $d + 2);
                 $n = 0;
                 while ($i + $n < $limit) {
-                    $bar = \strcspn($value, c22, $i + $n);
+                    $bar = \strcspn($value, c22, $i + $n, $limit - ($i + $n));
                     $s .= \substr($value, $i + $n, $bar);
                     $n += $bar;
                     if ($i + $n >= $limit) {
@@ -1107,27 +1108,42 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $at, int $limi
                     }
                     if ($r = r($value, $i + $n, $limit)) {
                         $n += $r;
-                        // A blank line
-                        if ($r = r($value, $i + $n + ($w = \strspn($value, c11, $i + $n)), $limit)) {
-                            $n += $r;
+                        // OPTIMIZED LOOK-AHEAD:
+                        // First, evaluate if this new line is purely white-space
+                        $line_len = \strcspn($value, c22, $i + $n, $limit - ($i + $n));
+                        $spaces_len = \strspn($value, c11, $i + $n, $line_len);
+                        if ($spaces_len === $line_len) {
+                            $n += $line_len;
+                            // A blank line breaks the list if the NEXT content block doesn't match the indent $min
+                            if ($next_r = r($value, $i + $n, $limit)) {
+                                $next_line_start = $i + $n + $next_r;
+                                if (d($value, $next_line_start, $limit)[0] < $min) {
+                                    // The block following the empty line doesn't have enough indentation. Close the list!
+                                    break;
+                                }
+                            }
                             $s .= "\n";
                             continue;
                         }
+                        // Normal matching indentation block
                         if (d($value, $i + $n, $limit)[0] >= $min) {
-                            $bar = \strcspn($value, c22, $i + $min + $n);
+                            $bar = \strcspn($value, c22, $i + $min + $n, $limit - ($i + $min + $n));
                             $s .= "\n" . \substr($value, $i + $min + $n, $bar);
                             $n += $bar + $min;
                             continue;
                         }
-                        $b = rows($value, $lot, 0, $i + $n, $i + $n + \strcspn($value, c22, $i + $n))[0][0] ?? 0;
-                        echo json_encode($b);
-                        echo '<br>';
+                        // Strict Lazy Paragraph continuation: only matches if no empty line intervened
+                        $b = rows($value, $lot, 0, $i + $n, $i + $n + \strcspn($value, c22, $i + $n, $limit - ($i + $n)))[0][0] ?? 0;
+                        if ($b && 'p' === $b[0]) {
+                            $bar = \strcspn($value, c22, $i + $n, $limit - ($i + $n));
+                            $s .= "\n" . \substr($value, $i + $n, $bar);
+                            $n += $bar;
+                            continue;
+                        }
                     }
-                    "" !== $s && ($rows[] = ['ul', \substr($s, 0, -1), [], [1, $m]]) && ($s = "");
-                    --$n; // :(
                     break;
                 }
-                "" !== $s && ($rows[] = ['ul', $s, [], [1, $m]]) && ($s = "");
+                "" !== $s && ($rows[] = ['ul', $s, [], [0, $m]]) && ($s = "");
                 $i += $n;
                 continue;
             }
