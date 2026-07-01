@@ -334,18 +334,17 @@ function n(string $value, int $i) {
             continue;
         }
         if ("\t" === $c) {
-            $r = 4 - ($tab % 4);
-            if ($tab + $r <= 4) {
-                $tab += $r;
-                ++$i;
-            } else {
-                return [$i - $start, \str_repeat(' ', 4 - $tab)];
+            if ($tab > 0) {
+                return [$i - $start, \str_repeat(' ', 4 - $tab), 0];
             }
+            $tab = 4;
+            ++$i;
             continue;
         }
         break;
     }
-    return [$i - $start, ""];}
+    return [$i - $start, "", 4 - $tab];
+}
 
 function r(string $value, int $i, int $limit) {
     if ($i >= $limit) {
@@ -623,7 +622,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
         // <https://spec.commonmark.org/0.31.2#indented-code-block>
         if ($d[0] >= 4 && "" === $s) {
             $n = n($value, $i);
-            $s .= $n[1] . \substr($value, $i + $n[0], $m[1] - $n[0]);
+            $s = $n[1] . \substr($value, $i + $n[0], $m[1] - $n[0]);
             while ($i < $limit) {
                 $i = $m[4];
                 if (0 === $m[2]) {
@@ -641,6 +640,97 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
             $rows[] = ['pre', [['code', h($s . "\n"), []]], [], [0, ""]];
             $s = "";
             continue;
+        }
+        // At this point, the number of character(s) occupied by the indentation, which is made up by a mix of
+        // space(s) and tab(s), should be the same, because an indentation less than 4 character(s) would never be
+        // made by a mix of space(s) and tab(s). A tab already covers at most 4 column(s), so any indentation less
+        // than 4 character(s) must be made up of space(s) only. This variable can then be used to jump past the
+        // first few space(s) that precede the actual block marker.
+        $d = $d[1];
+        // <https://spec.commonmark.org/0.31.2#code-fence>
+        if (false !== \strpos('`~', $c = $value[$d + $i]) && ($f = \strspn($value, $c, $d + $i)) >= 3) {
+            // <https://spec.commonmark.org/0.31.2#info-string>
+            $rest = \trim(\substr($value, $d + $f + $i, $m[1] - $d - $f));
+            // <https://spec.commonmark.org/0.31.2#example-145>
+            if ('`' === $c && false !== \strpos($rest, $c)) {
+                $i = $m[4];
+                continue;
+            }
+            "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+            $i = $m[4];
+            while ($i < $limit) {
+                $m = m($value, $i, $limit);
+                $w = d($value, $i, $limit)[0];
+                if ($w < 4 && $f === \strspn($value, $c, $i + $w)) {
+                    $i += $m[1] + $m[2];
+                    break;
+                }
+                $s .= \substr($value, $i, $m[1]) . "\n";
+                if (0 === $m[2]) {
+                    $i += $m[1];
+                    break;
+                }
+                $i += $m[1] + $m[2];
+            }
+            $rows[] = ['pre', [['code', h($s), []]], [], [$f, $c]];
+            $s = "";
+            continue;
+            echo json_encode($rest);
+            echo '<br>';
+            /*
+            $bar = $n = \strcspn($value, c22, $i);
+            $rest = \trim(\substr($value, $d + $f + $i, $n - $f));
+            $a = a($rest, 0, \strlen($rest), '{' !== ($rest[0] ?? 0), 'language-%s')[0] ?? [];
+            // <https://spec.commonmark.org/0.31.2#example-145>
+            if ('`' === $m && false !== \strpos($rest, $m)) {
+                $s .= $c;
+                continue;
+            }
+            "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+            while ($r = $b[2]) {
+                $n += $r;
+                $bar = \strcspn($value, c22, $i + $n);
+                if (($w = d($value, $i + $n, $limit)[1]) < 4) {
+                    if ($f === ($eat = \strspn($value, $m, $i + $n + $w, $limit - ($i + $n + $w)))) {
+                        if ($bar === ($eat += $w + \strspn($value, c11, $eat + $i + $n + $w, $limit - ($eat + $i + $n + $w)))) {
+                            $i += $eat + $n;
+                            $rows[] = ['pre', [['code', h($s), $a]], [], [$f, $m]];
+                            $s = "";
+                            continue;
+                        }
+                    }
+                }
+                // <https://spec.commonmark.org/0.31.2#example-131>
+                // <https://spec.commonmark.org/0.31.2#example-132>
+                // <https://spec.commonmark.org/0.31.2#example-133>
+                $eat = $d;
+                while ($eat) {
+                    if (' ' === ($value[$i + $n] ?? 0)) {
+                        ++$n;
+                        --$bar;
+                        --$eat;
+                        continue;
+                    }
+                    if ("\t" === ($value[$i + $n] ?? 0)) {
+                        ++$n;
+                        --$bar;
+                        $s .= \str_repeat(' ', 4 - $d);
+                        // A tab at the start of a line immediately satisfies the “preceded by up to 3 space(s)
+                        // of indentation” rule because it already occupies 4 character(s).
+                        break;
+                    }
+                    // Not a white-space, stop!
+                    break;
+                }
+                $s .= \substr($value, $i + $n, $bar) . "\n";
+                $n += $bar;
+                continue;
+            }
+            $i += $n;
+            $rows[] = ['pre', [['code', h($s), $a]], [], [$f, $m]];
+            $s = "";
+            continue;
+            */
         }
         $s .= \substr($value, $i, $m[1]) . "\n";
         $i += $m[1] + $m[2];
