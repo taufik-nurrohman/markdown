@@ -323,29 +323,6 @@ function m(string $value, int $i, int $limit, $peek = false) {
     return $r;
 }
 
-function n(string $value, int $i) {
-    $start = $i;
-    $tab = 0;
-    while ($tab < 4) {
-        $c = $value[$i] ?? 0;
-        if (' ' === $c) {
-            ++$i;
-            ++$tab;
-            continue;
-        }
-        if ("\t" === $c) {
-            if ($tab > 0) {
-                return [$i - $start, \str_repeat(' ', 4 - $tab), 0];
-            }
-            $tab = 4;
-            ++$i;
-            continue;
-        }
-        break;
-    }
-    return [$i - $start, "", 4 - $tab];
-}
-
 function r(string $value, int $i, int $limit) {
     if ($i >= $limit) {
         return 0;
@@ -621,8 +598,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
         // A tab, 4 space(s), or less than 4 of space(s) followed by a tab should occupy at minimum 4 character(s)
         // <https://spec.commonmark.org/0.31.2#indented-code-block>
         if ($d[0] >= 4 && "" === $s) {
-            $n = n($value, $i);
-            $s = $n[1] . \substr($value, $i + $n[0], $m[1] - $n[0]);
+            $s = \substr($value, $i + ($w = w($value, $i))[0], $m[1] - $w[0]) . "\n";
             while ($i < $limit) {
                 $i = $m[4];
                 if (0 === $m[2]) {
@@ -630,14 +606,12 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 }
                 $m = m($value, $i, $limit);
                 if ($m[1] !== \strspn($value, c11, $i, $limit - $i) && d($value, $i, $limit)[0] < 4) {
-                    $s = \substr($s, 0, -1);
                     ++$void;
                     break;
                 }
-                $n = n($value, $i);
-                $s .= "\n" . $n[1] . \substr($value, $i + $n[0], $m[1] - $n[0]);
+                $s .= \substr($value, $i + ($w = w($value, $i))[0], $m[1] - $w[0]) . "\n";
             }
-            $rows[] = ['pre', [['code', h($s . "\n"), []]], [], [0, ""]];
+            $rows[] = ['pre', [['code', h(\rtrim($s, "\n") . "\n"), []]], [], [0, ""]];
             $s = "";
             continue;
         }
@@ -648,21 +622,44 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
         // first few space(s) that precede the actual block marker.
         $d = $d[1];
         // <https://spec.commonmark.org/0.31.2#code-fence>
-        if (false !== \strpos('`~', $c = $value[$d + $i]) && ($f = \strspn($value, $c, $d + $i)) >= 3) {
+        if (false !== \strpos('`~', $c = $value[$d + $i]) && ($min = \strspn($value, $c, $d + $i)) >= 3) {
             // <https://spec.commonmark.org/0.31.2#info-string>
-            $rest = \trim(\substr($value, $d + $f + $i, $m[1] - $d - $f));
+            $info = \trim(\substr($value, $d + $i + $min, $m[1] - $d - $min));
             // <https://spec.commonmark.org/0.31.2#example-145>
-            if ('`' === $c && false !== \strpos($rest, $c)) {
-                $i = $m[4];
+            if ('`' === $c && false !== \strpos($info, $c)) {
+                $s .= \substr($value, $i, $m[1]) . "\n";
+                $i += $m[1] + $m[2];
                 continue;
             }
             "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
             $i = $m[4];
             while ($i < $limit) {
                 $m = m($value, $i, $limit);
-                $w = d($value, $i, $limit)[0];
-                if ($w < 4 && $f === \strspn($value, $c, $i + $w)) {
+                $w = \strspn($value, ' ', $i);
+                if ($w < 4 && \strspn($value, $c, $i + $w) >= $min) {
                     $i += $m[1] + $m[2];
+                    break;
+                }
+                // <https://spec.commonmark.org/0.31.2#example-131>
+                // <https://spec.commonmark.org/0.31.2#example-132>
+                // <https://spec.commonmark.org/0.31.2#example-133>
+                $eat = $d;
+                while ($eat) {
+                    if (' ' === ($value[$i] ?? 0)) {
+                        ++$i;
+                        --$eat;
+                        --$m[1];
+                        continue;
+                    }
+                    if ("\t" === ($value[$i] ?? 0)) {
+                        $s .= \str_repeat(' ', 4 - $d);
+                        ++$i;
+                        --$m[1];
+                        // A tab immediately satisfies the “preceded by up to 3 space(s) of indentation” rule because it
+                        // can span up to 4 column(s).
+                        break;
+                    }
+                    // Not a white-space, stop!
                     break;
                 }
                 $s .= \substr($value, $i, $m[1]) . "\n";
@@ -672,65 +669,9 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 }
                 $i += $m[1] + $m[2];
             }
-            $rows[] = ['pre', [['code', h($s), []]], [], [$f, $c]];
+            $rows[] = ['pre', [['code', h($s), a($info, 0, \strlen($info), '{' !== ($info[0] ?? 0), 'language-%s')[0] ?? []]], [], [$min, $c]];
             $s = "";
             continue;
-            echo json_encode($rest);
-            echo '<br>';
-            /*
-            $bar = $n = \strcspn($value, c22, $i);
-            $rest = \trim(\substr($value, $d + $f + $i, $n - $f));
-            $a = a($rest, 0, \strlen($rest), '{' !== ($rest[0] ?? 0), 'language-%s')[0] ?? [];
-            // <https://spec.commonmark.org/0.31.2#example-145>
-            if ('`' === $m && false !== \strpos($rest, $m)) {
-                $s .= $c;
-                continue;
-            }
-            "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-            while ($r = $b[2]) {
-                $n += $r;
-                $bar = \strcspn($value, c22, $i + $n);
-                if (($w = d($value, $i + $n, $limit)[1]) < 4) {
-                    if ($f === ($eat = \strspn($value, $m, $i + $n + $w, $limit - ($i + $n + $w)))) {
-                        if ($bar === ($eat += $w + \strspn($value, c11, $eat + $i + $n + $w, $limit - ($eat + $i + $n + $w)))) {
-                            $i += $eat + $n;
-                            $rows[] = ['pre', [['code', h($s), $a]], [], [$f, $m]];
-                            $s = "";
-                            continue;
-                        }
-                    }
-                }
-                // <https://spec.commonmark.org/0.31.2#example-131>
-                // <https://spec.commonmark.org/0.31.2#example-132>
-                // <https://spec.commonmark.org/0.31.2#example-133>
-                $eat = $d;
-                while ($eat) {
-                    if (' ' === ($value[$i + $n] ?? 0)) {
-                        ++$n;
-                        --$bar;
-                        --$eat;
-                        continue;
-                    }
-                    if ("\t" === ($value[$i + $n] ?? 0)) {
-                        ++$n;
-                        --$bar;
-                        $s .= \str_repeat(' ', 4 - $d);
-                        // A tab at the start of a line immediately satisfies the “preceded by up to 3 space(s)
-                        // of indentation” rule because it already occupies 4 character(s).
-                        break;
-                    }
-                    // Not a white-space, stop!
-                    break;
-                }
-                $s .= \substr($value, $i + $n, $bar) . "\n";
-                $n += $bar;
-                continue;
-            }
-            $i += $n;
-            $rows[] = ['pre', [['code', h($s), $a]], [], [$f, $m]];
-            $s = "";
-            continue;
-            */
         }
         $s .= \substr($value, $i, $m[1]) . "\n";
         $i += $m[1] + $m[2];
@@ -1418,6 +1359,29 @@ function s(string $text, $join = false) {
         $i += $n;
     }
     return false !== $join ? \implode($join, $r) : $r;
+}
+
+function w(string $value, int $i) {
+    $start = $i;
+    $tab = 0;
+    while ($tab < 4) {
+        $c = $value[$i] ?? 0;
+        if (' ' === $c) {
+            ++$i;
+            ++$tab;
+            continue;
+        }
+        if ("\t" === $c) {
+            if ($tab > 0) {
+                ++$i;
+                return [$i - $start, \str_repeat(' ', 4 - $tab), 0];
+            }
+            $tab = 4;
+            ++$i;
+        }
+        break;
+    }
+    return [$i - $start, "", 4 - $tab];
 }
 
 if ('LICENSE' === $test) {
