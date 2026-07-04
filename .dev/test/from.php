@@ -595,9 +595,10 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
             continue;
         }
         $d = d($value, $i, $limit);
-        // A tab, 4 space(s), or less than 4 of space(s) followed by a tab should occupy at minimum 4 character(s)
+        // A tab, 4 space(s), or less than 4 of space(s) followed by a tab should occupy at least 4 character(s)
+        // An indented code block cannot interrupt a paragraph
         // <https://spec.commonmark.org/0.31.2#indented-code-block>
-        if ($d[0] >= 4 && "" === $s) {
+        if ("" === $s && $d[0] >= 4) {
             $s = \substr($value, $i + ($w = w($value, $i))[0], $m[1] - $w[0]) . "\n";
             while ($i < $limit) {
                 $i = $m[4];
@@ -626,32 +627,145 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
         // block type 1 through 7 in order. It instead starts with a type of block that’s easier to spot.
         // <https://spec.commonmark.org/0.31.2#html-block>
         if ('<' === $value[$d + $i]) {
-            if ('!' === ($value[$d + $i + 1] ?? 0)) {
-                if ($d + $i + 2 === \strpos($value, '--', $d + $i + 1) && false !== ($peek = \strpos($value, '-->', $d + $i + 2))) {
-                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                    $rows[] = [false, \substr($value, $i, $peek += \strcspn($value, c22, $peek))];
-                    $i = $peek;
-                    continue;
-                }
-                if ($d + $i + 2 === \strpos($value, '[CDATA[', $d + $i + 1) && false !== ($peek = \strpos($value, ']]>', $d + $i + 2))) {
-                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                    $rows[] = [false, \substr($value, $i, $peek += \strcspn($value, c22, $peek))];
-                    $i = $peek;
-                    continue;
-                }
-                if (\strspn($value, c44, $d + $i + 2) && false !== ($peek = \strpos($value, '>', $d + $i + 2))) {
-                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                    $rows[] = [false, \substr($value, $i, $peek += \strcspn($value, c22, $peek))];
-                    $i = $peek;
-                    continue;
-                }
-            }
-            if ('?' === ($value[$d + $i + 1] ?? 0) && false !== ($peek = \strpos($value, '?>', $d + $i + 2))) {
+            if ('?' === ($value[$n = $d + $i + 1] ?? 0) && false !== ($n = \strpos($value, '?>', $n + 1))) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                $rows[] = [false, \substr($value, $i, $peek += \strcspn($value, c22, $peek))];
-                $i = $peek;
+                $rows[] = [false, \substr($value, $i, $n += \strcspn($value, c22, $n)), [3]];
+                $i = $n + r($value, $n, $limit);
                 continue;
             }
+            if ('!' === ($value[$n = $d + $i + 1] ?? 0)) {
+                if ($n + 1 === \strpos($value, '--', $n) && false !== ($n = \strpos($value, '-->', $n + 1))) {
+                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                    $rows[] = [false, \substr($value, $i, $n += \strcspn($value, c22, $n)), [2]];
+                    $i = $n + r($value, $n, $limit);
+                    continue;
+                }
+                if ($n + 1 === \strpos($value, '[CDATA[', $n) && false !== ($n = \strpos($value, ']]>', $n + 1))) {
+                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                    $rows[] = [false, \substr($value, $i, $n += \strcspn($value, c22, $n)), [5]];
+                    $i = $n + r($value, $n, $limit);
+                    continue;
+                }
+                if (\strspn($value, c44, $n + 1, 1) && false !== ($n = \strpos($value, '>', $n + 1))) {
+                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                    $rows[] = [false, \substr($value, $i, $n += \strcspn($value, c22, $n)), [4]];
+                    $i = $n + r($value, $n, $limit);
+                    continue;
+                }
+                $s .= \substr($value, $i, $m[1]) . "\n";
+                $i += $m[1] + $m[2];
+                continue;
+            }
+            $b = \strtolower(\substr($value, $n = $d + $i + 1, \strcspn($value, c33 . '>', $n)));
+            if (isset(b1[$b]) && false !== ($n = \stripos($value, '</' . $b . '>', $n + \strlen($b) + 1))) {
+                "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                $rows[] = [false, \substr($value, $i, $n += \strcspn($value, c22, $n)), [1, $b]];
+                $i = $n + r($value, $n, $limit);
+                continue;
+            }
+            // HTML block type 6 does not treat open and close tag(s) differently. The initial tag does not need to
+            // be a valid HTML tag. As long as it starts like one, it will be interpreted as such. Even a start tag
+            // that looks like `<div <!— <?asdf` still counts as a valid HTML block type 6.
+            if (isset(b6[$b = \trim($b, '/')])) {
+                "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
+                    // A blank line ends the current block
+                    if ($m[1] === \strspn($value, c11, $i, $m[1])) {
+                        break;
+                    }
+                    $s .= \substr($value, $i, $m[1]) . "\n";
+                    // End of the line
+                    if (0 === $m[2]) {
+                        $i += $m[1];
+                        break;
+                    }
+                    $i += $m[1] + $m[2];
+                }
+                $rows[] = [false, \substr($s, 0, -1), [6, $b]];
+                $s = "";
+                continue;
+            }
+            // HTML block type 7 cannot interrupt a paragraph
+            if ("" === $s) {
+                // <https://spec.commonmark.org/0.31.2#closing-tag>
+                if ('/' === ($value[$d + $i + 1] ?? 0)) {
+                    if ($n = \strspn($value, c44, $d + $i + 2)) {
+                        $n += $d + $i + 2;
+                        $n += \strspn($value, c66, $n);
+                        $n += \strspn($value, c11, $n);
+                        if ('>' === ($value[$n] ?? 0)) {
+                            $n += 1 + \strspn($value, c11, $n + 1);
+                            if ($n >= $limit || r($value, $n, $limit)) {
+                                $s = \substr($value, $i, $n - $i) . "\n";
+                                $i = $n + r($value, $n, $limit);
+                                while ($i < $limit) {
+                                    $m = m($value, $i, $limit);
+                                    // A blank line ends the current block
+                                    if ($m[1] === \strspn($value, c11, $i, $m[1])) {
+                                        break;
+                                    }
+                                    $s .= \substr($value, $i, $m[1]) . "\n";
+                                    // End of the line
+                                    if (0 === $m[2]) {
+                                        $i += $m[1];
+                                        break;
+                                    }
+                                    $i += $m[1] + $m[2];
+                                }
+                                $rows[] = [false, \substr($s, 0, -1), [7]];
+                                $s = "";
+                                continue;
+                            }
+                        }
+                    }
+                // <https://spec.commonmark.org/0.31.2#open-tag>
+                } else if ($n = \strspn($value, c44, $d + $i + 1)) {
+                    $n += $d + $i + 1;
+                    $n += \strspn($value, c66, $n);
+                    $n += \strspn($value, c11, $n);
+                    if ($n < $limit && '>' !== $value[$n]) {
+                        $i = $n;
+                        // TODO: Capture attribute(s)
+                        while ($i < $limit) {
+                            $i += \strspn($value, c11, $i);
+                            if ('>' === ($value[$i] ?? 0)) {
+                                ++$i;
+                                break;
+                            }
+                            ++$i;
+                        }
+                        $n = $i;
+                    }
+                    if ('>' === ($value[$n] ?? 0)) {
+                        $n += 1 + \strspn($value, c11, $n + 1);
+                        if ($n >= $limit || r($value, $n, $limit)) {
+                            $s = \substr($value, $i, $n - $i) . "\n";
+                            $i = $n + r($value, $n, $limit);
+                            while ($i < $limit) {
+                                $m = m($value, $i, $limit);
+                                // A blank line ends the current block
+                                if ($m[1] === \strspn($value, c11, $i, $m[1])) {
+                                    break;
+                                }
+                                $s .= \substr($value, $i, $m[1]) . "\n";
+                                // End of the line
+                                if (0 === $m[2]) {
+                                    $i += $m[1];
+                                    break;
+                                }
+                                $i += $m[1] + $m[2];
+                            }
+                            $rows[] = [false, \substr($s, 0, -1), [7]];
+                            $s = "";
+                            continue;
+                        }
+                    }
+                }
+            }
+            $s .= \substr($value, $i, $m[1]) . "\n";
+            $i += $m[1] + $m[2];
+            continue;
         }
         if ('[' === $value[$d + $i]) {}
         // <https://spec.commonmark.org/0.31.2#code-fence>
@@ -696,6 +810,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                     break;
                 }
                 $s .= \substr($value, $i, $m[1]) . "\n";
+                // End of the line
                 if (0 === $m[2]) {
                     $i += $m[1];
                     break;
