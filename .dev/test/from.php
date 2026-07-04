@@ -621,6 +621,39 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
         // than 4 character(s) must be made up of space(s) only. This variable can then be used to jump past the
         // first few space(s) that precede the actual block marker.
         $d = $d[1];
+        if ('*' === $value[$d + $i]) {}
+        // I am so sorry about the order, especially for those of you with ADHD. This parser does not process HTML
+        // block type 1 through 7 in order. It instead starts with a type of block that’s easier to spot.
+        // <https://spec.commonmark.org/0.31.2#html-block>
+        if ('<' === $value[$d + $i]) {
+            if ('!' === ($value[$d + $i + 1] ?? 0)) {
+                if ($d + $i + 2 === \strpos($value, '--', $d + $i + 1) && false !== ($peek = \strpos($value, '-->', $d + $i + 2))) {
+                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                    $rows[] = [false, \substr($value, $i, $peek += \strcspn($value, c22, $peek))];
+                    $i = $peek;
+                    continue;
+                }
+                if ($d + $i + 2 === \strpos($value, '[CDATA[', $d + $i + 1) && false !== ($peek = \strpos($value, ']]>', $d + $i + 2))) {
+                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                    $rows[] = [false, \substr($value, $i, $peek += \strcspn($value, c22, $peek))];
+                    $i = $peek;
+                    continue;
+                }
+                if (\strspn($value, c44, $d + $i + 2) && false !== ($peek = \strpos($value, '>', $d + $i + 2))) {
+                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                    $rows[] = [false, \substr($value, $i, $peek += \strcspn($value, c22, $peek))];
+                    $i = $peek;
+                    continue;
+                }
+            }
+            if ('?' === ($value[$d + $i + 1] ?? 0) && false !== ($peek = \strpos($value, '?>', $d + $i + 2))) {
+                "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                $rows[] = [false, \substr($value, $i, $peek += \strcspn($value, c22, $peek))];
+                $i = $peek;
+                continue;
+            }
+        }
+        if ('[' === $value[$d + $i]) {}
         // <https://spec.commonmark.org/0.31.2#code-fence>
         if (false !== \strpos('`~', $c = $value[$d + $i]) && ($min = \strspn($value, $c, $d + $i)) >= 3) {
             // <https://spec.commonmark.org/0.31.2#info-string>
@@ -1417,12 +1450,6 @@ $r .= <<<CSS
   padding: 0;
   text-decoration: none;
 }
-:root {
-  background: #fff;
-  color: #000;
-  font: normal normal 13px/1.5 Verdana, sans-serif;
-  padding: 1em;
-}
 a {
   color: #00f;
 }
@@ -1538,10 +1565,6 @@ pre {
 pre code {
   display: block;
 }
-:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
 .c {
   position: relative;
 }
@@ -1577,6 +1600,21 @@ pre code {
 }
 .c-t::before {
   content: ' ';
+}
+:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+:root {
+  background: #fff;
+  color: #000;
+  font: normal normal 13px/1.5 Verdana, sans-serif;
+  padding: 1em;
+}
+[role="group"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25em;
 }
 CSS;
 $r .= '</style>';
