@@ -369,25 +369,24 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
             continue;
         }
         if ($r = r($value, $i, $limit)) {
-            $i += $r;
             // <https://spec.commonmark.org/0.31.2#hard-line-break>
             if ("\\" === ($value[$i - 1] ?? 0)) {
-                $i += \strspn($value, c1, $i, $limit - $i); // <https://spec.commonmark.org/0.31.2#example-637>
-                $row[] = h(\substr($s, 0, -1));
+                "" !== $s && ($row[] = h(\substr($s, 0, -1))) && ($s = "");
                 $row[] = ['br', false, []];
-                $s = "";
+                $i += $r;
+                $i += \strspn($value, c1, $i, $limit - $i); // <https://spec.commonmark.org/0.31.2#example-637>
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#hard-line-break>
             if ("\t" === ($value[$i - 1] ?? 0) || (' ' === ($value[$i - 1] ?? 0) && ' ' === ($value[$i - 2] ?? 0))) {
-                $i += \strspn($value, c1, $i, $limit - $i); // <https://spec.commonmark.org/0.31.2#example-636>
-                $row[] = h(\rtrim($s));
+                "" !== $s && ($row[] = h(\rtrim($s))) && ($s = "");
                 $row[] = ['br', false, []];
-                $s = "";
+                $i += $r;
+                $i += \strspn($value, c1, $i, $limit - $i); // <https://spec.commonmark.org/0.31.2#example-636>
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#softbreak>
-            $i += \strspn($value, c1, $i, $limit - $i);
+            $i += \strspn($value, c1, $i, $limit - $i) + $r;
             $s .= ' ';
             continue;
         }
