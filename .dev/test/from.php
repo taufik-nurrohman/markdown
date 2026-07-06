@@ -441,7 +441,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                 // If the entity is not present in the list, try to validate it using a more expensive method: pass the
                 // string to the `html_entity_decode()` function and compare the result. If they are the same, the
                 // matching entity pattern is not valid.
-                $e[$m] ??= $m !== \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES) ? 1 : 0; // Store it to the list as a cache
+                $e[$m] ??= $m !== \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES) ? 1 : 0;
                 if (1 === ($e[$m] ?? 0)) {
                     "" !== $s && ($row[] = h($s)) && ($s = "");
                     $row[] = [false, $m, [], [1]];
