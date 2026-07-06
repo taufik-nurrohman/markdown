@@ -299,11 +299,11 @@ const c3 = c1 . c2;
 const c4 = '0123456789'; // Digit
 const c5 = 'ABCDEF';
 const c6 = 'abcdef';
-const c7 = c5 . c6 . c4; // Hex
+const c7 = c4 . c5 . c6; // Hex
 const c8 = c5 . 'GHIJKLMNOPQRSTUVWXYZ';
 const c9 = c6 . 'ghijklmnopqrstuvwxyz';
 const c10 = c8 . c9; // Alpha
-const c11 = c10 . c4 . '-'; // Alpha + Digit + `-`
+const c11 = c4 . c10 . '-'; // Alpha + Digit + `-`
 
 // <https://spec.commonmark.org/0.31.2#attribute-name>
 const c12 = c10 . ':_';
@@ -321,17 +321,19 @@ const c16 = c14 . '"%-.<>^_`{|}~' . "\\";
 // <https://spec.commonmark.org/0.31.2#ascii-control-character>
 const c17 = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x7f";
 
+const x1a = "\x1a";
+
 function m(string $value, int $i, int $limit, $peek = false) {
     $r = [$i, $n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit), 0];
     if ($peek && 0 !== $r[2]) {
         $n += $i + $r[2];
         while ($n < $limit) {
             $w = \strspn($value, c1, $n, $limit - $n);
-            if (!$exit = r($value, $n + $w, $limit)) {
+            if (!$end = r($value, $n + $w, $limit)) {
                 break;
             }
-            $r[3] += $exit + $w;
-            $n += $exit + $w;
+            $r[3] += $end + $w;
+            $n += $end + $w;
         }
     }
     $r[4] = $i + $r[1] + $r[2] + $r[3];
@@ -390,11 +392,64 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
             $s .= ' ';
             continue;
         }
-        // <https://spec.commonmark.org/0.31.2#decimal-numeric-character-references>
-        // <https://spec.commonmark.org/0.31.2#entity-references>
-        // <https://spec.commonmark.org/0.31.2#hexadecimal-numeric-character-references>
-        if ('&' === $c && false !== ($exit = \strpos($value, ';', $i + 2))) {
-            // TODO
+        // <https://spec.commonmark.org/0.31.2#entity-and-numeric-character-references>
+        if ('&' === $c && false !== ($end = \strpos($value, ';', $i + 2))) {
+            static $e;
+            if ('#' === ($value[$n = $i + 1] ?? 0)) {
+                if (false !== \strpos('Xx', $value[$i + 2] ?? x1a)) {
+                    // <https://spec.commonmark.org/0.31.2#hexadecimal-numeric-character-references>
+                    $n += \strspn($value, c7, $n + 2) + 2;
+                    if ($end === $n && $n - $i - 3 < 7) {
+                        $m = \substr($value, $i, ++$end - $i);
+                        $e ??= [];
+                        $e[$m] ??= $m !== \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES) ? 1 : 0;
+                        if (1 === ($e[$m] ?? 0)) {
+                            "" !== $s && ($row[] = h($s)) && ($s = "");
+                            $row[] = [false, $m, [], [3]];
+                            $i = $end;
+                            continue;
+                        }
+                    }
+                    $s .= $c;
+                    ++$i;
+                    continue;
+                }
+                // <https://spec.commonmark.org/0.31.2#decimal-numeric-character-references>
+                $n += \strspn($value, c4, $n + 1) + 1;
+                if ($end === $n && $n - $i - 2 < 8) {
+                    $m = \substr($value, $i, ++$end - $i);
+                    $e ??= [];
+                    $e[$m] ??= $m !== \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES) ? 1 : 0;
+                    if (1 === ($e[$m] ?? 0)) {
+                        "" !== $s && ($row[] = h($s)) && ($s = "");
+                        $row[] = [false, $m, [], [2]];
+                        $i = $end;
+                        continue;
+                    }
+                }
+                $s .= $c;
+                ++$i;
+                continue;
+            }
+            // Load a list of known entity reference(s) supported by your PHP environment to validate the current HTML
+            // entity pattern. This step is necessary to reject unknown entity name(s), such as `&123;`
+            $e ??= \array_fill_keys(\get_html_translation_table(\HTML_ENTITIES, \ENT_HTML5 | \ENT_QUOTES), 1);
+            // <https://spec.commonmark.org/0.31.2#entity-references>
+            $n += \strspn($value, c4 . c10, $n);
+            if ($end === $n) {
+                $m = \substr($value, $i, ++$end - $i);
+                // If the entity is not present in the list, try to validate it using a more expensive method: pass the
+                // string to the `html_entity_decode()` function and compare the result. If they are the same, the
+                // matching entity pattern is not valid.
+                $e[$m] ??= $m !== \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES) ? 1 : 0; // Store it to the list as a cache
+                if (1 === ($e[$m] ?? 0)) {
+                    "" !== $s && ($row[] = h($s)) && ($s = "");
+                    $row[] = [false, $m, [], [1]];
+                    $i = $end;
+                    continue;
+                }
+            }
+            $s .= $c;
             ++$i;
             continue;
         }
@@ -432,30 +487,30 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                 ++$i;
                 continue;
             }
-            if (false !== ($exit = \strpos($value, '>', $i + 2))) {
+            if (false !== ($end = \strpos($value, '>', $i + 2))) {
                 // <https://spec.commonmark.org/0.31.2#uri-autolink>
                 if ($m = \strspn($value, c10, $n = $i + 1)) {
                     $m += \strspn($value, c11 . '+.', $m + $n);
                     if ($m >= 2 && $m <= 32) {
                         if (':' === ($value[$m + $n] ?? 0)) {
                             $u = \substr($value, $n, $m = \strcspn($value, c17 . ' <>', $n));
-                            if ('>' === ($value[$m + $n])) {
+                            if ($end === $m + $n) {
                                 "" !== $s && ($row[] = h($s)) && ($s = "");
                                 $row[] = ['a', h($u), ['href' => u($u)], [3]];
-                                $i = $exit + 1;
+                                $i = $end + 1;
                                 continue;
                             }
                         }
                     }
                 }
                 // <https://spec.commonmark.org/0.31.2#email-autolink>
-                if (false !== ($n = \strpos($value, '@', $i + 2)) && $n < $exit) {
-                    $u = \substr($value, $n = $i + 1, $exit - $n);
+                if (false !== ($n = \strpos($value, '@', $i + 2)) && $n < $end) {
+                    $u = \substr($value, $n = $i + 1, $end - $n);
                     // if ($u && \filter_var($u, \FILTER_VALIDATE_EMAIL)) {
                     if ($u && \preg_match('~^[\w!#$%&\'*+./=?\^`{|}\~-]+@[\w-]+(?>\.[\w-]+)*$~', $u)) {
                         "" !== $s && ($row[] = h($s)) && ($s = "");
                         $row[] = ['a', h($u), ['href' => u('mailto:' . $u)], [3]];
-                        $i = $exit + 1;
+                        $i = $end + 1;
                         continue;
                     }
                 }
@@ -466,14 +521,14 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#closing-tag>
-                if ($exit = '/' === $value[$n = $i + 1]) {
+                if ($end = '/' === $value[$n = $i + 1]) {
                     ++$n;
                 }
                 // <https://spec.commonmark.org/0.31.2#tag-name>
                 if ($m = \strspn($value, c10, $n)) {
                     $n += \strspn($value, c11, $m + $n) + $m;
                     // <https://spec.commonmark.org/0.31.2#closing-tag>
-                    if ($exit) {
+                    if ($end) {
                         $n += \strspn($value, c3, $n);
                     // <https://spec.commonmark.org/0.31.2#open-tag>
                     } else {
@@ -1000,7 +1055,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#atx-heading>
-        if (($level = \strspn($value, '#', $d + $i)) && $level < 7 && false !== \strpos(c3, $value[$n = $d + $i + $level] ?? "\n")) {
+        if (($level = \strspn($value, '#', $d + $i)) && $level < 7 && false !== \strpos(c3, $value[$n = $d + $i + $level] ?? c2[0])) {
             "" !== $s && ($rows[] = ['p', \trim($s), []]);
             $s = \trim(\substr($value, $n + \strspn($value, c1, $n), $m[1] - $level));
             if ($max = \strlen($s)) {
