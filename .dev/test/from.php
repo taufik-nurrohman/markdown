@@ -400,12 +400,12 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                     // <https://spec.commonmark.org/0.31.2#hexadecimal-numeric-character-references>
                     $n += \strspn($value, c7, $n + 2) + 2;
                     if ($end === $n && $n - $i - 3 < 7) {
-                        $m = \substr($value, $i, ++$end - $i);
                         $e ??= [];
-                        $e[$m] ??= $m !== \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES) ? 1 : 0;
-                        if (1 === ($e[$m] ?? 0)) {
+                        $o = \html_entity_decode($m = \substr($value, $i, ++$end - $i), \ENT_HTML5 | \ENT_QUOTES);
+                        $e[$m] ??= $m !== $o ? $o : "";
+                        if ("" !== ($e[$m] ?? "")) {
                             "" !== $s && ($row[] = h($s)) && ($s = "");
-                            $row[] = [false, $m, [], [3]];
+                            $row[] = [false, $m, [], [3, $o]];
                             $i = $end;
                             continue;
                         }
@@ -417,12 +417,12 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                 // <https://spec.commonmark.org/0.31.2#decimal-numeric-character-references>
                 $n += \strspn($value, c4, $n + 1) + 1;
                 if ($end === $n && $n - $i - 2 < 8) {
-                    $m = \substr($value, $i, ++$end - $i);
                     $e ??= [];
-                    $e[$m] ??= $m !== \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES) ? 1 : 0;
-                    if (1 === ($e[$m] ?? 0)) {
+                    $o = \html_entity_decode($m = \substr($value, $i, ++$end - $i), \ENT_HTML5 | \ENT_QUOTES);
+                    $e[$m] ??= $m !== $o ? $o : "";
+                    if ("" !== ($e[$m] ?? "")) {
                         "" !== $s && ($row[] = h($s)) && ($s = "");
-                        $row[] = [false, $m, [], [2]];
+                        $row[] = [false, $m, [], [2, $o]];
                         $i = $end;
                         continue;
                     }
@@ -431,20 +431,20 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                 ++$i;
                 continue;
             }
-            // Load a list of known entity reference(s) supported by your PHP environment to validate the current HTML
-            // entity pattern. This step is necessary to reject unknown entity name(s), such as `&123;`
-            $e ??= \array_fill_keys(\get_html_translation_table(\HTML_ENTITIES, \ENT_HTML5 | \ENT_QUOTES), 1);
             // <https://spec.commonmark.org/0.31.2#entity-references>
             $n += \strspn($value, c4 . c10, $n);
             if ($end === $n) {
-                $m = \substr($value, $i, ++$end - $i);
+                // Load a list of known entity reference(s) supported by your PHP environment to validate the current
+                // HTML entity pattern. This step is necessary to reject unknown entity name(s), such as `&123;`
+                $e ??= \array_flip(\get_html_translation_table(\HTML_ENTITIES, \ENT_HTML5 | \ENT_QUOTES));
+                $o = \html_entity_decode($m = \substr($value, $i, ++$end - $i), \ENT_HTML5 | \ENT_QUOTES);
                 // If the entity is not present in the list, try to validate it using a more expensive method: pass the
                 // string to the `html_entity_decode()` function and compare the result. If they are the same, the
                 // matching entity pattern is not valid.
-                $e[$m] ??= $m !== \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES) ? 1 : 0;
-                if (1 === ($e[$m] ?? 0)) {
+                $e[$m] ??= $m !== $o ? $o : "";
+                if ("" !== ($e[$m] ?? "")) {
                     "" !== $s && ($row[] = h($s)) && ($s = "");
-                    $row[] = [false, $m, [], [1]];
+                    $row[] = [false, $m, [], [1, $o]];
                     $i = $end;
                     continue;
                 }
@@ -763,9 +763,12 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                     break;
                 }
                 $m = m($value, $i, $limit);
-                if ($m[1] !== \strspn($value, c1, $i, $limit - $i) && d($value, $i, $limit)[0] < 4) {
-                    $s = \substr($s, 0, -1);
-                    ++$void;
+                if ($m[1] !== \strspn($value, c1, $i, $limit - $i) && d($value, $i, $limit)[1] < 4) {
+                    // Previous line was a blank line
+                    if ("" !== $s && "\n" === $s[\strlen($s) - 1]) {
+                        $s = \substr($s, 0, -1);
+                        ++$void;
+                    }
                     break;
                 }
                 $s .= "\n" . \substr($value, $i + ($w = w($value, $i))[0], $m[1] - $w[0]);
@@ -881,6 +884,62 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
             }
             $s .= \substr($value, $i, $m[1]) . "\n";
             $i += $m[1] + $m[2];
+            continue;
+        }
+        // <https://spec.commonmark.org/0.31.2#block-quote-marker>
+        if ('>' === $value[$d + $i]) {
+            "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+            $n = $d + 1;
+            if (' ' === ($value[$i + $n] ?? 0)) {
+                ++$n;
+            } else if ("\t" === ($value[$i + $n] ?? 0) && ($tab = 4 - (($d + 1) % 4))) {
+                $s .= \str_repeat(' ', $tab - 1);
+                if ("\t" === ($value[$i + ++$n] ?? 0)) {
+                    $s .= \str_repeat(' ', 4);
+                    ++$n;
+                }
+            }
+            $s .= \substr($value, $i + $n, $m[1] - $n);
+            $i += $m[1] + $m[2];
+            while ($i < $limit) {
+                $d = d($value, $i, $limit)[1];
+                $m = m($value, $i, $limit);
+                if ($d < 4 && '>' === ($value[$d + $i] ?? 0)) {
+                    $n = $d + 1;
+                    $s .= "\n";
+                    if (' ' === ($value[$i + $n] ?? 0)) {
+                        ++$n;
+                    } else if ("\t" === ($value[$i + $n] ?? 0) && ($tab = 4 - (($d + 1) % 4))) {
+                        $s .= \str_repeat(' ', $tab - 1);
+                        if ("\t" === ($value[$i + ++$n] ?? 0)) {
+                            $s .= \str_repeat(' ', 4);
+                            ++$n;
+                        }
+                    }
+                    $s .= \substr($value, $i + $n, $m[1] - $n);
+                    $i += $m[1] + $m[2];
+                    continue;
+                }
+                // A blank line ends the current block
+                if ($m[1] === \strspn($value, c1, $i, $m[1])) {
+                    break;
+                }
+                $b = rows($value, $lot, 0, $i, $i + $m[1])[0][0] ?? 0;
+                // Not a paragraph continuation text
+                if (!$b || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                    break;
+                }
+                // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
+                $s .= "\n" . \substr($value, $i, $m[1]);
+                // End of the stream
+                if (0 === $m[2]) {
+                    $i += $m[1];
+                    break;
+                }
+                $i += $m[1] + $m[2];
+            }
+            $rows[] = ['blockquote', $s, []];
+            $s = "";
             continue;
         }
         // There is no formal specification for the abbreviation block in CommonMark, so I will treat it similarly
@@ -1096,8 +1155,14 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
     if ("" !== $s) {
         $rows[] = ['p', \trim($s), []];
     }
-    if ($rows) {
+    if ($deep > 0 && $rows) {
         foreach ($rows as &$row) {
+            if ('blockquote' === $row[0]) {
+                $row[1] = rows($row[1], $lot, $deep - 1, 0, \strlen($row[1]))[0];
+                continue;
+            }
+            if ('dl' === $row[0]) {}
+            if (\in_array($row[0], ['ol', 'ul'], true)) {}
             if (false !== $row[0] && \is_string($row[1])) {
                 $row[1] = row($row[1], $lot, $deep - 1, 0, \strlen($row[1]));
             }
