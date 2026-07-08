@@ -151,6 +151,10 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
     while ($i + $n < $limit) {
         $c = $value[$i + $n];
         if (!$raw && '}' === $c) {
+            for ($x = 0; $i + $n - 1 - $x >= $i && "\\" === $value[$i + $n - 1 - $x]; ++$x);
+            if (0 !== $x % 2) {
+                return [];
+            }
             if (\is_array($a = $r['class'] ?? 0)) {
                 \ksort($a);
                 $r['class'] = \implode(' ', \array_keys($a));
@@ -401,11 +405,10 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                     $n += \strspn($value, c7, $n + 2) + 2;
                     if ($end === $n && $n - $i - 3 < 7) {
                         $e ??= [];
-                        $o = \html_entity_decode($m = \substr($value, $i, ++$end - $i), \ENT_HTML5 | \ENT_QUOTES);
-                        $e[$m] ??= $m !== $o ? $o : "";
-                        if ("" !== ($e[$m] ?? "")) {
+                        $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
+                        if ("" !== ($e[$k] ?? "")) {
                             "" !== $s && ($row[] = h($s)) && ($s = "");
-                            $row[] = [false, $m, [], [3, $o]];
+                            $row[] = [false, $k, [], [3, $e[$k]]];
                             $i = $end;
                             continue;
                         }
@@ -418,11 +421,10 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                 $n += \strspn($value, c4, $n + 1) + 1;
                 if ($end === $n && $n - $i - 2 < 8) {
                     $e ??= [];
-                    $o = \html_entity_decode($m = \substr($value, $i, ++$end - $i), \ENT_HTML5 | \ENT_QUOTES);
-                    $e[$m] ??= $m !== $o ? $o : "";
-                    if ("" !== ($e[$m] ?? "")) {
+                    $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
+                    if ("" !== ($e[$k] ?? "")) {
                         "" !== $s && ($row[] = h($s)) && ($s = "");
-                        $row[] = [false, $m, [], [2, $o]];
+                        $row[] = [false, $k, [], [2, $e[$k]]];
                         $i = $end;
                         continue;
                     }
@@ -437,14 +439,13 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                 // Load a list of known entity reference(s) supported by your PHP environment to validate the current
                 // HTML entity pattern. This step is necessary to reject unknown entity name(s), such as `&123;`
                 $e ??= \array_flip(\get_html_translation_table(\HTML_ENTITIES, \ENT_HTML5 | \ENT_QUOTES));
-                $o = \html_entity_decode($m = \substr($value, $i, ++$end - $i), \ENT_HTML5 | \ENT_QUOTES);
                 // If the entity is not present in the list, try to validate it using a more expensive method: pass the
                 // string to the `html_entity_decode()` function and compare the result. If they are the same, the
                 // matching entity pattern is not valid.
-                $e[$m] ??= $m !== $o ? $o : "";
-                if ("" !== ($e[$m] ?? "")) {
+                $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
+                if ("" !== ($e[$k] ?? "")) {
                     "" !== $s && ($row[] = h($s)) && ($s = "");
-                    $row[] = [false, $m, [], [1, $o]];
+                    $row[] = [false, $k, [], [1, $e[$k]]];
                     $i = $end;
                     continue;
                 }
@@ -489,14 +490,14 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
             }
             if (false !== ($end = \strpos($value, '>', $i + 2))) {
                 // <https://spec.commonmark.org/0.31.2#uri-autolink>
-                if ($m = \strspn($value, c10, $n = $i + 1)) {
+                if (false !== \strpos($value, ':', $i + 3) && ($m = \strspn($value, c10, $n = $i + 1))) {
                     $m += \strspn($value, c11 . '+.', $m + $n);
-                    if ($m >= 2 && $m <= 32) {
+                    if ($m >= 2 && $m <= 32) { // <https://spec.commonmark.org/0.31.2#scheme>
                         if (':' === ($value[$m + $n] ?? 0)) {
-                            $u = \substr($value, $n, $m = \strcspn($value, c17 . ' <>', $n));
+                            $m += \strcspn($value, c17 . ' <>', $m + $n + 1) + 1;
                             if ($end === $m + $n) {
                                 "" !== $s && ($row[] = h($s)) && ($s = "");
-                                $row[] = ['a', h($u), ['href' => u($u)], [3]];
+                                $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [3]];
                                 $i = $end + 1;
                                 continue;
                             }
@@ -504,14 +505,15 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                     }
                 }
                 // <https://spec.commonmark.org/0.31.2#email-autolink>
-                if (false !== ($n = \strpos($value, '@', $i + 2)) && $n < $end) {
-                    $u = \substr($value, $n = $i + 1, $end - $n);
-                    // if ($u && \filter_var($u, \FILTER_VALIDATE_EMAIL)) {
-                    if ($u && \preg_match('~^[\w!#$%&\'*+./=?\^`{|}\~-]+@[\w-]+(?>\.[\w-]+)*$~', $u)) {
-                        "" !== $s && ($row[] = h($s)) && ($s = "");
-                        $row[] = ['a', h($u), ['href' => u('mailto:' . $u)], [3]];
-                        $i = $end + 1;
-                        continue;
+                if (false !== \strpos($value, '@', $i + 2) && ($m = \strspn($value, c11 . '!#$%&*+./=?^`{|}~' . "'\\", $n = $i + 1))) {
+                    if ('@' === ($value[$m + $n] ?? 0)) {
+                        $m += \strspn($value, c11 . '.', $m + $n + 1) + 1;
+                        if ($end === $m + $n) {
+                            "" !== $s && ($row[] = h($s)) && ($s = "");
+                            $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [3]];
+                            $i = $end + 1;
+                            continue;
+                        }
                     }
                 }
                 // <https://spec.commonmark.org/0.31.2#html-tag>
@@ -605,6 +607,13 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
             if (false === $eat) {
                 $s .= $c;
                 ++$i;
+                continue;
+            }
+            // Check for attribute syntax after code span
+            $eat = \strspn($value, c3, $i);
+            if ('{' === ($value[$eat + $i] ?? 0) && ($a = a($value, $eat + $i, $limit))) {
+                $row[\array_key_last($row)][2] = $a[0];
+                $i += $a[1] + $eat;
             }
             continue;
         }
@@ -889,34 +898,15 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
         // <https://spec.commonmark.org/0.31.2#block-quote-marker>
         if ('>' === $value[$d + $i]) {
             "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-            $n = $d + 1;
-            if (' ' === ($value[$i + $n] ?? 0)) {
-                ++$n;
-            } else if ("\t" === ($value[$i + $n] ?? 0) && ($tab = 4 - (($d + 1) % 4))) {
-                $s .= \str_repeat(' ', $tab - 1);
-                if ("\t" === ($value[$i + ++$n] ?? 0)) {
-                    $s .= \str_repeat(' ', 4);
-                    ++$n;
-                }
-            }
-            $s .= \substr($value, $i + $n, $m[1] - $n);
+            $w = w($value, $i + ($n = $d + 1), 1, $n);
+            $s .= $w[1] . \substr($value, $i + ($n += $w[0]), $m[1] - $n);
             $i += $m[1] + $m[2];
             while ($i < $limit) {
-                $d = d($value, $i, $limit)[1];
+                $d = d($value, $i, $limit);
                 $m = m($value, $i, $limit);
-                if ($d < 4 && '>' === ($value[$d + $i] ?? 0)) {
-                    $n = $d + 1;
-                    $s .= "\n";
-                    if (' ' === ($value[$i + $n] ?? 0)) {
-                        ++$n;
-                    } else if ("\t" === ($value[$i + $n] ?? 0) && ($tab = 4 - (($d + 1) % 4))) {
-                        $s .= \str_repeat(' ', $tab - 1);
-                        if ("\t" === ($value[$i + ++$n] ?? 0)) {
-                            $s .= \str_repeat(' ', 4);
-                            ++$n;
-                        }
-                    }
-                    $s .= \substr($value, $i + $n, $m[1] - $n);
+                if ($d[0] < 4 && '>' === ($value[$d[1] + $i] ?? 0)) {
+                    $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
+                    $s .= "\n" . $w[1] . \substr($value, $i + ($n += $w[0]), $m[1] - $n);
                     $i += $m[1] + $m[2];
                     continue;
                 }
@@ -1867,27 +1857,31 @@ function u(string $text) {
     return $s;
 }
 
-function w(string $value, int $i) {
+function w(string $value, int $i, int $max = 4, int $d = 0) {
+    $n = 0;
     $start = $i;
-    $tab = 0;
-    while ($tab < 4) {
+    while ($n < $max) {
         $c = $value[$i] ?? 0;
         if (' ' === $c) {
+            ++$max;
             ++$i;
-            ++$tab;
+            ++$n;
             continue;
         }
         if ("\t" === $c) {
-            if ($tab > 0) {
+            $w = 4 - ($max % 4);
+            if ($n + $w > $max) {
                 ++$i;
-                return [$i - $start, \str_repeat(' ', 4 - $tab), 0];
+                return [$i - $start, \str_repeat(' ', ($n + $w) - $max), 0];
             }
-            $tab = 4;
+            $max += $w;
+            $n += $w;
             ++$i;
+            continue;
         }
         break;
     }
-    return [$i - $start, "", 4 - $tab];
+    return [$i - $start, "", $max - $n];
 }
 
 if ('LICENSE' === $test) {
