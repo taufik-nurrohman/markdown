@@ -505,7 +505,7 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                     }
                 }
                 // <https://spec.commonmark.org/0.31.2#email-autolink>
-                if (false !== \strpos($value, '@', $i + 2) && ($m = \strspn($value, c11 . '!#$%&*+./=?^`{|}~' . "'\\", $n = $i + 1))) {
+                if (false !== \strpos($value, '@', $i + 2) && ($m = \strspn($value, c11 . '!#$%&*+./=?^`{|}~' . "'", $n = $i + 1))) {
                     if ('@' === ($value[$m + $n] ?? 0)) {
                         $m += \strspn($value, c11 . '.', $m + $n + 1) + 1;
                         if ($end === $m + $n) {
