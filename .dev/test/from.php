@@ -212,7 +212,7 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
                     // Unlike the raw HTML attribute value specification, the attribute syntax allows for escaped
                     // character(s) within quoted attribute value(s), just like the link title specification. This
                     // decision was made because there is currently no official specification for attribute syntax in
-                    // CommonMark. I will revise this part once an official attribute syntax specification is available.
+                    // CommonMark. I will redo this part once an official attribute syntax specification is available.
                     $eat = 0;
                     ++$n; // Enter value
                     while (isset($value[$eat + $i + $n])) {
