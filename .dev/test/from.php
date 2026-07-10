@@ -146,15 +146,11 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
     }
     $m = $raw ? 0 : 1;
     $n = $m + \strspn($value, c3, $m + $i, $limit - ($m + $i));
-    $not = c3 . '"#.<=>`{}' . "'";
+    $not = c3 . '"#.<=>`{}' . "'\\";
     $r = [];
     while ($i + $n < $limit) {
         $c = $value[$i + $n];
         if (!$raw && '}' === $c) {
-            for ($x = 0; $i + $n - 1 - $x >= $i && "\\" === $value[$i + $n - 1 - $x]; ++$x);
-            if (0 !== $x % 2) {
-                return [];
-            }
             if (\is_array($a = $r['class'] ?? 0)) {
                 \ksort($a);
                 $r['class'] = \implode(' ', \array_keys($a));
@@ -213,12 +209,25 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
                 // <https://spec.commonmark.org/0.31.2#double-quoted-attribute-value>
                 // <https://spec.commonmark.org/0.31.2#single-quoted-attribute-value>
                 if ('"' === $q || "'" === $q) {
+                    // Unlike the raw HTML attribute value specification, the attribute syntax allows for escaped
+                    // character(s) within quoted attribute value(s), just like the link title specification. This
+                    // decision was made because there is currently no official specification for attribute syntax in
+                    // CommonMark. I will revise this part once an official attribute syntax specification is available.
+                    $eat = 0;
                     ++$n; // Enter value
-                    if (false === ($eat = \strpos($value, $q, $i + $n)) || $eat >= $limit - 1) {
+                    while (isset($value[$eat + $i + $n])) {
+                        $eat += \strcspn($value, "\\" . $q, $eat + $i + $n);
+                        if ("\\" === ($value[$eat + $i + $n] ?? 0)) {
+                            $eat += 2;
+                            continue;
+                        }
+                        break;
+                    }
+                    if ($eat + $i + $n >= $limit - 1 || $q !== $value[$eat + $i + $n]) {
                         return [];
                     }
-                    $exist || ($r[$k] = \substr($value, $i + $n, $eat - ($i + $n)));
-                    $n += $eat - ($i + $n) + 1; // Exit value
+                    $exist || ($r[$k] = v(\substr($value, $i + $n, $eat)));
+                    $n += $eat + 1; // Exit value
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#unquoted-attribute-value>
@@ -1024,6 +1033,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
             while ($i < $limit) {
                 $m = m($value, $i, $limit);
                 $w = \strspn($value, ' ', $i);
+                // End of the block
                 if ($w < 4 && \strspn($value, $c, $i + $w) >= $min) {
                     $i += $m[1] + $m[2];
                     break;
@@ -1031,26 +1041,8 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 // <https://spec.commonmark.org/0.31.2#example-131>
                 // <https://spec.commonmark.org/0.31.2#example-132>
                 // <https://spec.commonmark.org/0.31.2#example-133>
-                $eat = $d;
-                while ($eat) {
-                    if (' ' === ($value[$i] ?? 0)) {
-                        ++$i;
-                        --$eat;
-                        --$m[1];
-                        continue;
-                    }
-                    if ("\t" === ($value[$i] ?? 0)) {
-                        $s .= \str_repeat(' ', 4 - $d);
-                        ++$i;
-                        --$m[1];
-                        // A tab immediately satisfies the “preceded by up to 3 space(s) of indentation” rule because it
-                        // can span up to 4 column(s).
-                        break;
-                    }
-                    // Not a white-space, stop!
-                    break;
-                }
-                $s .= \substr($value, $i, $m[1]) . "\n";
+                $w = w($value, $i, $d);
+                $s .= $w[1] . \substr($value, $i += $w[0], $m[1] -= $w[0]) . "\n";
                 // End of the stream
                 if (0 === $m[2]) {
                     $i += $m[1];
@@ -1862,6 +1854,19 @@ function u(string $text) {
         $s .= false !== \strpos($raw, $c) ? $c : '%' . \strtoupper(\bin2hex($c));
     }
     return $s;
+}
+
+function v(string $text) {
+    // <https://spec.commonmark.org/0.31.2#ascii-punctuation-character>
+    // <https://spec.commonmark.org/0.31.2#example-12>
+    static $r = [
+        "\\'" => "'", "\\\\" => "\\",
+        '\!' => '!', '\"' => '"', '\#' => '#', '\$' => '$', '\%' => '%', '\&' => '&', '\(' => '(', '\)' => ')',
+        '\*' => '*', '\+' => '+', '\,' => ',', '\-' => '-', '\.' => '.', '\/' => '/', '\:' => ':', '\;' => ';',
+        '\<' => '<', '\=' => '=', '\>' => '>', '\?' => '?', '\@' => '@', '\[' => '[', '\]' => ']', '\^' => '^',
+        '\_' => '_', '\`' => '`', '\{' => '{', '\|' => '|', '\}' => '}', '\~' => '~'
+    ];
+    return \strtr($text, $r);
 }
 
 function w(string $value, int $i, int $max = 4, int $d = 0) {
