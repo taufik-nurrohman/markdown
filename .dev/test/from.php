@@ -498,7 +498,11 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                             if ($end === $m + $n) {
                                 "" !== $s && ($row[] = h($s)) && ($s = "");
                                 $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [3]];
-                                $i = $end + 1;
+                                // Check for attribute syntax after link
+                                if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
+                                    $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
+                                    $i += $a[1];
+                                }
                                 continue;
                             }
                         }
@@ -511,7 +515,11 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                         if ($end === $m + $n) {
                             "" !== $s && ($row[] = h($s)) && ($s = "");
                             $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [3]];
-                            $i = $end + 1;
+                            // Check for attribute syntax after link
+                            if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
+                                $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
+                                $i += $a[1];
+                            }
                             continue;
                         }
                     }
@@ -609,11 +617,10 @@ function row(string $value, array &$lot = [], int $deep = 0, int $i, int $limit)
                 ++$i;
                 continue;
             }
-            // Check for attribute syntax after code span
-            $eat = \strspn($value, c3, $i);
-            if ('{' === ($value[$eat + $i] ?? 0) && ($a = a($value, $eat + $i, $limit))) {
+            // Check for attribute syntax after code
+            if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
                 $row[\array_key_last($row)][2] = $a[0];
-                $i += $a[1] + $eat;
+                $i += $a[1];
             }
             continue;
         }
@@ -1863,18 +1870,18 @@ function w(string $value, int $i, int $max = 4, int $d = 0) {
     while ($n < $max) {
         $c = $value[$i] ?? 0;
         if (' ' === $c) {
-            ++$max;
+            ++$d;
             ++$i;
             ++$n;
             continue;
         }
         if ("\t" === $c) {
-            $w = 4 - ($max % 4);
+            $w = 4 - ($d % 4);
             if ($n + $w > $max) {
                 ++$i;
                 return [$i - $start, \str_repeat(' ', ($n + $w) - $max), 0];
             }
-            $max += $w;
+            $d += $w;
             $n += $w;
             ++$i;
             continue;
