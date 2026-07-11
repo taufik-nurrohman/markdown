@@ -213,21 +213,19 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
                     // character(s) within quoted attribute value(s), just like the link title specification. This
                     // decision was made because there is currently no official specification for attribute syntax in
                     // CommonMark. I will redo this part once an official attribute syntax specification is available.
-                    $eat = 0;
-                    ++$n; // Enter value
-                    while (isset($value[$eat + $i + $n])) {
-                        $eat += \strcspn($value, "\\" . $q, $eat + $i + $n);
-                        if ("\\" === ($value[$eat + $i + $n] ?? 0)) {
-                            $eat += 2;
-                            continue;
+                    $eat = ++$n; // Enter value
+                    while ($i + $n < $limit) {
+                        $n += \strcspn($value, "\\" . $q, $i + $n);
+                        if ($i + $n >= $limit || "\\" !== $value[$i + $n]) {
+                            break;
                         }
-                        break;
+                        $n += 2;
                     }
-                    if ($eat + $i + $n >= $limit - 1 || $q !== $value[$eat + $i + $n]) {
+                    if ($i + $n >= $limit || $q !== $value[$i + $n]) {
                         return [];
                     }
-                    $exist || ($r[$k] = v(\substr($value, $i + $n, $eat)));
-                    $n += $eat + 1; // Exit value
+                    $exist || ($r[$k] = v(\substr($value, $i + $eat, $n - $eat)));
+                    ++$n; // Exit value
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#unquoted-attribute-value>
@@ -336,19 +334,42 @@ const c17 = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x1
 
 const x1a = "\x1a";
 
-function m(string $value, int $i, int $limit, $peek = false) {
-    $r = [$i, $n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit), 0];
-    if ($peek && 0 !== $r[2]) {
-        $n += $i + $r[2];
-        while ($n < $limit) {
-            $w = \strspn($value, c1, $n, $limit - $n);
-            if (!$end = r($value, $n + $w, $limit)) {
-                break;
-            }
-            $r[3] += $end + $w;
-            $n += $end + $w;
-        }
+// <https://spec.commonmark.org/0.31.2#link-label>
+function k(string $value, int $i, int $limit, $f = true) {
+    if ($i >= $limit || '[' !== $value[$i]) {
+        return [];
     }
+    $n = 1;
+    $s = "";
+    ++$i; // Move past `[`
+    while ($i < $limit) {
+        $c = $value[$i];
+        if ("\\" === $c && $i + 1 < $limit && false !== \strpos(c16, $value[$i + 1])) {
+            $n += 2;
+            $s .= $value[++$i];
+            ++$i;
+            continue;
+        }
+        if ('[' === $c) {
+            return [];
+        }
+        if (']' === $c) {
+            // Link label can have at most 999 character(s) inside the `[` and `]` character(s). It originally considers
+            // line(s) to be composed of character(s) rather than byte(s), but this one counts byte(s) for simplicity.
+            if (\strspn($s, c3) === \strlen($s) || \strlen($s) > 999) {
+                return [];
+            }
+            return [$s, $n + 1];
+        }
+        $s .= $c;
+        ++$i;
+        ++$n;
+    }
+    return [];
+}
+
+function m(string $value, int $i, int $limit) {
+    $r = [$i, $n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit), 0];
     $r[4] = $i + $r[1] + $r[2] + $r[3];
     return $r;
 }
@@ -1017,7 +1038,91 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
             continue;
         }
         if ("" === $s && '[' === $value[$d + $i] && '^' === ($value[$d + $i + 1] ?? 0)) {}
-        if ("" === $s && '[' === $value[$d + $i]) {}
+        // <https://spec.commonmark.org/0.31.2#link-reference-definition>
+        if ("" === $s && '[' === $value[$d + $i]) {
+            $n = 0;
+            if ($k = k($value, $d + $i, $limit)) {
+                $n += $k[1];
+                if (':' !== ($value[$i + $n] ?? 0)) {
+                    $s .= \substr($value, $i, $m[1]) . "\n";
+                    $i += $m[1] + $m[2];
+                    continue;
+                }
+                $n += \strspn($value, c1, $i + $n + 1) + 1;
+                if ($r = r($value, $i + $n, $limit)) {
+                    $n += $r;
+                    $n += \strspn($value, c1, $i + $n);
+                }
+                // <https://spec.commonmark.org/0.31.2#link-destination>
+                $v = [null, null, []];
+                if ('<' === ($value[$i + $n] ?? 0)) {
+                    ++$n;
+                    if ($eat = \strcspn($value, c2 . '>', $i + $n)) {
+                        if ('>' === ($value[$eat + $i + $n] ?? 0)) {
+                            $v[0] = \substr($value, $i + $n, $eat);
+                            $n += $eat + 1;
+                        }
+                    }
+                } else if ($eat = \strcspn($value, c17 . ' ', $i + $n)) {
+                    $v[0] = \substr($value, $i + $n, $eat);
+                    $n += $eat;
+                }
+                if (null !== $v[0] && false !== \strpos(c3, $value[$i + $n] ?? x1a)) {
+                    $n += \strspn($value, c1, $i + $n);
+                    if ($r = r($value, $i + $n, $limit)) {
+                        $n += $r;
+                        $n += \strspn($value, c1, $i + $n);
+                    }
+                    // <https://spec.commonmark.org/0.31.2#link-title>
+                    $q = $value[$i + $n] ?? 0;
+                    if ('"' === $q || "'" === $q || '(' === $q) {
+                        $eat = 1;
+                        $q = '(' === $q ? ')' : $q;
+                        ++$n;
+                        while ($i + $n < $limit) {
+                            $n += \strcspn($value, "\\" . $q, $i + $n);
+                            if ($i + $n >= $limit || "\\" !== $value[$i + $n]) {
+                                break;
+                            }
+                            $n += 2;
+                        }
+                        if ($i + $n >= $limit || $q !== $value[$i + $n]) {
+                            break;
+                        }
+                        //$v[1] = v(\substr($value, $eat + $i + $n, $n - $eat));
+                        $v[1] = 'asdf'; // TODO
+                        ++$n;
+                    }
+                    $n += \strspn($value, c1, $i + $n);
+                    if ($r = r($value, $i + $n, $limit)) {
+                        $n += $r;
+                        $n += \strspn($value, c1, $i + $n);
+                    }
+                    if ('{' === ($value[$i + $n] ?? 0) && ($a = a($value, $i + $n, $limit))) {
+                        $v[2] = $a[0];
+                        $n += $a[1];
+                        $n += \strspn($value, c1, $i + $n);
+                    }
+                }
+                $n += r($value, $i + $n, $limit);
+                // TODO
+                echo json_encode([$i,$n,$limit,$r,$value[$i+$n]??0]);
+                echo '<br>';
+                if (!$r && $i + $n < $limit) {
+                    $s .= \substr($value, $i, $m[1]) . "\n";
+                    $i += $m[1] + $m[2];
+                    continue;
+                }
+                if ($deep > 0) {
+                    $lot[1][$k[0]] = $v;
+                }
+                $i += $n;
+                continue;
+            }
+            $s .= \substr($value, $i, $m[1]) . "\n";
+            $i += $m[1] + $m[2];
+            continue;
+        }
         // <https://spec.commonmark.org/0.31.2#code-fence>
         if (false !== \strpos('`~', $c = $value[$d + $i]) && ($min = \strspn($value, $c, $d + $i)) >= 3) {
             // <https://spec.commonmark.org/0.31.2#info-string>
