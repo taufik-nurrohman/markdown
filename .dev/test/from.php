@@ -1144,15 +1144,18 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                     $v[2] = $a[0];
                     $n += $a[1] + $w;
                 }
-                // A blank line ends the current block
-                if (r($value, $n + \strspn($value, c1, $n), $limit)) {
-                    $deep > 0 && ($lot[0][$k[0]] = $v);
-                    $i = $n;
-                    continue;
+                if ($v[2] && ($r = r($value, $n, $limit))) {
+                    $n += $r;
+                    // A blank line ends the current block
+                    if (r($value, $n + \strspn($value, c1, $n), $limit)) {
+                        $deep > 0 && ($lot[0][$k[0]] = $v);
+                        $i = $n;
+                        continue;
+                    }
                 }
             }
             if (null !== $v[0] && ($r || $n >= $limit)) {
-                $deep > 0 && ($lot[1][$k[0]] = $v);
+                $deep > 0 && ($lot[0][$k[0]] = $v);
                 $i = $n;
                 continue;
             }
