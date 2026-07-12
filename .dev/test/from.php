@@ -253,7 +253,7 @@ function a(string $value, int $i, int $limit, $raw = false, string $f = "") {
         }
         $n += \strspn($value, c3, $i + $n, $limit - ($i + $n));
     }
-    if (!$raw && '}' !== ($value[$i + $n - 1] ?? 0)) {
+    if (!$raw) {
         return [];
     }
     if (\is_array($a = $r['class'] ?? 0)) {
@@ -369,10 +369,10 @@ function k(string $value, int $i, int $limit, int $deep = 0) {
         if (']' === $c) {
             // Link label can have at most 999 character(s) inside the `[` and `]` character(s). It originally considers
             // line(s) to be composed of character(s) rather than byte(s), but this one counts byte(s) for simplicity.
-            if (\strspn($s, c3) === \strlen($s) || \strlen($s) > 999) {
+            if (\strspn($s, c3) === ($size = \strlen($s)) || $size > 999) {
                 return [];
             }
-            return [s($s, ' '), $n + 1];
+            return [$s = s($s, ' '), $n + 1, \strlen($s)];
         }
         $s .= $c;
         ++$n;
@@ -381,9 +381,7 @@ function k(string $value, int $i, int $limit, int $deep = 0) {
 }
 
 function m(string $value, int $i, int $limit) {
-    $r = [$i, $n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit), 0];
-    $r[4] = $i + $r[1] + $r[2] + $r[3];
-    return $r;
+    return [$i, $n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit)];
 }
 
 function r(string $value, int $i, int $limit) {
@@ -800,7 +798,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
         // <https://spec.commonmark.org/0.31.2#blank-line>
         if ($m[1] === \strspn($value, c1, $i, $limit - $i)) {
             "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-            $i = $m[4];
+            $i += $m[1] + $m[2];
             ++$void;
             continue;
         }
@@ -815,13 +813,10 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 continue;
             }
             $s = \substr($value, $i + ($w = w($value, $i))[0], $m[1] - $w[0]);
+            $i += $m[1] + $m[2];
             while ($i < $limit) {
-                $i = $m[4];
-                if (0 === $m[2]) {
-                    break;
-                }
                 $m = m($value, $i, $limit);
-                if ($m[1] !== \strspn($value, c1, $i, $limit - $i) && d($value, $i, $limit)[1] < 4) {
+                if ($m[1] !== \strspn($value, c1, $i, $m[1]) && d($value, $i, $limit)[0] < 4) {
                     // Previous line was a blank line
                     if ("" !== $s && "\n" === $s[\strlen($s) - 1]) {
                         $s = \substr($s, 0, -1);
@@ -830,6 +825,11 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                     break;
                 }
                 $s .= "\n" . \substr($value, $i + ($w = w($value, $i))[0], $m[1] - $w[0]);
+                $i += $m[1] + $m[2];
+                // End of the stream
+                if (0 === $m[2]) {
+                    break;
+                }
             }
             $rows[] = ['pre', [['code', h($s . "\n"), []]], [], [0, ""]];
             $s = "";
@@ -900,12 +900,11 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                         break;
                     }
                     $s .= "\n" . \substr($value, $i, $m[1]);
+                    $i += $m[1] + $m[2];
                     // End of the stream
                     if (0 === $m[2]) {
-                        $i += $m[1];
                         break;
                     }
-                    $i += $m[1] + $m[2];
                 }
                 $rows[] = [false, $s, [], [6, $b]];
                 $s = "";
@@ -927,12 +926,11 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                                 break;
                             }
                             $s .= "\n" . \substr($value, $i, $m[1]);
+                            $i += $m[1] + $m[2];
                             // End of the stream
                             if (0 === $m[2]) {
-                                $i += $m[1];
                                 break;
                             }
-                            $i += $m[1] + $m[2];
                         }
                         $rows[] = [false, $s, [], [7]];
                         $s = "";
@@ -968,14 +966,24 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 if (!$b || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                     break;
                 }
+                // TODO
+                if ('pre' === $b[0]) {
+                    $s .= "\n" . \substr($value, $i, $m[1]);
+                    $i += $m[1] + $m[2];
+                    continue;
+                }
                 // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                $s .= "\n" . \substr($value, $i, $m[1]);
+                $s .= "\n" . ($w = w($value, $i))[1];
+                // Special case
+                if (false !== \strpos('-=', $value[$i + $w[0]] ?? x1a)) {
+                    $s .= "\\";
+                }
+                $s .= \substr($value, $i + $w[0], $m[1] - $w[0]);
+                $i += $m[1] + $m[2];
                 // End of the stream
                 if (0 === $m[2]) {
-                    $i += $m[1];
                     break;
                 }
-                $i += $m[1] + $m[2];
             }
             $rows[] = ['blockquote', $s, []];
             $s = "";
@@ -987,21 +995,20 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
         if ("" === $s && '*' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && ($k = k($value, $n, $limit)) && ':' === ($value[$n + $k[1]] ?? 0)) {
             $n += $k[1] + 1;
             $n += \strspn($value, c1, $n);
+            // Refresh the cursor in case the label spans multiple line(s)
             $m = m($value, $i = $n, $limit);
-            $v = \substr($value, $n, $m[1]);
+            $s = \substr($value, $i, $m[1]);
+            $i += $m[1] + $m[2];
             while ($i < $limit) {
-                $i += $m[1] + $m[2];
-                if ($i >= $limit) {
-                    break;
-                }
                 $m = m($value, $i, $limit);
                 // A blank line ends the current block
                 if ($m[1] === \strspn($value, c1, $i, $m[1])) {
                     break;
                 }
-                // Indentation is necessary to continue the abbreviation block if current line is not a paragraph
+                // Current line is an indented line
                 if (d($value, $i, $limit)[0]) {
-                    $v .= "\n" . \substr($value, $i, $m[1]);
+                    $s .= "\n" . \substr($value, $i, $m[1]);
+                    $i += $m[1] + $m[2];
                     continue;
                 }
                 $b = rows($value, $lot, 0, $i, $i + $m[1])[0][0] ?? 0;
@@ -1010,39 +1017,44 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                     break;
                 }
                 // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                $v .= "\n" . \substr($value, $i, $m[1]);
+                $s .= "\n" . \substr($value, $i, $m[1]);
+                $i += $m[1] + $m[2];
+                // End of the stream
+                if (0 === $m[2]) {
+                    break;
+                }
             }
-            $deep > 0 && ($lot[2][$k[0]] = s($v, ' '));
+            $deep > 0 && !isset($lot[1][$k[0]]) && ($lot[1][$k[0]] = [$k[2], s($s, ' ')]);
+            $s = "";
             continue;
         }
         if ("" === $s && '[' === $value[$n = $d + $i] && '^' === ($value[$n + 1] ?? 0) && ($k = k($value, $n, $limit)) && ':' === ($value[$n + $k[1]] ?? 0)) {
-            // Remove the `^` prefix and make sure note label is not empty
-            if ("" === ($k[0] = \trim(\substr($k[0], 1)))) {
-                $s .= \substr($value, $i, $m[1]) . "\n";
-                $i += $m[1] + $m[2];
-                continue;
-            }
             // <https://spec.commonmark.org/0.31.2#matches>
             $k[0] = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($k[0], \MB_CASE_FOLD, 'UTF-8') : \strtolower($k[0]);
             $n += $k[1] + 1;
             $n += \strspn($value, c1, $n);
+            // Refresh the cursor in case the label spans multiple line(s)
             $m = m($value, $i = $n, $limit);
-            $v = \substr($value, $n, $m[1]);
+            $s = \substr($value, $i, $m[1]);
+            $i += $m[1] + $m[2];
             while ($i < $limit) {
-                $i += $m[1] + $m[2];
-                if ($i >= $limit) {
-                    break;
-                }
                 $m = m($value, $i, $limit);
-                // TODO: Blank line should continue the block
-                // A blank line ends the current block
                 if ($m[1] === \strspn($value, c1, $i, $m[1])) {
-                    break;
-                }
-                // Indentation is necessary to continue the abbreviation block if current line is not a paragraph
-                if (d($value, $i, $limit)[0]) {
-                    $v .= "\n" . \substr($value, $i, $m[1]);
+                    $s .= "\n";
+                    $i += $m[1] + $m[2];
                     continue;
+                }
+                // Current line is an indented line
+                if (d($value, $i, $limit)[0]) {
+                    $s .= "\n" . \substr($value, $i, $m[1]);
+                    $i += $m[1] + $m[2];
+                    continue;
+                }
+                // Previous line was a blank line
+                if ("" !== $s && "\n" === $s[\strlen($s) - 1]) {
+                    $s = \substr($s, 0, -1);
+                    ++$void;
+                    break;
                 }
                 $b = rows($value, $lot, 0, $i, $i + $m[1])[0][0] ?? 0;
                 // Not a paragraph continuation text
@@ -1050,15 +1062,15 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                     break;
                 }
                 // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                $v .= "\n" . \substr($value, $i, $m[1]);
-            }
-            // Note block cannot be empty
-            if ("" === $v) {
-                $s .= \substr($value, $i, $m[1]) . "\n";
+                $s .= "\n" . \substr($value, $i, $m[1]);
                 $i += $m[1] + $m[2];
-                continue;
+                // End of the stream
+                if (0 === $m[2]) {
+                    break;
+                }
             }
-            $deep > 0 && ($lot[2][$k[0]] = $v);
+            $deep > 0 && !isset($lot[2][$k[0]]) && ($lot[2][$k[0]] = $s);
+            $s = "";
             continue;
         }
         // <https://spec.commonmark.org/0.31.2#link-reference-definition>
@@ -1070,7 +1082,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
             if ($r = r($value, $n, $limit)) {
                 $n += $r;
             }
-            $v = [null, null];
+            $v = [1 => null];
             $w = \strspn($value, c1, $n);
             // <https://spec.commonmark.org/0.31.2#link-destination>
             if ('<' === ($value[$n + $w] ?? 0)) {
@@ -1155,7 +1167,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 }
             }
             if (isset($v[0]) && ($r || $n >= $limit)) {
-                $deep > 0 && ($lot[0][$k[0]] = $v);
+                $deep > 0 && !isset($lot[0][$k[0]]) && ($lot[0][$k[0]] = $v);
                 $i = $n;
                 continue;
             }
@@ -1174,7 +1186,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 continue;
             }
             "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-            $i = $m[4];
+            $i += $m[1] + $m[2];
             while ($i < $limit) {
                 $m = m($value, $i, $limit);
                 $w = \strspn($value, ' ', $i);
@@ -1187,13 +1199,12 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                 // <https://spec.commonmark.org/0.31.2#example-132>
                 // <https://spec.commonmark.org/0.31.2#example-133>
                 $w = w($value, $i, $d);
-                $s .= $w[1] . \substr($value, $i += $w[0], $m[1] -= $w[0]) . "\n";
+                $s .= $w[1] . \substr($value, $i + $w[0], $m[1] - $w[0]) . "\n";
+                $i += $m[1] + $m[2];
                 // End of the stream
                 if (0 === $m[2]) {
-                    $i += $m[1];
                     break;
                 }
-                $i += $m[1] + $m[2];
             }
             $rows[] = ['pre', [['code', h($s), a($info, 0, \strlen($info), '{' !== ($info[0] ?? 0), 'language-%s')[0] ?? []]], [], [$min, $c]];
             $s = "";
