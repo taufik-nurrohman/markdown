@@ -1091,7 +1091,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                     $n += 2;
                 }
                 if ('>' === ($value[$n + $w] ?? 0)) {
-                    $v[0] = u(v(\substr($value, $eat, $n + $w - $eat)));
+                    $v[0] = u(v(\substr($value, $eat, ($n += $w) - $eat)));
                     ++$n;
                 }
             } else if ($eat = \strcspn($value, c3 . c17, $n + $w)) {
@@ -1124,7 +1124,7 @@ function rows(string $value, array &$lot = [], int $deep = 0, int $i, int $limit
                     if ($n + $w >= $limit || $q !== $value[$n + $w]) {
                         break;
                     }
-                    $v[1] = v(\substr($value, $eat, $n + $w - $eat));
+                    $v[1] = v(\substr($value, $eat, ($n += $w) - $eat));
                     ++$n;
                 }
                 if (null !== $v[1] && ($r = r($value, $n, $limit))) {
