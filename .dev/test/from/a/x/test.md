@@ -1,4 +1,0 @@
-[asdf-1]: asdf 'asdf'
-[asdf-2]: asdf "asdf"
-
-asdf asdf asdf [asdf-1] [asdf-2] [asdf-3]
