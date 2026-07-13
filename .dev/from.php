@@ -1019,9 +1019,7 @@ namespace x\markdown\from {
                 $k[0] = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($k[0], \MB_CASE_FOLD, 'UTF-8') : \strtolower($k[0]);
                 $n += $k[1] + 1;
                 $n += \strspn($value, c1, $n);
-                if ($r = r($value, $n, $limit)) {
-                    $n += $r;
-                }
+                $n += ($r = r($value, $n, $limit));
                 $v = [null, null];
                 $w = \strspn($value, c1, $n);
                 // <https://spec.commonmark.org/0.31.2#link-destination>
