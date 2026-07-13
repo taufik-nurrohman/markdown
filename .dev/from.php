@@ -1,17 +1,21 @@
 <?php
 
 namespace x\markdown {
-    function from(?string $value, array $state = []): ?string {
+    function from(?string $value, $state = []): ?string {
         if ("" === $value) {
             return null;
         }
-        $state = [
+        if (!\is_array($state)) {
+            $state = ['block' => !!$state];
+        }
+        $state = \array_replace_recursive([
             '0' => [],
             '1' => [],
             '2' => [],
             'block' => true,
-            'hook' => null
-        ] + $state;
+            'hook' => null,
+            'tab' => 2
+        ], $state);
         if (empty($state['block'])) {
             // TODO
         }
@@ -191,9 +195,9 @@ namespace x\markdown\from {
     function c(array $rows, array $state) {
         $s = "";
         foreach ($rows as $row) {
-            $s .= "\n" . (\is_array($row) && false === $row[0] ? $row[1] : \x\markdown\from\o($row));
+            $s .= ("" !== $s ? "\n" : "") . \x\markdown\from\o($row, $state);
         }
-        return \substr($s, 1);
+        return $s;
     }
     function d(string $value, int $i, int $limit) {
         if (false === \strpos(c1, $value[$i])) {
@@ -267,14 +271,14 @@ namespace x\markdown\from {
     function m(string $value, int $i, int $limit) {
         return [$i, $n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit)];
     }
-    function o(array $r, int $deep = 0) {
+    function o(array $r, array $state, int $deep = 0) {
         if (!$r) {
             return "";
         }
         if (false === $r[0]) {
             return $r[1];
         }
-        static $b = [
+        static $blocks = [
             'blockquote' => 1,
             'dd' => 1,
             'dl' => 1,
@@ -282,8 +286,13 @@ namespace x\markdown\from {
             'ol' => 1,
             'ul' => 1
         ];
-        $d = \str_repeat('  ', $deep);
-        $s = $d . '<' . $r[0];
+        if (\is_int($tab = $state['tab'] ?? "")) {
+            $tab = \str_repeat(' ', $tab);
+        } else if (!\is_string($tab)) {
+            $tab = "";
+        }
+        $tab = \str_repeat($tab, $deep);
+        $s = $tab . '<' . $r[0];
         if ($r[2]) {
             foreach ($r[2] as $k => $v) {
                 $s .= ' ' . $k . (true === $v ? "" : '="' . \strtr(h($v), ['"' => '&quot;']) . '"');
@@ -292,15 +301,15 @@ namespace x\markdown\from {
         if (false === $r[1]) {
             return $s .= ' />';
         }
-        $s .= '>' . ($n = isset($b[$r[0]]) ? "\n" : "");
+        $s .= '>' . ($b = isset($blocks[$r[0]]) ? "\n" : "");
         if (\is_array($r[1])) {
             foreach ($r[1] as $v) {
-                $s .= (\is_string($v) ? $v : o($v, $n ? $deep + 1 : 0)) . $n;
+                $s .= (\is_string($v) ? $v : o($v, $state, $b ? $deep + 1 : 0)) . $b;
             }
         } else {
             $s .= $r[1];
         }
-        return $s . ($n ? $d : "") . '</' . $r[0] . '>';
+        return $s . ($b ? $tab : "") . '</' . $r[0] . '>';
     }
     function r(string $value, int $i, int $limit) {
         if ($i >= $limit) {
@@ -378,7 +387,7 @@ namespace x\markdown\from {
                     $n += \strspn($value, c4, $n + 1) + 1;
                     if ($end === $n && $n - $i - 2 < 8) {
                         $e ??= [];
-                        $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($m, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
+                        $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
                         if ("" !== ($e[$k] ?? "")) {
                             "" !== $s && ($row[] = h($s)) && ($s = "");
                             $row[] = [false, $k, [], [2, $e[$k]]];

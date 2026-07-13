@@ -85,7 +85,55 @@ function view_result(string $text) {
 }
 
 function view_source(string $text) {
-    return htmlspecialchars($text);
+    $i = 0;
+    $limit = strlen($text);
+    $s = "";
+    while ($i < $limit) {
+        $c = $text[$i];
+        if ('&' === $c && false !== ($n = strpos($text, ';', $i + 2))) {
+            $s .= '<span style="color:#d00;">';
+            $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
+            $s .= '</span>';
+            $i += $n;
+            continue;
+        }
+        if ($i === strpos($text, '<!--', $i) && false !== ($n = strpos($text, '-->', $i))) {
+            $s .= '<span style="color:#f80;">';
+            $s .= htmlspecialchars(substr($text, $i, $n += 3 - $i));
+            $s .= '</span>';
+            $i += $n;
+            continue;
+        }
+        if ($i === strpos($text, '<![CDATA[', $i) && false !== ($n = strpos($text, ']]>', $i + 9))) {
+            $s .= '<span style="color:#f80;">';
+            $s .= htmlspecialchars(substr($text, $i, $n += 3 - $i));
+            $s .= '</span>';
+            $i += $n;
+            continue;
+        }
+        if ($i === strpos($text, '<?', $i) && false !== ($n = strpos($text, '?>', $i + 2))) {
+            $s .= '<span style="color:#f80;">';
+            $s .= htmlspecialchars(substr($text, $i, $n += 2 - $i));
+            $s .= '</span>';
+            $i += $n;
+            continue;
+        }
+        if ('<' === $c && false !== ($n = strpos($text, '>', $i))) {
+            $s .= '<span style="color:#00b;">';
+            $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
+            $s .= '</span>';
+            $i += $n;
+            continue;
+        }
+        if ("\\" === $c) {
+            $s .= '<span style="color:#d00;">' . $c . '</span>';
+            $i += 1;
+            continue;
+        }
+        $s .= $c;
+        ++$i;
+    }
+    return $s;
 }
 
 // <https://github.com/mecha-cms/mecha/blob/v3.2.0/engine/f.php#L1606-L1671>
@@ -194,6 +242,7 @@ body > main > div > pre {
   border: 1px solid #000;
   flex: 1;
   padding: 0.5em 0.75em;
+  word-wrap: break-word;
 }
 body > main > div > article {
   border-width: 2px;
@@ -201,6 +250,7 @@ body > main > div > article {
 body > main > div > pre {
   background: #ffc;
   padding: 0.25em 0.35em;
+  white-space: pre-wrap;
 }
 body > main > div + div {
   margin-top: 1em;
