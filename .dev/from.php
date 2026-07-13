@@ -194,8 +194,13 @@ namespace x\markdown\from {
     }
     function c(array $rows, array $state) {
         $s = "";
+        if (\is_int($tab = $state['tab'] ?? "")) {
+            $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
+        } else if (!\is_string($tab)) {
+            $tab = "";
+        }
         foreach ($rows as $row) {
-            $s .= ("" !== $s ? "\n" : "") . \x\markdown\from\o($row, $state);
+            $s .= ("" === $s || "" === $tab ? "" : "\n") . \x\markdown\from\o($row, $state);
         }
         return $s;
     }
@@ -287,10 +292,11 @@ namespace x\markdown\from {
             'ul' => 1
         ];
         if (\is_int($tab = $state['tab'] ?? "")) {
-            $tab = \str_repeat(' ', $tab);
+            $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
         } else if (!\is_string($tab)) {
             $tab = "";
         }
+        $b = "" !== $tab && isset($blocks[$r[0]]);
         $tab = \str_repeat($tab, $deep);
         $s = $tab . '<' . $r[0];
         if ($r[2]) {
@@ -301,10 +307,10 @@ namespace x\markdown\from {
         if (false === $r[1]) {
             return $s .= ' />';
         }
-        $s .= '>' . ($b = isset($blocks[$r[0]]) ? "\n" : "");
+        $s .= '>' . ($b ? "\n" : "");
         if (\is_array($r[1])) {
             foreach ($r[1] as $v) {
-                $s .= (\is_string($v) ? $v : o($v, $state, $b ? $deep + 1 : 0)) . $b;
+                $s .= (\is_string($v) ? $v : o($v, $state, $b ? $deep + 1 : 0)) . ($b ? "\n" : "");
             }
         } else {
             $s .= $r[1];

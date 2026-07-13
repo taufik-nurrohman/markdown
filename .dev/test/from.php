@@ -17,6 +17,7 @@ define('PATH', __DIR__);
 require PATH . D . '..' . D . 'from.php';
 
 $batch = basename($_GET['batch'] ?? '1');
+$line = strtoupper(basename($_GET['line'] ?? 'LF'));
 $test = basename($_GET['test'] ?? 'p');
 $view = basename($_GET['view'] ?? 'source');
 
@@ -38,7 +39,7 @@ if (!function_exists('array_is_list')) {
 }
 
 function view_raw(string $text) {
-    $r = "";
+    $s = "";
     foreach (token_get_all($text) as $t) {
         if (is_array($t)) {
             $color = '00b';
@@ -61,7 +62,7 @@ function view_raw(string $text) {
                     $color = 'd00';
                     break;
             }
-            $r .= '<span style="color:#' . $color . ';">' . strtr(htmlspecialchars($t[1]), [
+            $s .= '<span style="color:#' . $color . ';">' . strtr(htmlspecialchars($t[1]), [
                 "\t" => "<span class=\"c c-t\">\t</span>",
                 "\x1e" => "<span class=\"c\">\x1e</span>",
                 "\x2" => "<span class=\"c\">\x2</span>",
@@ -69,19 +70,96 @@ function view_raw(string $text) {
             ]) . '</span>';
             continue;
         }
-        $r .= '<span style="color:#070;">' . strtr(htmlspecialchars($t), [
+        $s .= '<span style="color:#070;">' . strtr(htmlspecialchars($t), [
             "\t" => "<span class=\"c c-t\">\t</span>",
             "\x1e" => "<span class=\"c\">\x1e</span>",
             "\x2" => "<span class=\"c\">\x2</span>",
             "\x3" => "<span class=\"c\">\x3</span>"
         ]) . '</span>';
     }
-    return $r;
+    return $s;
+}
+
+function view(string $text) {
+    $i = 0;
+    $limit = strlen($text);
+    $s = "";
+    while ($i < $limit) {
+        $c = $text[$i];
+        if ("\n" === $c) {
+            $s .= '<mark class="c c-n">' . $c . '</mark>';
+            ++$i;
+            continue;
+        }
+        if ("\r" === $c) {
+            $s .= '<mark class="c c-r">' . ("\n" === ($text[$i + 1] ?? "") ? "" : $c) . '</mark>';
+            ++$i;
+            continue;
+        }
+        if ("\t" === $c) {
+            $s .= '<mark class="c c-t">' . $c . '</mark>';
+            ++$i;
+            continue;
+        }
+        if (' ' === $c) {
+            for ($w = $i; $w < $limit && ' ' === $text[$w]; ++$w);
+            if (
+                // More than one space in a row
+                ($w - $i) > 1 ||
+                // Space at the start of the line
+                ($w === $limit || "\n" === $text[$w] || "\r" === $text[$w]) ||
+                // Space at the end of the line
+                (0 === $i || "\n" === $text[$i - 1] || "\r" === $text[$i - 1])
+            ) {
+                $s .= str_repeat('<mark class="c c-s"> </mark>', $w - $i);
+            } else {
+                $s .= ' ';
+            }
+            $i = $w;
+            continue;
+        }
+        if ('&' === $c || '<' === $c || '>' === $c) {
+            $s .= htmlspecialchars($c);
+            ++$i;
+            continue;
+        }
+        $s .= $c;
+        ++$i;
+    }
+    return $s;
 }
 
 function view_result(string $text) {
     // TODO
-    return $text;
+    return strip_tags($text, [
+        'a',
+        'blockquote',
+        'br',
+        'code',
+        'dd',
+        'del',
+        'div',
+        'dl',
+        'dt',
+        'em',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'hr',
+        'img',
+        'li',
+        'mark',
+        'ol',
+        'p',
+        'pre',
+        'span',
+        'strong',
+        'textarea',
+        'ul',
+    ]);
 }
 
 function view_source(string $text) {
@@ -91,7 +169,7 @@ function view_source(string $text) {
     while ($i < $limit) {
         $c = $text[$i];
         if ('&' === $c && false !== ($n = strpos($text, ';', $i + 2))) {
-            $s .= '<span style="color:#d00;">';
+            $s .= '<span style="color:#d00;font-weight:bold;">';
             $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
             $s .= '</span>';
             $i += $n;
@@ -118,21 +196,45 @@ function view_source(string $text) {
             $i += $n;
             continue;
         }
+        if ($i === strpos($text, '<!', $i) && false !== ($n = strpos($text, '>', $i + 2))) {
+            $s .= '<span style="color:#f80;">';
+            $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
+            $s .= '</span>';
+            $i += $n;
+            continue;
+        }
         if ('<' === $c && false !== ($n = strpos($text, '>', $i))) {
-            $s .= '<span style="color:#00b;">';
+            $s .= '<span style="color:#00b;font-weight:bold;">';
             $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
             $s .= '</span>';
             $i += $n;
             continue;
         }
         if ("\\" === $c) {
-            $s .= '<span style="color:#d00;">' . $c . '</span>';
+            $s .= '<span style="color:#d00;font-weight:bold;">' . $c . '</span>';
             $i += 1;
             continue;
         }
         if ("\t" === $c) {
             $s .= '<span class="c c-t">' . $c . '</span>';
             $i += 1;
+            continue;
+        }
+        if (' ' === $c) {
+            for ($w = $i; $w < $limit && ' ' === $text[$w]; ++$w);
+            if (
+                // More than one space in a row
+                ($w - $i) > 1 ||
+                // Space at the start of the line
+                ($w === $limit || "\n" === $text[$w] || "\r" === $text[$w]) ||
+                // Space at the end of the line
+                (0 === $i || "\n" === $text[$i - 1] || "\r" === $text[$i - 1])
+            ) {
+                $s .= str_repeat('<mark class="c c-s"> </mark>', $w - $i);
+            } else {
+                $s .= ' ';
+            }
+            $i = $w;
             continue;
         }
         $s .= $c;
@@ -203,15 +305,15 @@ usort($files, function ($a, $b) {
 
 $blocks = 'address, article, aside, blockquote, dd, details, div, dl, dt, fieldset, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, main, nav, ol, p, pre, search, section, table, ul';
 
-$r  = '<!DOCTYPE html>';
-$r .= '<html dir="ltr">';
-$r .= '<head>';
-$r .= '<meta charset="utf-8">';
-$r .= '<title>';
-$r .= 'Markdown to HTML';
-$r .= '</title>';
-$r .= '<style>';
-$r .= <<<CSS
+$s  = '<!DOCTYPE html>';
+$s .= '<html dir="ltr">';
+$s .= '<head>';
+$s .= '<meta charset="utf-8">';
+$s .= '<title>';
+$s .= 'Markdown to HTML';
+$s .= '</title>';
+$s .= '<style>';
+$s .= <<<CSS
 * {
   background: 0 0;
   border: 0;
@@ -410,20 +512,14 @@ pre code {
   content: '\\5c r';
 }
 .c-s::after {
-  content: '⋅';
+  content: '\\22c5';
 }
 .c-t::after {
   content: '\\5c t';
   text-align: left;
 }
-.c-n::before {
+:where(.c-n, .c-r, .c-t)::before {
   content: '  ';
-}
-.c-r::before {
-  content: '  ';
-}
-.c-t::before {
-  content: ' ';
 }
 :disabled {
   cursor: not-allowed;
@@ -441,56 +537,70 @@ pre code {
   gap: 0.25em;
 }
 CSS;
-$r .= '</style>';
-$r .= '</head>';
-$r .= '<body>';
+$s .= '</style>';
+$s .= '</head>';
+$s .= '<body>';
 
-$r .= '<form action="#top" method="get">';
-$r .= '<fieldset>';
-$r .= '<legend>';
-$r .= 'Navigation';
-$r .= '</legend>';
-$r .= '<p role="group">';
+$s .= '<form action="#top" method="get">';
+$s .= '<fieldset>';
+$s .= '<legend>';
+$s .= 'Navigation';
+$s .= '</legend>';
+$s .= '<p role="group">';
 foreach (glob(PATH . D . 'from' . D . '*', GLOB_ONLYDIR) as $v) {
-    $r .= '<button' . ($test === ($v = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button> ';
+    $s .= '<button' . ($test === ($v = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button> ';
 }
-$r  = substr($r, 0, -1) . '</p>';
-$r .= '<p role="group">';
-$r .= '<select name="view">';
+$s  = substr($s, 0, -1) . '</p>';
+$s .= '<p role="group" style="gap: 0.75em;">';
+$s .= '<b>Line:</b>';
+foreach (['CR', 'LF', 'CRLF'] as $v) {
+    $s .= ' ';
+    $s .= '<label role="group">';
+    $s .= '<input' . ($v === $line ? ' checked' : "") . ' name="line" type="radio" value="' . $v . '">';
+    $s .= ' ';
+    $s .= '<span>';
+    $s .= $v;
+    $s .= '</span>';
+    $s .= '</label>';
+}
+$s .= '</p>';
+$s .= '<p role="group">';
+$s .= '<select name="view">';
 foreach (['raw', 'result', 'source'] as $v) {
-    $r .= '<option' . ($v === $view ? ' selected' : "") . ' value="' . htmlspecialchars($v) . '">';
-    $r .= ucfirst($v);
-    $r .= '</option>';
+    $s .= '<option' . ($v === $view ? ' selected' : "") . ' value="' . htmlspecialchars($v) . '">';
+    $s .= ucfirst($v);
+    $s .= '</option>';
 }
-$r .= '</select>';
-$r .= ' ';
-$r .= '<button name="test" type="submit" value="' . htmlspecialchars($test) . '">';
-$r .= 'View';
-$r .= '</button>';
-$r .= '</p>';
-$r .= '</fieldset>';
-$r .= '<input name="batch" type="hidden" value="1">';
-$r .= '</form>';
+$s .= '</select>';
+$s .= ' ';
+$s .= '<button name="test" type="submit" value="' . htmlspecialchars($test) . '">';
+$s .= 'View';
+$s .= '</button>';
+$s .= '</p>';
+$s .= '</fieldset>';
+$s .= '<input name="batch" type="hidden" value="1">';
+$s .= '</form>';
 
-$r .= '<form action="#top" method="get">';
-$r .= '<fieldset>';
-$r .= '<legend>';
-$r .= 'Batch';
-$r .= '</legend>';
-$r .= '<p role="group">';
-$r .= '<button' . ($batch === '*' ? ' disabled' : "") . ' name="batch" type="submit" value="*">*</button>';
+$s .= '<form action="#top" method="get">';
+$s .= '<fieldset>';
+$s .= '<legend>';
+$s .= 'Batch';
+$s .= '</legend>';
+$s .= '<p role="group">';
+$s .= '<button' . ($batch === '*' ? ' disabled' : "") . ' name="batch" type="submit" value="*">*</button>';
 $folders = glob(PATH . D . 'from' . D . $test . D . '*', GLOB_ONLYDIR);
 usort($folders, 'strnatcmp');
 foreach ($folders as $v) {
-    $r .= ' <button' . ($batch === ($v = basename($v)) ? ' disabled' : "") . ' name="batch" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button>';
+    $s .= ' <button' . ($batch === ($v = basename($v)) ? ' disabled' : "") . ' name="batch" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button>';
 }
-$r .= '</p>';
-$r .= '</fieldset>';
-$r .= '<input name="test" type="hidden" value="' . htmlspecialchars($test) . '">';
-$r .= '<input name="view" type="hidden" value="' . htmlspecialchars($view) . '">';
-$r .= '</form>';
+$s .= '</p>';
+$s .= '</fieldset>';
+$s .= '<input name="line" type="hidden" value="' . htmlspecialchars($line) . '">';
+$s .= '<input name="test" type="hidden" value="' . htmlspecialchars($test) . '">';
+$s .= '<input name="view" type="hidden" value="' . htmlspecialchars($view) . '">';
+$s .= '</form>';
 
-$r .= '<main>';
+$s .= '<main>';
 
 $current = "";
 $error_count = 0;
@@ -498,46 +608,41 @@ $error_count = 0;
 foreach ($files as $file) {
     $n = basename($v = ".\\" . substr(strtr(dirname($file), ['/' => "\\"]), strlen(PATH . D . 'from' . D)));
     if ($v !== $current || "" === $current) {
-        $r .= '<h1 id="to:' . htmlspecialchars($n) . '"><a aria-hidden="true" href="#to:' . $n . '">#</a> ' . $v . "\\*" . '</h1>';
+        $s .= '<h1 id="to:' . htmlspecialchars($n) . '"><a aria-hidden="true" href="#to:' . $n . '">#</a> ' . $v . "\\*" . '</h1>';
         $current = $v;
     }
     $raws = file_get_contents($file);
-    // $raws = strtr($raws, ["\n" => "\r\n"]);
-    $r .= '<div>';
-    $r .= '<pre>';
-    $r .= '<code>';
-    $r .= strtr(htmlspecialchars($raws), [
-        "\n" => "<span class=\"c c-n\">\n</span>",
-        "\r" => "<span class=\"c c-r\"></span>",
-        "\t" => "<span class=\"c c-t\">\t</span>",
-        ' ' => "<span class=\"c c-s\"> </span>"
-    ]);
-    $r .= '</code>';
-    $r .= '</pre>';
+    $raws = strtr($raws, ["\n" => 'CR' === $line ? "\r" : ('CRLF' === $line ? "\r\n" : "\n")]);
+    $s .= '<div>';
+    $s .= '<pre>';
+    $s .= '<code>';
+    $s .= view($raws);
+    $s .= '</code>';
+    $s .= '</pre>';
     if ('result' === $view) {
-        $r .= '<article>';
-        $r .= view_result(x\markdown\from($raws) ?? "");
-        $r .= '</article>';
+        $s .= '<article>';
+        $s .= view_result(x\markdown\from($raws) ?? "");
+        $s .= '</article>';
     } else if ('source' === $view) {
-        $r .= '<pre>';
-        $r .= '<code>';
-        $r .= view_source(x\markdown\from($raws) ?? "");
-        $r .= '</code>';
-        $r .= '</pre>';
+        $s .= '<pre>';
+        $s .= '<code>';
+        $s .= view_source(x\markdown\from($raws) ?? "");
+        $s .= '</code>';
+        $s .= '</pre>';
     } else {
-        $r .= '<pre>';
-        $r .= '<code>';
+        $s .= '<pre>';
+        $s .= '<code>';
         $lot = [];
-        $r .= view_raw("<?php\n\nreturn " . export(x\markdown\from\rows($raws, $lot, 25, 0, \strlen($raws))) . ';');
-        $r .= '</code>';
-        $r .= '</pre>';
+        $s .= view_raw("<?php\n\nreturn " . export(x\markdown\from\rows($raws, $lot, 25, 0, \strlen($raws))) . ';');
+        $s .= '</code>';
+        $s .= '</pre>';
     }
-    $r .= '</div>';
+    $s .= '</div>';
 }
 
-$r .= '</main>';
+$s .= '</main>';
 
-$r .= '</body>';
-$r .= '</html>';
+$s .= '</body>';
+$s .= '</html>';
 
-echo $r;
+echo $s;
