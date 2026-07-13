@@ -130,6 +130,11 @@ function view_source(string $text) {
             $i += 1;
             continue;
         }
+        if ("\t" === $c) {
+            $s .= '<span class="c c-t">' . $c . '</span>';
+            $i += 1;
+            continue;
+        }
         $s .= $c;
         ++$i;
     }
@@ -196,6 +201,8 @@ usort($files, function ($a, $b) {
     return strnatcmp($a, $b);
 });
 
+$blocks = 'address, article, aside, blockquote, dd, details, div, dl, dt, fieldset, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, main, nav, ol, p, pre, search, section, table, ul';
+
 $r  = '<!DOCTYPE html>';
 $r .= '<html dir="ltr">';
 $r .= '<head>';
@@ -221,6 +228,53 @@ a {
 a:focus {
   color: #f00;
 }
+article :where({$blocks}) + :where({$blocks}) {
+  margin-top: 1rem;
+}
+article li:where(:not(:first-child)) > :where({$blocks}):where(:first-child) {
+  margin-top: 1rem;
+}
+article blockquote {
+  border-left: 4px solid #eee;
+  color: #aaa;
+  font-size: 100%;
+  padding: 0 0 0 0.75em;
+}
+article details:open > summary {
+  margin-bottom: 1rem;
+}
+/* <https://www.modularscale.com/?16&px&1.25> */
+article :where(h1, h2, h3, h4, h5, h6) {
+  line-height: 1.25;
+}
+article h1 {
+  font-size: 3.815em;
+}
+article h2 {
+  font-size: 3.052em;
+}
+article h3 {
+  font-size: 2.441em;
+}
+article h4 {
+  font-size: 1.953em;
+}
+article h5 {
+  font-size: 1.563em;
+}
+article dt,
+article h6 {
+  font-size: 1.25em;
+}
+article hr {
+  border-top: 1px solid #eee;
+}
+article pre code {
+  background: #000;
+  color: #fff;
+  display: block;
+  padding: 0.5em 0.75em;
+}
 body, html {
   scroll-behavior: smooth;
 }
@@ -241,7 +295,7 @@ body > main > div > article,
 body > main > div > pre {
   border: 1px solid #000;
   flex: 1;
-  padding: 0.5em 0.75em;
+  padding: 0.75em;
   word-wrap: break-word;
 }
 body > main > div > article {

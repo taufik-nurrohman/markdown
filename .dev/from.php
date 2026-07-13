@@ -359,6 +359,8 @@ namespace x\markdown\from {
                 }
                 // <https://spec.commonmark.org/0.31.2#softbreak>
                 $i += \strspn($value, c1, $i, $limit - $i) + $r;
+                // Also, remove the initial tab(s) and space(s) on the next line
+                $i += \strspn($value, c1, $i, $limit - $i);
                 $s .= ' ';
                 continue;
             }
