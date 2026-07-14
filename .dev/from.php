@@ -339,6 +339,10 @@ namespace x\markdown\from {
         if ($deep < 1) {
             return substr($value, $i, $limit - $i);
         }
+        // Check in case the whole text is an abbreviation
+        if ($v = $lot[2][$value] ?? 0) {
+            return [['abbr', h(v($value)), ['title' => $v]]];
+        }
         $last = null;
         $row = [];
         $s = "";
@@ -673,7 +677,7 @@ namespace x\markdown\from {
                         }
                         "" !== $s && ($row[] = h($s)) && ($s = "");
                         $i = $max + $n;
-                        $row[] = ['abbr', $k, ['title' => $lot[1][$k]]];
+                        $row[] = ['abbr', h(v($k)), ['title' => $lot[1][$k]]];
                         continue 3;
                     }
                 }

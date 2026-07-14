@@ -304,11 +304,12 @@ usort($files, function ($a, $b) {
     return strnatcmp($a, $b);
 });
 
-$blocks = 'address, article, aside, blockquote, dd, details, div, dl, dt, fieldset, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, main, nav, ol, p, pre, search, section, table, ul';
+$blocks = 'blockquote, dd, div, dl, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, ol, p, pre, table, ul';
 
 $s  = '<!DOCTYPE html>';
 $s .= '<html dir="ltr">';
 $s .= '<head>';
+$s .= '<meta content="width=device-width" name="viewport">';
 $s .= '<meta charset="utf-8">';
 $s .= '<title>';
 $s .= 'Markdown to HTML';
@@ -334,8 +335,12 @@ a:focus {
 article :where({$blocks}) + :where({$blocks}) {
   margin-top: 1rem;
 }
-article li:where(:not(:first-child)) > :where({$blocks}):where(:first-child) {
-  margin-top: 1rem;
+article :where(sub, sup) {
+  font-size: 0.8em;
+}
+article abbr {
+  border-bottom: 1px dotted #000;
+  cursor: help;
 }
 article blockquote {
   border-left: 4px solid #eee;
@@ -346,36 +351,15 @@ article blockquote {
 article details:open > summary {
   margin-bottom: 1rem;
 }
-/* <https://www.modularscale.com/?16&px&1.25> */
-article :where(h1, h2, h3, h4, h5, h6) {
-  line-height: 1.25;
+article del {
+  text-decoration: line-through;
 }
-article h1 {
-  font-size: 3.815em;
-}
-article h2 {
-  font-size: 3.052em;
-}
-article h3 {
-  font-size: 2.441em;
-}
-article h4 {
-  font-size: 1.953em;
-}
-article h5 {
-  font-size: 1.563em;
-}
-article dt,
-article h6 {
-  font-size: 1.25em;
-}
-article hr {
-  border-top: 1px solid #eee;
+article li:where(:not(:first-child)) > :where({$blocks}):where(:first-child) {
+  margin-top: 1rem;
 }
 article pre code {
   background: #000;
   color: #fff;
-  display: block;
   padding: 0.5em 0.75em;
 }
 body, html {
@@ -404,6 +388,11 @@ body > main > div > pre {
 body > main > div > article {
   border-width: 2px;
 }
+body > main > div > p {
+  flex: 1;
+  font-size: 75%;
+  margin-top: -0.5rem;
+}
 body > main > div > pre {
   background: #ffc;
   padding: 0.25em 0.35em;
@@ -426,7 +415,7 @@ body > main > h1:target {
 body > main > h1 > a {
   color: #0f0;
 }
-b, h1, h2, h3, h4, h5, h6, legend, strong {
+b, h1, h2, h3, h4, h5, h6, legend, strong, th {
   font-weight: bold;
 }
 button, select {
@@ -442,24 +431,24 @@ button, select {
 code {
   font: normal normal 12px/1.25 'Courier New', monospace;
 }
+em, i {
+  font-style: italic;
+}
+fieldset {
+  border: 1px solid #000;
+  padding: 1em;
+}
+hr {
+  border-top: 1px solid #000;
+}
 select {
   background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjAgMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTQgN0wxMCAxM0wxNiA3IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS1saW5lY2FwPSJidXR0IiBzdHJva2UtbGluZWpvaW49Im1pdGVyIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=');
   background-position: right 0.4em center;
   background-size: 1rem;
   padding-right: 1.75em;
 }
-fieldset {
-  border: 1px solid #000;
-  padding: 1em;
-}
 /* <https://www.modularscale.com/?16&px&1.25> */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-dt {
+dt, h1, h2, h3, h4, h5, h6 {
   line-height: 1.25;
 }
 h1 {
@@ -477,8 +466,7 @@ h4 {
 h5 {
   font-size: 1.563em;
 }
-h6,
-dt {
+dt, h6 {
   font-size: 1.25em;
 }
 legend {
@@ -536,6 +524,11 @@ pre code {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25em;
+}
+@media (max-width: 600px) {
+  body > main > div {
+    flex-direction: column;
+  }
 }
 CSS;
 $s .= '</style>';
@@ -614,30 +607,45 @@ foreach ($files as $file) {
     }
     $raws = file_get_contents($file);
     $raws = strtr($raws, ["\n" => 'CR' === $line ? "\r" : ('CRLF' === $line ? "\r\n" : "\n")]);
+    $size = (float) strlen($raws);
     $s .= '<div>';
     $s .= '<pre>';
     $s .= '<code>';
     $s .= view($raws);
     $s .= '</code>';
     $s .= '</pre>';
+    $end = $start = 0;
     if ('result' === $view) {
         $s .= '<article>';
-        $s .= view_result(x\markdown\from($raws) ?? "");
+        $start = hrtime(true);
+        $r = view_result(x\markdown\from($raws) ?? "");
+        $end = (hrtime(true) - $start) / 1e6;
+        $s .= $r;
         $s .= '</article>';
     } else if ('source' === $view) {
         $s .= '<pre>';
         $s .= '<code>';
-        $s .= view_source(x\markdown\from($raws) ?? "");
+        $start = hrtime(true);
+        $r = view_source(x\markdown\from($raws) ?? "");
+        $end = (hrtime(true) - $start) / 1e6;
+        $s .= $r;
         $s .= '</code>';
         $s .= '</pre>';
     } else {
         $s .= '<pre>';
         $s .= '<code>';
+        $start = hrtime(true);
         $lot = [];
-        $s .= view_raw("<?php\n\nreturn " . export(x\markdown\from\rows($raws, $lot, 25, 0, \strlen($raws))) . ';');
+        $r = view_raw("<?php\n\nreturn " . export(x\markdown\from\rows($raws, $lot, 25, 0, \strlen($raws))) . ';');
+        $end = (hrtime(true) - $start) / 1e6;
+        $s .= $r;
         $s .= '</code>';
         $s .= '</pre>';
     }
+    $s .= '</div>';
+    $s .= '<div>';
+    $s .= '<p style="color:#' . ($size > 1024 ? '900' : '090') . ';">Input size ' . $size . ' bytes.</p>';
+    $s .= '<p style="color:#' . ($end > 1 ? '900' : '090') . ';">Parsed in ' . $end . ' ms.</p>';
     $s .= '</div>';
 }
 
