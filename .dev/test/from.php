@@ -133,6 +133,7 @@ function view_result(string $text) {
     // TODO
     return strip_tags($text, [
         'a',
+        'abbr',
         'blockquote',
         'br',
         'code',

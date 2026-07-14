@@ -62,6 +62,8 @@ namespace x\markdown\from {
     const c16 = c14 . '"%-.<>^_`{|}~' . "\\";
     // <https://spec.commonmark.org/0.31.2#ascii-control-character>
     const c17 = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x7f";
+    // <https://en.wikipedia.org/wiki/Latin_script_in_Unicode>
+    const c18 = c4 . c10 . '_ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĹĺĻļĽľĿŀŁłŃńŅņŇňŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽž';
     const x1a = "\x1a";
     // Currently, there is no official attribute syntax specification in CommonMark except for the raw HTML attribute.
     // To make it as close as possible to the CommonMark specification or to prepare for the possibility of such
@@ -263,10 +265,10 @@ namespace x\markdown\from {
                 // Link label can have at most 999 character(s) inside the `[` and `]` character(s). It originally
                 // considers line(s) to be composed of character(s) rather than byte(s), but this one counts byte(s) for
                 // simplicity.
-                if (\strspn($s, c3) === ($size = \strlen($s)) || $size > 999) {
+                if (\strspn($s, c3) === ($max = \strlen($s)) || $max > 999) {
                     return [];
                 }
-                return [$s = s($s, ' '), $n + 1, \strlen($s)];
+                return [$s = s($s, ' '), $n + 1];
             }
             $s .= $c;
             ++$n;
@@ -299,10 +301,11 @@ namespace x\markdown\from {
         $b = "" !== $tab && isset($blocks[$r[0]]);
         $tab = \str_repeat($tab, $deep);
         $s = $tab . '<' . $r[0];
-        if ($r[2]) {
-            foreach ($r[2] as $k => $v) {
-                $s .= ' ' . $k . (true === $v ? "" : '="' . \strtr(h($v), ['"' => '&quot;']) . '"');
+        if ($r[2]) foreach ($r[2] as $k => $v) {
+            if (false === $v || null === $v) {
+                continue;
             }
+            $s .= ' ' . $k . (true === $v ? "" : '="' . \strtr(h($v), ['"' => '&quot;']) . '"');
         }
         if (false === $r[1]) {
             return $s .= ' />';
@@ -569,11 +572,7 @@ namespace x\markdown\from {
                     if ($n === \strspn($value, $c, $eat) && $c !== ($value[$eat + $n] ?? 0)) {
                         $text = \substr($value, $i + $n, $eat - ($i + $n));
                         // Line break(s) are converted to space(s)
-                        $text = \strtr($text, [
-                            "\n" => ' ',
-                            "\r\n" => ' ',
-                            "\r" => ' '
-                        ]);
+                        $text = \strtr($text, ["\n" => ' ', "\r\n" => ' ', "\r" => ' ']);
                         // If the resulting string both begins and ends with a space character, but does not consist
                         // entirely of space character(s), a single space character is removed from the front and back.
                         if (\strlen($text) > 1 && ' ' === $text[0] && ' ' === \substr($text, -1) && "" !== \trim($text, ' ')) {
@@ -651,6 +650,33 @@ namespace x\markdown\from {
                 $last = $current;
                 ++$i;
                 continue;
+            }
+            // Parse abbreviation(s)
+            if ($lot[1]) {
+                $batch = [];
+                foreach ($lot[1] as $k => $v) {
+                    $batch[$k] = \strlen($k);
+                }
+                $batch && \arsort($batch);
+                foreach ($batch as $k => $max) {
+                    while (false !== ($n = \strpos($value, $k, $i))) {
+                        $s .= \substr($value, $i, $n - $i);
+                        if ($n > 0 && false !== \strpos(c18, $value[$n - 1])) {
+                            $i = $n + 1;
+                            $s .= $value[$n];
+                            continue;
+                        }
+                        if ($max + $n < $limit && false !== \strpos(c18, $value[$max + $n])) {
+                            $i = $n + $max;
+                            $s .= $k;
+                            continue;
+                        }
+                        "" !== $s && ($row[] = h($s)) && ($s = "");
+                        $i = $max + $n;
+                        $row[] = ['abbr', $k, ['title' => $lot[1][$k]]];
+                        continue 3;
+                    }
+                }
             }
             // <https://spec.commonmark.org/0.31.2#look-for-link-or-image>
             if (']' === $c) {
@@ -972,7 +998,7 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $deep > 0 && !isset($lot[1][$k[0]]) && ($lot[1][$k[0]] = [$k[2], s($s, ' ')]);
+                $deep > 0 && !isset($lot[1][$k[0]]) && ($lot[1][$k[0]] = "" !== ($s = s($s, ' ')) ? $s : null);
                 $s = "";
                 continue;
             }
