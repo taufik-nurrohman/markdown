@@ -731,7 +731,9 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#blank-line>
             if ($m[1] === \strspn($value, c1, $i, $limit - $i)) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                $i += $m[1] + $m[2];
+                while ($i < $limit && ($m = m($value, $i, $limit)) && $m[1] === \strspn($value, c1, $i, $limit - $i)) {
+                    $i += $m[1] + $m[2];
+                }
                 ++$void;
                 continue;
             }
@@ -752,7 +754,7 @@ namespace x\markdown\from {
                     if ($m[1] !== \strspn($value, c1, $i, $m[1]) && d($value, $i, $limit)[0] < 4) {
                         // Previous line was a blank line
                         if ("" !== $s && "\n" === $s[\strlen($s) - 1]) {
-                            $s = \substr($s, 0, -1);
+                            $s = \rtrim($s, "\n");
                             ++$void;
                         }
                         break;
