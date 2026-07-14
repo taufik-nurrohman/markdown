@@ -1,0 +1,40 @@
+{
+  "authors": [
+    {
+      "homepage": "https://github.com/taufik-nurrohman",
+      "name": "Taufik Nurrohman",
+      "role": "Developer"
+    }
+  ],
+  "autoload": {
+    "files": [
+      "from.php",
+      "to.php"
+    ]
+  },
+  "description": "Obviously, a Markdown parser.",
+  "funding": [
+    {
+      "type": "other",
+      "url": "https://paypal.me/tatautaufik"
+    }
+  ],
+  "homepage": "https://github.com/taufik-nurrohman/markdown",
+  "keywords": [
+    "commonmark",
+    "converter",
+    "extra",
+    "markdown",
+    "parser"
+  ],
+  "license": "MIT",
+  "name": "taufik-nurrohman/markdown",
+  "require": {
+    "php": ">=7.3"
+  },
+  "support": {
+    "docs": "https://github.com/taufik-nurrohman/markdown#readme",
+    "issues": "https://github.com/taufik-nurrohman/markdown/issues"
+  },
+  "type": "library"
+}

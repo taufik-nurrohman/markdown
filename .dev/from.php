@@ -164,10 +164,10 @@ namespace x\markdown\from {
                     return [];
                 }
                 // Boolean attribute(s)
-                if (!$exist) {
-                    $r[$k] = true;
-                } else if ($raw) {
+                if ($raw) {
                     $r['class'][\sprintf($f, $k)] = 1;
+                } else if (!$exist) {
+                    $r[$k] = true;
                 }
                 continue;
             }

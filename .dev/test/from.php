@@ -131,36 +131,7 @@ function view(string $text) {
 
 function view_result(string $text) {
     // TODO
-    return strip_tags($text, [
-        'a',
-        'abbr',
-        'blockquote',
-        'br',
-        'code',
-        'dd',
-        'del',
-        'div',
-        'dl',
-        'dt',
-        'em',
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'hr',
-        'img',
-        'li',
-        'mark',
-        'ol',
-        'p',
-        'pre',
-        'span',
-        'strong',
-        'textarea',
-        'ul',
-    ]);
+    return $text;
 }
 
 function view_source(string $text) {
@@ -176,40 +147,42 @@ function view_source(string $text) {
             $i += $n;
             continue;
         }
-        if ($i === strpos($text, '<!--', $i) && false !== ($n = strpos($text, '-->', $i))) {
-            $s .= '<span style="color:#f80;">';
-            $s .= htmlspecialchars(substr($text, $i, $n += 3 - $i));
-            $s .= '</span>';
-            $i += $n;
-            continue;
-        }
-        if ($i === strpos($text, '<![CDATA[', $i) && false !== ($n = strpos($text, ']]>', $i + 9))) {
-            $s .= '<span style="color:#f80;">';
-            $s .= htmlspecialchars(substr($text, $i, $n += 3 - $i));
-            $s .= '</span>';
-            $i += $n;
-            continue;
-        }
-        if ($i === strpos($text, '<?', $i) && false !== ($n = strpos($text, '?>', $i + 2))) {
-            $s .= '<span style="color:#f80;">';
-            $s .= htmlspecialchars(substr($text, $i, $n += 2 - $i));
-            $s .= '</span>';
-            $i += $n;
-            continue;
-        }
-        if ($i === strpos($text, '<!', $i) && false !== ($n = strpos($text, '>', $i + 2))) {
-            $s .= '<span style="color:#f80;">';
-            $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
-            $s .= '</span>';
-            $i += $n;
-            continue;
-        }
-        if ('<' === $c && false !== ($n = strpos($text, '>', $i))) {
-            $s .= '<span style="color:#00b;font-weight:bold;">';
-            $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
-            $s .= '</span>';
-            $i += $n;
-            continue;
+        if ('<' === $c) {
+            if ($i === strpos($text, '<!--', $i) && false !== ($n = strpos($text, '-->', $i))) {
+                $s .= '<span style="color:#f80;">';
+                $s .= htmlspecialchars(substr($text, $i, $n += 3 - $i));
+                $s .= '</span>';
+                $i += $n;
+                continue;
+            }
+            if ($i === strpos($text, '<![CDATA[', $i) && false !== ($n = strpos($text, ']]>', $i + 9))) {
+                $s .= '<span style="color:#f80;">';
+                $s .= htmlspecialchars(substr($text, $i, $n += 3 - $i));
+                $s .= '</span>';
+                $i += $n;
+                continue;
+            }
+            if ($i === strpos($text, '<?', $i) && false !== ($n = strpos($text, '?>', $i + 2))) {
+                $s .= '<span style="color:#f80;">';
+                $s .= htmlspecialchars(substr($text, $i, $n += 2 - $i));
+                $s .= '</span>';
+                $i += $n;
+                continue;
+            }
+            if ($i === strpos($text, '<!', $i) && false !== ($n = strpos($text, '>', $i + 2))) {
+                $s .= '<span style="color:#f80;">';
+                $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
+                $s .= '</span>';
+                $i += $n;
+                continue;
+            }
+            if (false !== ($n = strpos($text, '>', $i))) {
+                $s .= '<span style="color:#00b;font-weight:bold;">';
+                $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
+                $s .= '</span>';
+                $i += $n;
+                continue;
+            }
         }
         if ("\\" === $c) {
             $s .= '<span style="color:#d00;font-weight:bold;">' . $c . '</span>';
@@ -382,6 +355,7 @@ body > main > div > article,
 body > main > div > pre {
   border: 1px solid #000;
   flex: 1;
+  min-width: 0;
   padding: 0.75em;
   word-wrap: break-word;
 }
@@ -392,6 +366,7 @@ body > main > div > p {
   flex: 1;
   font-size: 75%;
   margin-top: -0.5rem;
+  min-width: 0;
 }
 body > main > div > pre {
   background: #ffc;
@@ -480,6 +455,17 @@ pre {
 pre code {
   display: block;
 }
+table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+td, th {
+  border: 1px solid #000;
+  padding: 0.5em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
 .c {
   position: relative;
 }
@@ -541,7 +527,7 @@ $s .= '<legend>';
 $s .= 'Navigation';
 $s .= '</legend>';
 $s .= '<p role="group">';
-foreach (glob(PATH . D . 'from' . D . '*', GLOB_ONLYDIR) as $v) {
+foreach (array_merge(glob(PATH . D . 'from' . D . '*', GLOB_ONLYDIR), ['LICENSE', 'README']) as $v) {
     $s .= '<button' . ($test === ($v = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button> ';
 }
 $s  = substr($s, 0, -1) . '</p>';
@@ -618,17 +604,17 @@ foreach ($files as $file) {
     if ('result' === $view) {
         $s .= '<article>';
         $start = hrtime(true);
-        $r = view_result(x\markdown\from($raws) ?? "");
+        $r = x\markdown\from($raws) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
-        $s .= $r;
+        $s .= view_result($r);
         $s .= '</article>';
     } else if ('source' === $view) {
         $s .= '<pre>';
         $s .= '<code>';
         $start = hrtime(true);
-        $r = view_source(x\markdown\from($raws) ?? "");
+        $r = x\markdown\from($raws) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
-        $s .= $r;
+        $s .= view_source($r);
         $s .= '</code>';
         $s .= '</pre>';
     } else {
@@ -636,9 +622,9 @@ foreach ($files as $file) {
         $s .= '<code>';
         $start = hrtime(true);
         $lot = [];
-        $r = view_raw("<?php\n\nreturn " . export(x\markdown\from\rows($raws, $lot, 25, 0, \strlen($raws))) . ';');
+        $r = x\markdown\from\rows($raws, $lot, 25, 0, strlen($raws));
         $end = (hrtime(true) - $start) / 1e6;
-        $s .= $r;
+        $s .= view_raw("<?php\n\nreturn " . export($r) . ';');
         $s .= '</code>';
         $s .= '</pre>';
     }
