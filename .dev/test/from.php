@@ -607,7 +607,7 @@ foreach ($files as $file) {
     }
     $raws = file_get_contents($file);
     $raws = strtr($raws, ["\n" => 'CR' === $line ? "\r" : ('CRLF' === $line ? "\r\n" : "\n")]);
-    $size = (float) strlen($raws);
+    $size = strlen($raws);
     $s .= '<div>';
     $s .= '<pre>';
     $s .= '<code>';
