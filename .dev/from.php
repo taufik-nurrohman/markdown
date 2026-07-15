@@ -445,14 +445,14 @@ namespace x\markdown\from {
                 }
                 if ('!' === ($value[$i + 1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#html-comment>
-                    if ($i + 2 === \strpos($value, '--', $i + 2) && false !== ($n = \strpos($value, '-->', $i + 2))) {
+                    if (0 === \substr_compare($value, '--', $i + 2, 2) && false !== ($n = \strpos($value, '-->', $i + 2))) {
                         "" !== $s && ($row[] = h($s)) && ($s = "");
                         $row[] = [false, \substr($value, $i, $n += 3 - $i), [], [2]];
                         $i += $n;
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#cdata-section>
-                    if ($i + 2 === \strpos($value, '[CDATA[', $i + 2) && false !== ($n = \strpos($value, ']]>', $i + 2))) {
+                    if (0 === \substr_compare($value, '[CDATA[', $i + 2, 7) && false !== ($n = \strpos($value, ']]>', $i + 2))) {
                         "" !== $s && ($row[] = h($s)) && ($s = "");
                         $row[] = [false, \substr($value, $i, $n += 3 - $i), [], [5]];
                         $i += $n;
@@ -632,13 +632,14 @@ namespace x\markdown\from {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $can_close = $can_open = true;
                 $current = \count($stack);
-                $row[] = $c;
-                $stack[] = [$c, [\strspn($value, $c, $i, $limit - $i), true, $can_open, $can_close], [\array_key_last($row), $last], false];
+                $n = \strspn($value, $c, $i, $limit - $i);
+                $row[] = \substr($value, $i, $n);
+                $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last], false];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
+                $i += $n;
                 $last = $current;
-                ++$i;
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#delimiter-run>
@@ -646,27 +647,32 @@ namespace x\markdown\from {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $can_close = $can_open = true;
                 $current = \count($stack);
-                $row[] = $c;
-                $stack[] = [$c, [\strspn($value, $c, $i, $limit - $i), true, $can_open, $can_close], [\array_key_last($row), $last], false];
+                $n = \strspn($value, $c, $i, $limit - $i);
+                $row[] = \substr($value, $i, $n);
+                $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last], false];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
+                $i += $n;
                 $last = $current;
-                ++$i;
                 continue;
             }
-            // Parse abbreviation(s)
+            // Michel Fortin’s way to determine text that should be replaced with an abbreviation is very simple. He
+            // looks for text that is not preceded or followed by other word character(s). He relied on a regular
+            // expression, yet I already have a list of word(s) to examine the character that precedes and follows the
+            // current portion of text. Below is my effort to achieve the same result.
+            // <https://github.com/michelf/php-markdown/blob/2.0.0/Michelf/MarkdownExtra.php#L1845-L1847>
             if ($lot[1]) {
-                $best = [false, false];
+                $best = [null, -1];
                 foreach ($lot[1] as $k => $v) {
                     if (false === ($n = \strpos($value, $k, $i))) {
                         continue;
                     }
-                    if (false === $best[1] || $n < $best[1]) {
+                    if ($best[1] < 0 || $n < $best[1]) {
                         $best = [$k, $n];
                     }
                 }
-                if (false !== $best[0]) {
+                if (null !== $best[0]) {
                     [$k, $n] = $best;
                     $max = \strlen($k);
                     $s .= \substr($value, $i, $n - $i);
@@ -738,6 +744,11 @@ namespace x\markdown\from {
                 ]];
                 $stack[$z][1][1] = false;
                 $i = $n + 1;
+                continue;
+            }
+            if ($n = \strcspn($value, c2 . '!&*<[' . "\\", $i)) {
+                $s .= \substr($value, $i, $n);
+                $i += $n;
                 continue;
             }
             $s .= $c;
@@ -823,14 +834,14 @@ namespace x\markdown\from {
                 }
                 if ('!' === ($value[$n = $d + $i + 1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#html-comment>
-                    if ($n + 1 === \strpos($value, '--', $n) && false !== ($to = \strpos($value, '-->', $n + 1))) {
+                    if (0 === substr_compare($value, '--', $n + 1, 2) && false !== ($to = \strpos($value, '-->', $n + 1))) {
                         "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
                         $rows[] = [false, \substr($value, $i, ($to += \strcspn($value, c2, $to)) - $i), [], [2]];
                         $i = $to + r($value, $to, $limit);
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#cdata-section>
-                    if ($n + 1 === \strpos($value, '[CDATA[', $n) && false !== ($to = \strpos($value, ']]>', $n + 1))) {
+                    if (0 === substr_compare($value, '[CDATA[', $n + 1, 7) && false !== ($to = \strpos($value, ']]>', $n + 1))) {
                         "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
                         $rows[] = [false, \substr($value, $i, ($to += \strcspn($value, c2, $to)) - $i), [], [5]];
                         $i = $to + r($value, $to, $limit);

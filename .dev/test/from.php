@@ -130,7 +130,17 @@ function view(string $text) {
 }
 
 function view_result(string $text) {
-    // TODO
+    $i = 0;
+    while (false !== ($from = stripos($text, '<script', $i))) {
+        if (false === ($from = strpos($text, '>', $from))) {
+            break;
+        }
+        if (false === ($to = stripos($text, '</script>', $from + 1))) {
+            break;
+        }
+        $text = substr_replace($text, "", $from + 1, $to - $from - 1);
+        $i = $from + 1;
+    }
     return $text;
 }
 
@@ -148,28 +158,28 @@ function view_source(string $text) {
             continue;
         }
         if ('<' === $c) {
-            if ($i === strpos($text, '<!--', $i) && false !== ($n = strpos($text, '-->', $i))) {
+            if (0 === substr_compare($text, '<!--', $i, 4) && false !== ($n = strpos($text, '-->', $i))) {
                 $s .= '<span style="color:#f80;">';
                 $s .= htmlspecialchars(substr($text, $i, $n += 3 - $i));
                 $s .= '</span>';
                 $i += $n;
                 continue;
             }
-            if ($i === strpos($text, '<![CDATA[', $i) && false !== ($n = strpos($text, ']]>', $i + 9))) {
+            if (0 === substr_compare($text, '<![CDATA[', $i, 9) && false !== ($n = strpos($text, ']]>', $i + 9))) {
                 $s .= '<span style="color:#f80;">';
                 $s .= htmlspecialchars(substr($text, $i, $n += 3 - $i));
                 $s .= '</span>';
                 $i += $n;
                 continue;
             }
-            if ($i === strpos($text, '<?', $i) && false !== ($n = strpos($text, '?>', $i + 2))) {
+            if (0 === substr_compare($text, '<?', $i, 2) && false !== ($n = strpos($text, '?>', $i + 2))) {
                 $s .= '<span style="color:#f80;">';
                 $s .= htmlspecialchars(substr($text, $i, $n += 2 - $i));
                 $s .= '</span>';
                 $i += $n;
                 continue;
             }
-            if ($i === strpos($text, '<!', $i) && false !== ($n = strpos($text, '>', $i + 2))) {
+            if (0 === substr_compare($text, '<!', $i, 2) && false !== ($n = strpos($text, '>', $i + 2))) {
                 $s .= '<span style="color:#f80;">';
                 $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
                 $s .= '</span>';
@@ -209,6 +219,11 @@ function view_source(string $text) {
                 $s .= ' ';
             }
             $i = $w;
+            continue;
+        }
+        if ($n = strcspn($text, "&<\\\t ", $i)) {
+            $s .= substr($text, $i, $n);
+            $i += $n;
             continue;
         }
         $s .= $c;
@@ -317,7 +332,7 @@ article abbr {
 }
 article blockquote {
   border-left: 4px solid #eee;
-  color: #aaa;
+  color: #666;
   font-size: 100%;
   padding: 0 0 0 0.75em;
 }
