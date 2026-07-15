@@ -657,29 +657,33 @@ namespace x\markdown\from {
             }
             // Parse abbreviation(s)
             if ($lot[1]) {
-                $batch = [];
+                $best = [false, false];
                 foreach ($lot[1] as $k => $v) {
-                    $batch[$k] = \strlen($k);
-                }
-                $batch && \arsort($batch);
-                foreach ($batch as $k => $max) {
-                    while (false !== ($n = \strpos($value, $k, $i))) {
-                        $s .= \substr($value, $i, $n - $i);
-                        if ($n > 0 && false !== \strpos(c18, $value[$n - 1])) {
-                            $i = $n + 1;
-                            $s .= $value[$n];
-                            continue;
-                        }
-                        if ($max + $n < $limit && false !== \strpos(c18, $value[$max + $n])) {
-                            $i = $n + $max;
-                            $s .= $k;
-                            continue;
-                        }
-                        "" !== $s && ($row[] = h($s)) && ($s = "");
-                        $i = $max + $n;
-                        $row[] = ['abbr', h(v($k)), ['title' => $lot[1][$k]]];
-                        continue 3;
+                    if (false === ($n = \strpos($value, $k, $i))) {
+                        continue;
                     }
+                    if (false === $best[1] || $n < $best[1]) {
+                        $best = [$k, $n];
+                    }
+                }
+                if (false !== $best[0]) {
+                    [$k, $n] = $best;
+                    $max = \strlen($k);
+                    $s .= \substr($value, $i, $n - $i);
+                    if ($n > 0 && false !== \strpos(c18, $value[$n - 1])) {
+                        $i = $n + 1;
+                        $s .= $value[$n];
+                        continue;
+                    }
+                    if ($max + $n < $limit && false !== \strpos(c18, $value[$max + $n])) {
+                        $i = $n + $max;
+                        $s .= $k;
+                        continue;
+                    }
+                    "" !== $s && ($row[] = h($s)) && ($s = "");
+                    $i = $max + $n;
+                    $row[] = ['abbr', h(v($k)), ['title' => $lot[1][$k]]];
+                    continue;
                 }
             }
             // <https://spec.commonmark.org/0.31.2#look-for-link-or-image>
@@ -1277,6 +1281,10 @@ namespace x\markdown\from {
             $rows[] = ['p', \trim($s), []];
         }
         if ($deep > 0 && $rows) {
+            // order abbreviation(s) from the longest key to the shortest key
+            $lot[1] && \uksort($lot[1], function ($a, $b) {
+                return \strlen($b) <=> \strlen($a);
+            });
             foreach ($rows as &$row) {
                 if ('blockquote' === $row[0]) {
                     $row[1] = rows($row[1], $lot, $deep - 1, 0, \strlen($row[1]))[0] ?: "";
