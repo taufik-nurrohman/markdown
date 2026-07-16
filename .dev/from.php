@@ -968,25 +968,28 @@ namespace x\markdown\from {
                     }
                 }
                 if (null !== $eat && isset($v[0])) {
+                    $chunk = [];
                     $current = $stack[$at][2][0];
-                    $nest = [];
-                    foreach ($row as $k => $r) {
+                    $row_after_emph = e($row, $stack, $last);
+                    foreach ($row_after_emph as $k => $r) {
                         if ($k <= $current) {
                             continue;
                         }
-                        $nest[] = $r;
+                        $chunk[] = $r;
                         unset($row[$k]);
                     }
                     // <https://spec.commonmark.org/0.31.2#links>
                     if ('[' === $stack[$at][0]) {
-                        $row[$current] = ['a', $nest, ($v[2] ?? []) + [
+                        $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
                             'href' => $v[0],
                             'title' => $v[1]
                         ]];
                     // <https://spec.commonmark.org/0.31.2#images>
                     } else {
+                        echo htmlspecialchars(json_encode([$value,$chunk]));
+                        echo '<br>';
                         $row[$current] = ['img', false, [
-                            'alt' => \trim(alt($nest)),
+                            'alt' => \trim(alt($chunk)),
                             'src' => $v[0],
                             'title' => $v[1],
                         ]];
@@ -1016,7 +1019,7 @@ namespace x\markdown\from {
         if ("" !== $s) {
             $row[] = h($s);
         }
-        // TODO: Process emphasis
+        // <https://spec.commonmark.org/0.31.2#process-emphasis>
         $row = \array_values(e($row, $stack, $last));
         if (1 === \count($row) && \is_string($row[0])) {
             return $row[0];
