@@ -17,6 +17,7 @@ define('PATH', __DIR__);
 require PATH . D . '..' . D . 'from.php';
 
 $batch = basename($_GET['batch'] ?? '1');
+$block = !!basename($_GET['block'] ?? '1');
 $line = strtoupper(basename($_GET['line'] ?? 'LF'));
 $test = basename($_GET['test'] ?? 'p');
 $view = basename($_GET['view'] ?? 'source');
@@ -210,13 +211,8 @@ function view_source(string $text) {
             $i = $w;
             continue;
         }
-        if ($n = strcspn($text, "&<\\\t ", $i)) {
-            $s .= substr($text, $i, $n);
-            $i += $n;
-            continue;
-        }
-        $s .= $c;
-        ++$i;
+        $s .= substr($text, $i, $n = strcspn($text, " &<\\\t", $i));
+        $i += $n;
     }
     return $s;
 }
@@ -281,7 +277,7 @@ usort($files, function ($a, $b) {
     return strnatcmp($a, $b);
 });
 
-$blocks = 'blockquote, dd, div, dl, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, ol, p, pre, table, ul';
+$where = 'blockquote, dd, div, dl, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, ol, p, pre, table, ul';
 
 $s  = '<!DOCTYPE html>';
 $s .= '<html dir="ltr">';
@@ -309,7 +305,7 @@ a {
 a:focus {
   color: #f00;
 }
-article :where({$blocks}) + :where({$blocks}) {
+article :where({$where}) + :where({$where}) {
   margin-top: 1rem;
 }
 article :where(sub, sup) {
@@ -331,7 +327,7 @@ article details:open > summary {
 article del {
   text-decoration: line-through;
 }
-article li:where(:not(:first-child)) > :where({$blocks}):where(:first-child) {
+article li:where(:not(:first-child)) > :where({$where}):where(:first-child) {
   margin-top: 1rem;
 }
 article p img {
@@ -535,13 +531,23 @@ $s .= '<fieldset>';
 $s .= '<legend>';
 $s .= 'Navigation';
 $s .= '</legend>';
-$s .= '<p role="group">';
-foreach (array_merge(glob(PATH . D . 'from' . D . '*', GLOB_ONLYDIR), ['LICENSE', 'README']) as $v) {
-    $s .= '<button' . ($test === ($v = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button> ';
+$s .= '<p>';
+$s .= '<span role="group" style="gap: 0.75em;">';
+$s .= '<b>Block Mode:</b>';
+foreach (['Yes' => true, 'No' => false] as $k => $v) {
+    $s .= ' ';
+    $s .= '<label role="group">';
+    $s .= '<input' . ($v === $block ? ' checked' : "") . ' name="block" type="radio" value="' . ((int) $v) . '">';
+    $s .= ' ';
+    $s .= '<span>';
+    $s .= $k;
+    $s .= '</span>';
+    $s .= '</label>';
 }
-$s  = substr($s, 0, -1) . '</p>';
-$s .= '<p role="group" style="gap: 0.75em;">';
-$s .= '<b>Line:</b>';
+$s .= '</span>';
+$s .= ' ';
+$s .= '<span role="group" style="gap: 0.75em;">';
+$s .= '<b>Line Ending Preference:</b>';
 foreach (['CR', 'LF', 'CRLF'] as $v) {
     $s .= ' ';
     $s .= '<label role="group">';
@@ -552,7 +558,13 @@ foreach (['CR', 'LF', 'CRLF'] as $v) {
     $s .= '</span>';
     $s .= '</label>';
 }
+$s .= '</span>';
 $s .= '</p>';
+$s .= '<p role="group">';
+foreach (array_merge(glob(PATH . D . 'from' . D . '*', GLOB_ONLYDIR), ['LICENSE', 'README']) as $v) {
+    $s .= '<button' . ($test === ($v = basename($v)) ? ' disabled' : "") . ' name="test" type="submit" value="' . htmlspecialchars($v) . '">' . htmlspecialchars($v) . '</button> ';
+}
+$s  = substr($s, 0, -1) . '</p>';
 $s .= '<p role="group">';
 $s .= '<select name="view">';
 foreach (['raw', 'result', 'source'] as $v) {
@@ -584,6 +596,7 @@ foreach ($folders as $v) {
 }
 $s .= '</p>';
 $s .= '</fieldset>';
+$s .= '<input name="block" type="hidden" value="' . ((int) $block) . '">';
 $s .= '<input name="line" type="hidden" value="' . htmlspecialchars($line) . '">';
 $s .= '<input name="test" type="hidden" value="' . htmlspecialchars($test) . '">';
 $s .= '<input name="view" type="hidden" value="' . htmlspecialchars($view) . '">';
@@ -613,7 +626,7 @@ foreach ($files as $file) {
     if ('result' === $view) {
         $s .= '<article>';
         $start = hrtime(true);
-        $r = x\markdown\from($raws) ?? "";
+        $r = x\markdown\from($raws, ['block' => $block]) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
         $s .= view_result($r);
         $s .= '</article>';
@@ -621,7 +634,7 @@ foreach ($files as $file) {
         $s .= '<pre>';
         $s .= '<code>';
         $start = hrtime(true);
-        $r = x\markdown\from($raws) ?? "";
+        $r = x\markdown\from($raws, ['block' => $block]) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
         $s .= view_source($r);
         $s .= '</code>';
@@ -631,7 +644,11 @@ foreach ($files as $file) {
         $s .= '<code>';
         $start = hrtime(true);
         $lot = [];
-        $r = x\markdown\from\rows($raws, $lot, 25, 0, strlen($raws));
+        if (!$block) {
+            $r = x\markdown\from\row($raws, $lot, 25, 0, strlen($raws));
+        } else {
+            $r = x\markdown\from\rows($raws, $lot, 25, 0, strlen($raws));
+        }
         $end = (hrtime(true) - $start) / 1e6;
         $s .= view_raw("<?php\n\nreturn " . export($r) . ';');
         $s .= '</code>';

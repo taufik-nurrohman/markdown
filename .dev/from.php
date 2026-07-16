@@ -17,11 +17,14 @@ namespace x\markdown {
             'tab' => 2
         ], $state);
         if (empty($state['block'])) {
-            // TODO
+            $lot = [];
+            $state['tab'] = 0;
+            $r = from\c(from\row($value, $lot, 25, 0, \strlen($value)), $state);
+            return "" !== $r ? $r : null;
         }
         $lot = [];
-        $v = from\c(from\rows($value, $lot, 25, 0, \strlen($value))[0], $state);
-        return "" !== $v ? $v : null;
+        $r = from\c(from\rows($value, $lot, 25, 0, \strlen($value))[0], $state);
+        return "" !== $r ? $r : null;
     }
 }
 
@@ -194,7 +197,30 @@ namespace x\markdown\from {
         }
         return [$r, $n];
     }
-    function c(array $rows, array $state) {
+    // <https://spec.commonmark.org/0.31.2#image-description>
+    function alt(array $row) {
+        $s = "";
+        foreach ($row as $r) {
+            if (\is_string($r)) {
+                $s .= $r;
+                continue;
+            }
+            if (\is_array($r[1])) {
+                $s .= alt($r[1]);
+                continue;
+            }
+            if ('img' === $r[0]) {
+                $s .= $r[2]['alt'] ?? "";
+                continue;
+            }
+            $s .= $r[1];
+        }
+        return $s;
+    }
+    function c($rows, array $state) {
+        if (\is_string($rows)) {
+            return \trim($rows);
+        }
         $s = "";
         if (\is_int($tab = $state['tab'] ?? "")) {
             $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
@@ -276,14 +302,17 @@ namespace x\markdown\from {
         return [];
     }
     function m(string $value, int $i, int $limit) {
-        return [$i, $n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit)];
+        return [$n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit)];
     }
-    function o(array $r, array $state, int $deep = 0) {
+    function o($r, array $state, int $deep = 0) {
         if (!$r) {
             return "";
         }
         if (false === $r[0]) {
             return $r[1];
+        }
+        if (\is_string($r)) {
+            return $r;
         }
         static $blocks = [
             'blockquote' => 1,
@@ -337,8 +366,9 @@ namespace x\markdown\from {
     }
     function row(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         if ($deep < 1) {
-            return substr($value, $i, $limit - $i);
+            return \substr($value, $i, $limit - $i);
         }
+        $lot = \array_replace([[], [], []], $lot);
         // In case the entire text is an abbreviation, parse it right away!
         if ($v = $lot[2][$value] ?? 0) {
             return [['abbr', h(v($value)), ['title' => $v]]];
@@ -626,25 +656,30 @@ namespace x\markdown\from {
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#delimiter-run>
-            if ('*' === $c) {
+            if ('*' === $c || '_' === $c) {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
-                $can_close = $can_open = true;
                 $current = \count($stack);
                 $n = \strspn($value, $c, $i, $limit - $i);
-                $row[] = \substr($value, $i, $n);
-                $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last, null, $i += $n]];
-                if (null !== $last) {
-                    $stack[$last][2][2] = $current;
+                // 1. Extract Previous and Next UTF-8 Characters
+                $prev_char = $i === 0 ? ' ' : \mb_substr(\substr($value, 0, $i), -1, 1, 'UTF-8');
+                $next_char = $i + $n >= $limit ? ' ' : \mb_substr(\substr($value, $i + $n, 4), 0, 1, 'UTF-8');
+                // 2. Determine Character Types (Whitespace / Punctuation)
+                // \p{Z} and \s cover Unicode whitespace. \p{P} and \p{S} cover Unicode punctuation.
+                $prev_is_ws = \preg_match('/^[\p{Z}\s]$/u', $prev_char);
+                $prev_is_punct = !$prev_is_ws && \preg_match('/^[\p{P}\p{S}]$/u', $prev_char);
+                $next_is_ws = \preg_match('/^[\p{Z}\s]$/u', $next_char);
+                $next_is_punct = !$next_is_ws && \preg_match('/^[\p{P}\p{S}]$/u', $next_char);
+                // 3. Determine Flanking
+                $left_flanking = !$next_is_ws && (!$next_is_punct || $prev_is_ws || $prev_is_punct);
+                $right_flanking = !$prev_is_ws && (!$prev_is_punct || $next_is_ws || $next_is_punct);
+                // 4. Set Open / Close permissions based on character type
+                if ('*' === $c) {
+                    $can_open = $left_flanking;
+                    $can_close = $right_flanking;
+                } else { // '_'
+                    $can_open = $left_flanking && (!$right_flanking || $prev_is_punct);
+                    $can_close = $right_flanking && (!$left_flanking || $next_is_punct);
                 }
-                $last = $current;
-                continue;
-            }
-            // <https://spec.commonmark.org/0.31.2#delimiter-run>
-            if ('_' === $c) {
-                "" !== $s && ($row[] = h($s)) && ($s = "");
-                $can_close = $can_open = true;
-                $current = \count($stack);
-                $n = \strspn($value, $c, $i, $limit - $i);
                 $row[] = \substr($value, $i, $n);
                 $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last, null, $i += $n]];
                 if (null !== $last) {
@@ -713,7 +748,7 @@ namespace x\markdown\from {
                 $v = [null, null];
                 // <https://spec.commonmark.org/0.31.2#inline-link>
                 if ('(' === ($value[$n = $i + 1] ?? 0)) {
-                    $n += \strspn($value, c3, $n) + 1;
+                    $n += \strspn($value, c3, $n + 1) + 1;
                     // <https://spec.commonmark.org/0.31.2#link-destination>
                     if ('<' === ($value[$n] ?? 0)) {
                         $eat = ++$n;
@@ -728,34 +763,76 @@ namespace x\markdown\from {
                             $v[0] = u(v(\substr($value, $eat, $n - $eat)));
                             ++$n;
                         }
-                    // TODO: Allow nested `(` and `)` in bare link destination
-                    } else if ($eat = \strcspn($value, c3 . c17 . ')', $n)) {
-                        $v[0] = u(\substr($value, $n, $eat));
-                        $n += $eat;
+                    } else {
+                        $d = 0;
+                        $eat = $n;
+                        while ($n < $limit) {
+                            if ("\\" === $value[$n]) {
+                                $n += 2;
+                                continue;
+                            }
+                            if ('(' === $value[$n]) {
+                                ++$d;
+                                ++$n;
+                                continue;
+                            }
+                            if (')' === $value[$n]) {
+                                if (0 === $d--) {
+                                    break;
+                                }
+                                ++$n;
+                                continue;
+                            }
+                            if (false !== \strpos(c3 . c17, $value[$n])) {
+                                break;
+                            }
+                            ++$n;
+                        }
+                        $v[0] = u(v(\substr($value, $eat, $n - $eat)));
                     }
                     if (isset($v[0]) && ($w = \strspn($value, c3, $n))) {
-                        $q = $value[$n += $w] ?? 0;
-                        if ('"' === $q || "'" === $q || '(' === $q) {
+                        if ('(' === ($q = $value[$n += $w] ?? 0)) {
                             $eat = ++$n;
-                            $q = '(' === $q ? ')' : $q;
                             while ($n < $limit) {
-                                $n += \strcspn($value, "\\" . $q, $n);
+                                $n += \strcspn($value, "\\()", $n, $limit - $n);
+                                if ($n >= $limit || '(' === $value[$n]) {
+                                    break;
+                                }
+                                if ("\\" === $value[$n]) {
+                                    $n += 2;
+                                    continue;
+                                }
+                                $v[1] = v(\substr($value, $eat, $n - $eat));
+                                ++$n;
+                                break;
+                            }
+                        } else if ('"' === $q || "'" === $q) {
+                            $eat = ++$n;
+                            while ($n < $limit) {
+                                $n += \strcspn($value, "\\" . $q, $n, $limit - $n);
                                 if ($n >= $limit || "\\" !== $value[$n]) {
                                     break;
                                 }
                                 $n += 2;
                             }
+                            // Title isn’t closed properly
                             if ($n >= $limit || $q !== $value[$n]) {
-                                break;
+                                $s .= $c;
+                                ++$i;
+                                continue;
                             }
                             $v[1] = v(\substr($value, $eat, $n - $eat));
                             ++$n;
                         }
                     }
                     $n += \strspn($value, c3, $n);
-                    if (isset($v[0]) && ')' === ($value[$n] ?? 0)) {
-                        $eat = $n + 1;
+                    // Link or image isn’t closed properly
+                    if (!isset($v[0]) || ')' !== ($value[$n] ?? 0)) {
+                        $s .= $c;
+                        ++$i;
+                        continue;
                     }
+                    $eat = $n + 1;
                 } else if ('[' === ($value[$n = $i + 1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#collapsed-reference-link>
                     if (']' === ($value[$n + 1] ?? 0) && ($key = s(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' '))) {
@@ -799,8 +876,7 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#images>
                     } else {
                         $row[$current] = ['img', false, [
-                            // 'alt' => $nest,
-                            'alt' => "",
+                            'alt' => \trim(alt($nest)),
                             'src' => $v[0],
                             'title' => $v[1],
                         ]];
@@ -818,6 +894,7 @@ namespace x\markdown\from {
                 ++$i;
                 continue;
             }
+            // At this point, it is safe to skip ahead to the next character that Markdown finds “interesting”
             if ($n = \strcspn($value, c2 . '!&*<[]_`' . "\\", $i)) {
                 $s .= \substr($value, $i, $n);
                 $i += $n;
@@ -828,6 +905,114 @@ namespace x\markdown\from {
         }
         if ("" !== $s) {
             $row[] = h($s);
+        }
+        // TODO: Process emphasis
+        // 1. Find the bottom (start) of the stack
+        $bottom = $last;
+        if (null !== $bottom) {
+            while (null !== $stack[$bottom][2][1]) {
+                $bottom = $stack[$bottom][2][1];
+            }
+        }
+        // 2. Process closers from left to right
+        $after = $bottom;
+        while (null !== $after) {
+            // Not an active emphasis closer?
+            if (!$stack[$after][1][1] ||
+                ('*' !== $stack[$after][0] && '_' !== $stack[$after][0]) ||
+                !$stack[$after][1][3]
+            ) {
+                $after = $stack[$after][2][2];
+                continue;
+            }
+            $matched = false;
+            // 3. Look backward for a valid opener
+            for ($before = $stack[$after][2][1]; null !== $before; $before = $stack[$before][2][1]) {
+                // Must be active, match the character, and be capable of opening
+                if (!$stack[$before][1][1] ||
+                    $stack[$before][0] !== $stack[$after][0] ||
+                    !$stack[$before][1][2]
+                ) {
+                    continue;
+                }
+                $opener_len = $stack[$before][1][0];
+                $closer_len = $stack[$after][1][0];
+                // 4. The "Rule of 3" for multiple delimiters
+                if (($stack[$before][1][3] || $stack[$after][1][2]) &&
+                    ($opener_len + $closer_len) % 3 === 0 &&
+                    $opener_len % 3 !== 0 &&
+                    $closer_len % 3 !== 0
+                ) {
+                    continue;
+                }
+                // --- MATCH FOUND ---
+                $matched = true;
+                // Determine whether to use 1 or 2 delimiters (em vs strong)
+                $use_delims = ($opener_len >= 2 && $closer_len >= 2) ? 2 : 1;
+                $tag = $use_delims === 2 ? 'strong' : 'em';
+                $char = $stack[$before][0];
+                // 5. Build the AST node in $row dynamically
+                $o_idx = $stack[$before][2][0];
+                $c_idx = $stack[$after][2][0];
+                // Gather all parsed nodes between the opener and closer
+                $children = [];
+                for ($k = $o_idx + 1; $k < $c_idx; $k++) {
+                    if (null !== $row[$k] && '' !== $row[$k]) {
+                        $children[] = $row[$k];
+                    }
+                    // Nullify extracted items so they are removed from the flat $row
+                    $row[$k] = null;
+                }
+                // Determine leftover characters for the opener
+                $leftover_opener = $opener_len - $use_delims;
+                $row[$o_idx] = $leftover_opener > 0 ? \str_repeat($char, $leftover_opener) : null;
+                // Determine leftover characters for the closer
+                $leftover_closer = $closer_len - $use_delims;
+                $row[$c_idx] = $leftover_closer > 0 ? \str_repeat($char, $leftover_closer) : null;
+                // Place the newly constructed AST node back into the tree.
+                // Because delimiter runs are grouped by strspn, $c_idx is always > $o_idx + 1.
+                // This means $o_idx + 1 is always a safe empty slot to store our new AST branch.
+                if ($o_idx + 1 < $c_idx) {
+                    $row[$o_idx + 1] = [$tag, $children, []];
+                } else {
+                    // Anomaly fallback (theoretically impossible in standard CommonMark)
+                    $row[$o_idx] = [$tag, $children, []];
+                }
+                // 6. Deduct lengths
+                $stack[$before][1][0] -= $use_delims;
+                $stack[$after][1][0] -= $use_delims;
+                // 7. Sever links for all delimiters physically between $before and $after
+                $stack[$before][2][2] = $after;
+                $stack[$after][2][1] = $before;
+                // 8. Check Opener Exhaustion (remove from stack if 0)
+                if ($stack[$before][1][0] === 0) {
+                    $prev = $stack[$before][2][1];
+                    $stack[$after][2][1] = $prev;
+                    if (null !== $prev) {
+                        $stack[$prev][2][2] = $after;
+                    }
+                }
+                // 9. Check Closer Exhaustion (remove from stack if 0)
+                if ($stack[$after][1][0] === 0) {
+                    $next = $stack[$after][2][2];
+                    $prev = $stack[$after][2][1];
+                    if (null !== $prev) {
+                        $stack[$prev][2][2] = $next;
+                    }
+                    if (null !== $next) {
+                        $stack[$next][2][1] = $prev;
+                    }
+                    // Move pointer to the next delimiter for the outer loop
+                    $after = $next;
+                }
+                // Break the backward search and continue with the outer loop
+                break;
+            }
+            // If no match was found, we must advance $after safely.
+            // If a match WAS found but $after wasn't exhausted, we let it stay on the same $after so it can attempt to close additional tags.
+            if (!$matched) {
+                $after = $stack[$after][2][2];
+            }
         }
         $row = \array_values($row);
         if (1 === \count($row) && \is_string($row[0])) {
@@ -846,10 +1031,10 @@ namespace x\markdown\from {
         while ($i < $limit) {
             $m = m($value, $i, $limit);
             // <https://spec.commonmark.org/0.31.2#blank-line>
-            if ($m[1] === \strspn($value, c1, $i, $limit - $i)) {
+            if ($m[0] === \strspn($value, c1, $i, $limit - $i)) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                while ($i < $limit && ($m = m($value, $i, $limit)) && $m[1] === \strspn($value, c1, $i, $limit - $i)) {
-                    $i += $m[1] + $m[2];
+                while ($i < $limit && ($m = m($value, $i, $limit)) && $m[0] === \strspn($value, c1, $i, $limit - $i)) {
+                    $i += $m[0] + $m[1];
                 }
                 ++$void;
                 continue;
@@ -860,15 +1045,15 @@ namespace x\markdown\from {
             if ($d[0] >= 4) {
                 // <https://spec.commonmark.org/0.31.2#example-113>
                 if ("" !== $s) {
-                    $s .= \substr($value, $i, $m[1]) . "\n";
-                    $i += $m[1] + $m[2];
+                    $s .= \substr($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
                     continue;
                 }
-                $s = \substr($value, $i + ($w = w($value, $i))[0], $m[1] - $w[0]);
-                $i += $m[1] + $m[2];
+                $s = \substr($value, $i + ($w = w($value, $i))[0], $m[0] - $w[0]);
+                $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
-                    if ($m[1] !== \strspn($value, c1, $i, $m[1]) && d($value, $i, $limit)[0] < 4) {
+                    if ($m[0] !== \strspn($value, c1, $i, $m[0]) && d($value, $i, $limit)[0] < 4) {
                         // Previous line was a blank line
                         if ("" !== $s && "\n" === $s[\strlen($s) - 1]) {
                             $s = \rtrim($s, "\n");
@@ -876,10 +1061,10 @@ namespace x\markdown\from {
                         }
                         break;
                     }
-                    $s .= "\n" . \substr($value, $i + ($w = w($value, $i))[0], $m[1] - $w[0]);
-                    $i += $m[1] + $m[2];
+                    $s .= "\n" . \substr($value, $i + ($w = w($value, $i))[0], $m[0] - $w[0]);
+                    $i += $m[0] + $m[1];
                     // End of the stream
-                    if (0 === $m[2]) {
+                    if (0 === $m[1]) {
                         break;
                     }
                 }
@@ -926,8 +1111,8 @@ namespace x\markdown\from {
                         $i = $to + r($value, $to, $limit);
                         continue;
                     }
-                    $s .= \substr($value, $i, $m[1]) . "\n";
-                    $i += $m[1] + $m[2];
+                    $s .= \substr($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#html-tag>
@@ -943,18 +1128,18 @@ namespace x\markdown\from {
                 // that looks like `<div <!— <?asdf` still counts as a valid HTML block type 6.
                 if (isset(b6[$b = \trim($b, '/')])) {
                     "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                    $s = \substr($value, $i, $m[1]);
-                    $i += $m[1] + $m[2];
+                    $s = \substr($value, $i, $m[0]);
+                    $i += $m[0] + $m[1];
                     while ($i < $limit) {
                         $m = m($value, $i, $limit);
                         // A blank line ends the current block
-                        if ($m[1] === \strspn($value, c1, $i, $m[1])) {
+                        if ($m[0] === \strspn($value, c1, $i, $m[0])) {
                             break;
                         }
-                        $s .= "\n" . \substr($value, $i, $m[1]);
-                        $i += $m[1] + $m[2];
+                        $s .= "\n" . \substr($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
                         // End of the stream
-                        if (0 === $m[2]) {
+                        if (0 === $m[1]) {
                             break;
                         }
                     }
@@ -964,23 +1149,23 @@ namespace x\markdown\from {
                 }
                 // HTML block type 7 cannot interrupt a paragraph
                 if ("" === $s && $d + $i + 2 < $limit) {
-                    for ($n = $i + $m[1]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
+                    for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                     // HTML block type 7 must be “complete”
                     if ($n > $i && '>' === $value[$n - 1]) {
                         $row = row($value, $lot, 1, $d + $i, $n);
                         if (\is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && false === $row[0] && 7 === $row[3][0]) {
-                            $s = \substr($value, $i, $m[1]);
-                            $i += $m[1] + $m[2];
+                            $s = \substr($value, $i, $m[0]);
+                            $i += $m[0] + $m[1];
                             while ($i < $limit) {
                                 $m = m($value, $i, $limit);
                                 // A blank line ends the current block
-                                if ($m[1] === \strspn($value, c1, $i, $m[1])) {
+                                if ($m[0] === \strspn($value, c1, $i, $m[0])) {
                                     break;
                                 }
-                                $s .= "\n" . \substr($value, $i, $m[1]);
-                                $i += $m[1] + $m[2];
+                                $s .= "\n" . \substr($value, $i, $m[0]);
+                                $i += $m[0] + $m[1];
                                 // End of the stream
-                                if (0 === $m[2]) {
+                                if (0 === $m[1]) {
                                     break;
                                 }
                             }
@@ -990,29 +1175,29 @@ namespace x\markdown\from {
                         }
                     }
                 }
-                $s .= \substr($value, $i, $m[1]) . "\n";
-                $i += $m[1] + $m[2];
+                $s .= \substr($value, $i, $m[0]) . "\n";
+                $i += $m[0] + $m[1];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#block-quotes>
             if ('>' === $value[$d + $i]) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
                 $w = w($value, $i + ($n = $d + 1), 1, $n);
-                $s .= $w[1] . \substr($value, $i + ($n += $w[0]), $m[1] - $n);
-                $i += $m[1] + $m[2];
+                $s .= $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
                     if (($d = d($value, $i, $limit))[0] < 4 && '>' === ($value[$d[1] + $i] ?? 0)) {
                         $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
-                        $s .= "\n" . $w[1] . \substr($value, $i + ($n += $w[0]), $m[1] - $n);
-                        $i += $m[1] + $m[2];
+                        $s .= "\n" . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                        $i += $m[0] + $m[1];
                         continue;
                     }
                     // A blank line ends the current block
-                    if ($m[1] === \strspn($value, c1, $i, $m[1])) {
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
                         break;
                     }
-                    $b = rows($value, $lot, 0, $i, $i + $m[1])[0] ?? [];
+                    $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                     // Current line is not a paragraph continuation text
                     if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                         break;
@@ -1038,15 +1223,15 @@ namespace x\markdown\from {
                     if (false !== \strpos('-=', $value[$i + $w[0]] ?? x1a)) {
                         $s .= "\n" . \substr($value, $i, $w[0]);
                         // Add a back-slash escape so current line will not be treated as a setext heading’s underline
-                        $s .= "\\" . \substr($value, $i + $w[0], $m[1] - $w[0]);
-                        $i += $m[1] + $m[2];
+                        $s .= "\\" . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                        $i += $m[0] + $m[1];
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                    $s .= "\n" . \substr($value, $i, $m[1]);
-                    $i += $m[1] + $m[2];
+                    $s .= "\n" . \substr($value, $i, $m[0]);
+                    $i += $m[0] + $m[1];
                     // End of the stream
-                    if (0 === $m[2]) {
+                    if (0 === $m[1]) {
                         break;
                     }
                 }
@@ -1062,30 +1247,30 @@ namespace x\markdown\from {
                 $n += \strspn($value, c1, $n);
                 // Refresh the cursor in case the label spans multiple line(s)
                 $m = m($value, $i = $n, $limit);
-                $s = \substr($value, $i, $m[1]);
-                $i += $m[1] + $m[2];
+                $s = \substr($value, $i, $m[0]);
+                $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
                     // A blank line ends the current block
-                    if ($m[1] === \strspn($value, c1, $i, $m[1])) {
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
                         break;
                     }
                     // Current line is an indented line
                     if (d($value, $i, $limit)[0]) {
-                        $s .= "\n" . \substr($value, $i, $m[1]);
-                        $i += $m[1] + $m[2];
+                        $s .= "\n" . \substr($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
                         continue;
                     }
-                    $b = rows($value, $lot, 0, $i, $i + $m[1])[0] ?? [];
+                    $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                     // Current line is not a paragraph continuation text
                     if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                         break;
                     }
                     // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                    $s .= "\n" . \substr($value, $i, $m[1]);
-                    $i += $m[1] + $m[2];
+                    $s .= "\n" . \substr($value, $i, $m[0]);
+                    $i += $m[0] + $m[1];
                     // End of the stream
-                    if (0 === $m[2]) {
+                    if (0 === $m[1]) {
                         break;
                     }
                 }
@@ -1100,19 +1285,19 @@ namespace x\markdown\from {
                 $n += \strspn($value, c1, $n);
                 // Refresh the cursor in case the label spans multiple line(s)
                 $m = m($value, $i = $n, $limit);
-                $s = \substr($value, $i, $m[1]);
-                $i += $m[1] + $m[2];
+                $s = \substr($value, $i, $m[0]);
+                $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
-                    if ($m[1] === \strspn($value, c1, $i, $m[1])) {
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
                         $s .= "\n";
-                        $i += $m[1] + $m[2];
+                        $i += $m[0] + $m[1];
                         continue;
                     }
                     // Current line is an indented line
                     if (d($value, $i, $limit)[0]) {
-                        $s .= "\n" . \substr($value, $i, $m[1]);
-                        $i += $m[1] + $m[2];
+                        $s .= "\n" . \substr($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
                         continue;
                     }
                     // Previous line was a blank line
@@ -1121,16 +1306,16 @@ namespace x\markdown\from {
                         ++$void;
                         break;
                     }
-                    $b = rows($value, $lot, 0, $i, $i + $m[1])[0] ?? [];
+                    $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                     // Current line is not a paragraph continuation text
                     if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                         break;
                     }
                     // <https://spec.commonmark.org/0.31.2#paragraph-continuation-text>
-                    $s .= "\n" . \substr($value, $i, $m[1]);
-                    $i += $m[1] + $m[2];
+                    $s .= "\n" . \substr($value, $i, $m[0]);
+                    $i += $m[0] + $m[1];
                     // End of the stream
-                    if (0 === $m[2]) {
+                    if (0 === $m[1]) {
                         break;
                     }
                 }
@@ -1152,8 +1337,8 @@ namespace x\markdown\from {
                     // Make sure it is not an HTML block other than type 7
                     if ($r && ($b = rows($value, $lot, 0, $n, $n + \strcspn($value, c2, $n))[0][0] ?? 0)) {
                         if (false === $b[0] && 7 !== $b[3][0]) {
-                            $s .= \substr($value, $i, $m[1]) . "\n";
-                            $i += $m[1] + $m[2];
+                            $s .= \substr($value, $i, $m[0]) . "\n";
+                            $i += $m[0] + $m[1];
                             continue;
                         }
                     }
@@ -1234,38 +1419,38 @@ namespace x\markdown\from {
                     $i = $n;
                     continue;
                 }
-                $s .= \substr($value, $i, $m[1]) . "\n";
-                $i += $m[1] + $m[2];
+                $s .= \substr($value, $i, $m[0]) . "\n";
+                $i += $m[0] + $m[1];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#code-fence>
             if (false !== \strpos('`~', $c = $value[$d + $i]) && ($min = \strspn($value, $c, $d + $i)) >= 3) {
                 // <https://spec.commonmark.org/0.31.2#info-string>
-                $info = \trim(\substr($value, $d + $i + $min, $m[1] - $d - $min));
+                $info = \trim(\substr($value, $d + $i + $min, $m[0] - $d - $min));
                 // <https://spec.commonmark.org/0.31.2#example-145>
                 if ('`' === $c && false !== \strpos($info, $c)) {
-                    $s .= \substr($value, $i, $m[1]) . "\n";
-                    $i += $m[1] + $m[2];
+                    $s .= \substr($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
                     continue;
                 }
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                $i += $m[1] + $m[2];
+                $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
                     $w = \strspn($value, ' ', $i);
                     // End of the block
                     if ($w < 4 && \strspn($value, $c, $i + $w) >= $min) {
-                        $i += $m[1] + $m[2];
+                        $i += $m[0] + $m[1];
                         break;
                     }
                     // <https://spec.commonmark.org/0.31.2#example-131>
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
                     $w = w($value, $i, $d);
-                    $s .= $w[1] . \substr($value, $i + $w[0], $m[1] - $w[0]) . "\n";
-                    $i += $m[1] + $m[2];
+                    $s .= $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]) . "\n";
+                    $i += $m[0] + $m[1];
                     // End of the stream
-                    if (0 === $m[2]) {
+                    if (0 === $m[1]) {
                         break;
                     }
                 }
@@ -1286,9 +1471,9 @@ namespace x\markdown\from {
                     $eat += $a[1];
                 }
                 $eat += \strspn($value, c1, $eat);
-                if ($eat !== $i + $m[1]) {
-                    $s .= \substr($value, $i, $m[1]) . "\n";
-                    $i += $m[1] + $m[2];
+                if ($eat !== $i + $m[0]) {
+                    $s .= \substr($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
                     continue;
                 }
                 $s = \trim($s);
@@ -1306,7 +1491,7 @@ namespace x\markdown\from {
                     }
                 }
                 $rows[] = ['h' . ('-' === $c ? 2 : 1), $s, $a[0] ?? [], ['-' === $c ? 2 : 1, $c]];
-                $i += $m[1] + $m[2];
+                $i += $m[0] + $m[1];
                 $s = "";
                 continue;
             }
@@ -1315,16 +1500,16 @@ namespace x\markdown\from {
             // next character is allowed to be a white-space, it is necessary to verify that the current line contains
             // more than 2 `-`, and consists solely of `-` and white-space(s). Any other combination is considered
             // invalid and will therefore fall through the list parser.
-            if (false !== \strpos('*-_', $c = $value[$d + $i]) && \strspn($value, c1 . $c, $i, $limit - $i) === $m[1] && ($n = \substr_count($value, $c, $i, $m[1])) >= 3) {
+            if (false !== \strpos('*-_', $c = $value[$d + $i]) && \strspn($value, c1 . $c, $i, $limit - $i) === $m[0] && ($n = \substr_count($value, $c, $i, $m[0])) >= 3) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
                 $rows[] = ['hr', false, [], [$n, $c]];
-                $i += $m[1] + $m[2];
+                $i += $m[0] + $m[1];
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#atx-heading>
             if (($level = \strspn($value, '#', $d + $i)) && $level < 7 && false !== \strpos(c3, $value[$n = $d + $i + $level] ?? c2[0])) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]);
-                $s = \trim(\substr($value, $n + \strspn($value, c1, $n), $m[1] - $level));
+                $s = \trim(\substr($value, $n + \strspn($value, c1, $n), $m[0] - $level));
                 if ($max = \strlen($s)) {
                     $a = [];
                     if (false !== ($start = \strrpos($s, '{'))) {
@@ -1353,12 +1538,12 @@ namespace x\markdown\from {
                     }
                 }
                 $rows[] = ['h' . $level, \trim($s), $a[0] ?? [], [$level, '#']];
-                $i += $m[1] + $m[2];
+                $i += $m[0] + $m[1];
                 $s = "";
                 continue;
             }
-            $s .= \substr($value, $i, $m[1]) . "\n";
-            $i += $m[1] + $m[2];
+            $s .= \substr($value, $i, $m[0]) . "\n";
+            $i += $m[0] + $m[1];
         }
         if ("" !== $s) {
             $rows[] = ['p', \trim($s), []];
