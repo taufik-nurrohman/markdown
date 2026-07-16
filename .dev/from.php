@@ -253,6 +253,116 @@ namespace x\markdown\from {
         }
         return [$d, $n];
     }
+    function e(array $row, array $stack, ?int $last) {
+        // 1. Find the bottom (start) of the stack
+        $bottom = $last;
+        if (null !== $bottom) {
+            while (null !== $stack[$bottom][2][1]) {
+                $bottom = $stack[$bottom][2][1];
+            }
+        }
+        // 2. Process closers from left to right
+        $after = $bottom;
+        while (null !== $after) {
+            // Not an active emphasis closer?
+            if (!$stack[$after][1][1] ||
+                ('*' !== $stack[$after][0] && '_' !== $stack[$after][0]) ||
+                !$stack[$after][1][3]
+            ) {
+                $after = $stack[$after][2][2];
+                continue;
+            }
+            $matched = false;
+            // 3. Look backward for a valid opener
+            for ($before = $stack[$after][2][1]; null !== $before; $before = $stack[$before][2][1]) {
+                // Must be active, match the character, and be capable of opening
+                if (!$stack[$before][1][1] ||
+                    $stack[$before][0] !== $stack[$after][0] ||
+                    !$stack[$before][1][2]
+                ) {
+                    continue;
+                }
+                $opener_len = $stack[$before][1][0];
+                $closer_len = $stack[$after][1][0];
+                // 4. The "Rule of 3" for multiple delimiters
+                if (($stack[$before][1][3] || $stack[$after][1][2]) &&
+                    ($opener_len + $closer_len) % 3 === 0 &&
+                    $opener_len % 3 !== 0 &&
+                    $closer_len % 3 !== 0
+                ) {
+                    continue;
+                }
+                // --- MATCH FOUND ---
+                $matched = true;
+                // Determine whether to use 1 or 2 delimiters (em vs strong)
+                $use_delims = ($opener_len >= 2 && $closer_len >= 2) ? 2 : 1;
+                $tag = $use_delims === 2 ? 'strong' : 'em';
+                $char = $stack[$before][0];
+                // 5. Build the AST node in $row dynamically
+                $o_idx = $stack[$before][2][0];
+                $c_idx = $stack[$after][2][0];
+                // Gather all parsed nodes between the opener and closer
+                $children = [];
+                for ($k = $o_idx + 1; $k < $c_idx; $k++) {
+                    if (null !== $row[$k] && '' !== $row[$k]) {
+                        $children[] = $row[$k];
+                    }
+                    // Nullify extracted items so they are removed from the flat $row
+                    $row[$k] = null;
+                }
+                // Determine leftover characters for the opener
+                $leftover_opener = $opener_len - $use_delims;
+                $row[$o_idx] = $leftover_opener > 0 ? \str_repeat($char, $leftover_opener) : null;
+                // Determine leftover characters for the closer
+                $leftover_closer = $closer_len - $use_delims;
+                $row[$c_idx] = $leftover_closer > 0 ? \str_repeat($char, $leftover_closer) : null;
+                // Place the newly constructed AST node back into the tree.
+                // Because delimiter runs are grouped by strspn, $c_idx is always > $o_idx + 1.
+                // This means $o_idx + 1 is always a safe empty slot to store our new AST branch.
+                if ($o_idx + 1 < $c_idx) {
+                    $row[$o_idx + 1] = [$tag, $children, []];
+                } else {
+                    // Anomaly fallback (theoretically impossible in standard CommonMark)
+                    $row[$o_idx] = [$tag, $children, []];
+                }
+                // 6. Deduct lengths
+                $stack[$before][1][0] -= $use_delims;
+                $stack[$after][1][0] -= $use_delims;
+                // 7. Sever links for all delimiters physically between $before and $after
+                $stack[$before][2][2] = $after;
+                $stack[$after][2][1] = $before;
+                // 8. Check Opener Exhaustion (remove from stack if 0)
+                if ($stack[$before][1][0] === 0) {
+                    $prev = $stack[$before][2][1];
+                    $stack[$after][2][1] = $prev;
+                    if (null !== $prev) {
+                        $stack[$prev][2][2] = $after;
+                    }
+                }
+                // 9. Check Closer Exhaustion (remove from stack if 0)
+                if ($stack[$after][1][0] === 0) {
+                    $next = $stack[$after][2][2];
+                    $prev = $stack[$after][2][1];
+                    if (null !== $prev) {
+                        $stack[$prev][2][2] = $next;
+                    }
+                    if (null !== $next) {
+                        $stack[$next][2][1] = $prev;
+                    }
+                    // Move pointer to the next delimiter for the outer loop
+                    $after = $next;
+                }
+                // Break the backward search and continue with the outer loop
+                break;
+            }
+            // If no match was found, we must advance $after safely.
+            // If a match WAS found but $after wasn't exhausted, we let it stay on the same $after so it can attempt to close additional tags.
+            if (!$matched) {
+                $after = $stack[$after][2][2];
+            }
+        }
+        return $row;
+    }
     function h(string $text) {
         return \strtr($text, ['&' => '&amp;', '<' => '&lt;', '>' => '&gt;']);
     }
@@ -907,114 +1017,7 @@ namespace x\markdown\from {
             $row[] = h($s);
         }
         // TODO: Process emphasis
-        // 1. Find the bottom (start) of the stack
-        $bottom = $last;
-        if (null !== $bottom) {
-            while (null !== $stack[$bottom][2][1]) {
-                $bottom = $stack[$bottom][2][1];
-            }
-        }
-        // 2. Process closers from left to right
-        $after = $bottom;
-        while (null !== $after) {
-            // Not an active emphasis closer?
-            if (!$stack[$after][1][1] ||
-                ('*' !== $stack[$after][0] && '_' !== $stack[$after][0]) ||
-                !$stack[$after][1][3]
-            ) {
-                $after = $stack[$after][2][2];
-                continue;
-            }
-            $matched = false;
-            // 3. Look backward for a valid opener
-            for ($before = $stack[$after][2][1]; null !== $before; $before = $stack[$before][2][1]) {
-                // Must be active, match the character, and be capable of opening
-                if (!$stack[$before][1][1] ||
-                    $stack[$before][0] !== $stack[$after][0] ||
-                    !$stack[$before][1][2]
-                ) {
-                    continue;
-                }
-                $opener_len = $stack[$before][1][0];
-                $closer_len = $stack[$after][1][0];
-                // 4. The "Rule of 3" for multiple delimiters
-                if (($stack[$before][1][3] || $stack[$after][1][2]) &&
-                    ($opener_len + $closer_len) % 3 === 0 &&
-                    $opener_len % 3 !== 0 &&
-                    $closer_len % 3 !== 0
-                ) {
-                    continue;
-                }
-                // --- MATCH FOUND ---
-                $matched = true;
-                // Determine whether to use 1 or 2 delimiters (em vs strong)
-                $use_delims = ($opener_len >= 2 && $closer_len >= 2) ? 2 : 1;
-                $tag = $use_delims === 2 ? 'strong' : 'em';
-                $char = $stack[$before][0];
-                // 5. Build the AST node in $row dynamically
-                $o_idx = $stack[$before][2][0];
-                $c_idx = $stack[$after][2][0];
-                // Gather all parsed nodes between the opener and closer
-                $children = [];
-                for ($k = $o_idx + 1; $k < $c_idx; $k++) {
-                    if (null !== $row[$k] && '' !== $row[$k]) {
-                        $children[] = $row[$k];
-                    }
-                    // Nullify extracted items so they are removed from the flat $row
-                    $row[$k] = null;
-                }
-                // Determine leftover characters for the opener
-                $leftover_opener = $opener_len - $use_delims;
-                $row[$o_idx] = $leftover_opener > 0 ? \str_repeat($char, $leftover_opener) : null;
-                // Determine leftover characters for the closer
-                $leftover_closer = $closer_len - $use_delims;
-                $row[$c_idx] = $leftover_closer > 0 ? \str_repeat($char, $leftover_closer) : null;
-                // Place the newly constructed AST node back into the tree.
-                // Because delimiter runs are grouped by strspn, $c_idx is always > $o_idx + 1.
-                // This means $o_idx + 1 is always a safe empty slot to store our new AST branch.
-                if ($o_idx + 1 < $c_idx) {
-                    $row[$o_idx + 1] = [$tag, $children, []];
-                } else {
-                    // Anomaly fallback (theoretically impossible in standard CommonMark)
-                    $row[$o_idx] = [$tag, $children, []];
-                }
-                // 6. Deduct lengths
-                $stack[$before][1][0] -= $use_delims;
-                $stack[$after][1][0] -= $use_delims;
-                // 7. Sever links for all delimiters physically between $before and $after
-                $stack[$before][2][2] = $after;
-                $stack[$after][2][1] = $before;
-                // 8. Check Opener Exhaustion (remove from stack if 0)
-                if ($stack[$before][1][0] === 0) {
-                    $prev = $stack[$before][2][1];
-                    $stack[$after][2][1] = $prev;
-                    if (null !== $prev) {
-                        $stack[$prev][2][2] = $after;
-                    }
-                }
-                // 9. Check Closer Exhaustion (remove from stack if 0)
-                if ($stack[$after][1][0] === 0) {
-                    $next = $stack[$after][2][2];
-                    $prev = $stack[$after][2][1];
-                    if (null !== $prev) {
-                        $stack[$prev][2][2] = $next;
-                    }
-                    if (null !== $next) {
-                        $stack[$next][2][1] = $prev;
-                    }
-                    // Move pointer to the next delimiter for the outer loop
-                    $after = $next;
-                }
-                // Break the backward search and continue with the outer loop
-                break;
-            }
-            // If no match was found, we must advance $after safely.
-            // If a match WAS found but $after wasn't exhausted, we let it stay on the same $after so it can attempt to close additional tags.
-            if (!$matched) {
-                $after = $stack[$after][2][2];
-            }
-        }
-        $row = \array_values($row);
+        $row = \array_values(e($row, $stack, $last));
         if (1 === \count($row) && \is_string($row[0])) {
             return $row[0];
         }
