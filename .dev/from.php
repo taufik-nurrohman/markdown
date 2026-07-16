@@ -339,7 +339,7 @@ namespace x\markdown\from {
         if ($deep < 1) {
             return substr($value, $i, $limit - $i);
         }
-        // Check in case the whole text is an abbreviation
+        // In case the entire text is an abbreviation, parse it right away!
         if ($v = $lot[2][$value] ?? 0) {
             return [['abbr', h(v($value)), ['title' => $v]]];
         }
@@ -605,9 +605,8 @@ namespace x\markdown\from {
             if ('!' === $c && '[' === ($value[$i + 1] ?? 0)) {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $current = \count($stack);
-                $i += 2;
                 $row[] = $c .= '[';
-                $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last], false];
+                $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last, null, $i += 2]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
@@ -619,12 +618,11 @@ namespace x\markdown\from {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $current = \count($stack);
                 $row[] = $c;
-                $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last], false];
+                $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last, null, ++$i]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
                 $last = $current;
-                ++$i;
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#delimiter-run>
@@ -634,11 +632,10 @@ namespace x\markdown\from {
                 $current = \count($stack);
                 $n = \strspn($value, $c, $i, $limit - $i);
                 $row[] = \substr($value, $i, $n);
-                $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last], false];
+                $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last, null, $i += $n]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
-                $i += $n;
                 $last = $current;
                 continue;
             }
@@ -649,21 +646,21 @@ namespace x\markdown\from {
                 $current = \count($stack);
                 $n = \strspn($value, $c, $i, $limit - $i);
                 $row[] = \substr($value, $i, $n);
-                $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last], false];
+                $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last, null, $i += $n]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
-                $i += $n;
                 $last = $current;
                 continue;
             }
             // Michel Fortin’s way to determine text that should be replaced with an abbreviation is very simple. He
-            // looks for text that is not preceded or followed by other word character(s). He relied on a regular
-            // expression, yet I already have a list of word(s) to examine the character that precedes and follows the
-            // current portion of text. Below is my effort to achieve the same result.
+            // looks for text that is not preceded or followed by a word character. He relied on a regular expression,
+            // yet I already have a list of word(s) to examine the character that precedes and follows the current
+            // portion of text. Below is my effort to achieve the same result, without regular expression.
             // <https://github.com/michelf/php-markdown/blob/2.0.0/Michelf/MarkdownExtra.php#L1845-L1847>
             if ($lot[1]) {
                 $best = [null, -1];
+                // The abbreviation list is already sorted by the length of its key, from longest to shortest
                 foreach ($lot[1] as $k => $v) {
                     if (false === ($n = \strpos($value, $k, $i))) {
                         continue;
@@ -695,58 +692,133 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#look-for-link-or-image>
             if (']' === $c) {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
-                // No opening `[`
+                // No `[` and `![`
                 if (null === $last) {
-                    $s .= ']';
+                    $s .= $c;
                     ++$i;
                     continue;
                 }
-                // Find nearest `[`
-                for ($z = $last; null !== $z; $z = $stack[$z][2][1]) {
-                    if (('![' === $stack[$z][0] || '[' === $stack[$z][0]) && $stack[$z][1][1]) {
+                // Iterate over the delimiter stack from the stack’s bottom to find the nearest `[` or `![`
+                for ($at = $last; null !== $at; $at = $stack[$at][2][1]) {
+                    if (('![' === $stack[$at][0] || '[' === $stack[$at][0]) && $stack[$at][1][1]) {
                         break;
                     }
                 }
-                if (null === $z) {
-                    $s .= ']';
+                if (null === $at) {
+                    $s .= $c;
                     ++$i;
                     continue;
                 }
-                // Not an inline link
-                if ('(' !== ($value[$i + 1] ?? 0)) {
-                    $s .= ']';
-                    ++$i;
-                    continue;
-                }
-                // Parse destination (simplified)
-                $j = $i + 2;
-                $n = \strpos($value, ')', $j);
-                if (false === $n) {
-                    $s .= ']';
-                    ++$i;
-                    continue;
-                }
-                $url = \substr($value, $j, $n - $j);
-                // Build children
-                $from = $stack[$z][2][0];
-                $children = [];
-                foreach ($row as $k => $v) {
-                    if ($k <= $from) {
-                        continue;
+                $eat = null;
+                $v = [null, null];
+                // <https://spec.commonmark.org/0.31.2#inline-link>
+                if ('(' === ($value[$n = $i + 1] ?? 0)) {
+                    $n += \strspn($value, c3, $n) + 1;
+                    // <https://spec.commonmark.org/0.31.2#link-destination>
+                    if ('<' === ($value[$n] ?? 0)) {
+                        $eat = ++$n;
+                        while ($n < $limit) {
+                            $n += \strcspn($value, c2 . "\\>", $n);
+                            if ($n >= $limit || "\\" !== $value[$n]) {
+                                break;
+                            }
+                            $n += 2;
+                        }
+                        if ('>' === ($value[$n] ?? 0)) {
+                            $v[0] = u(v(\substr($value, $eat, $n - $eat)));
+                            ++$n;
+                        }
+                    // TODO: Allow nested `(` and `)` in bare link destination
+                    } else if ($eat = \strcspn($value, c3 . c17 . ')', $n)) {
+                        $v[0] = u(\substr($value, $n, $eat));
+                        $n += $eat;
                     }
-                    $children[] = $v;
-                    unset($row[$k]);
+                    if (isset($v[0]) && ($w = \strspn($value, c3, $n))) {
+                        $q = $value[$n += $w] ?? 0;
+                        if ('"' === $q || "'" === $q || '(' === $q) {
+                            $eat = ++$n;
+                            $q = '(' === $q ? ')' : $q;
+                            while ($n < $limit) {
+                                $n += \strcspn($value, "\\" . $q, $n);
+                                if ($n >= $limit || "\\" !== $value[$n]) {
+                                    break;
+                                }
+                                $n += 2;
+                            }
+                            if ($n >= $limit || $q !== $value[$n]) {
+                                break;
+                            }
+                            $v[1] = v(\substr($value, $eat, $n - $eat));
+                            ++$n;
+                        }
+                    }
+                    $n += \strspn($value, c3, $n);
+                    if (isset($v[0]) && ')' === ($value[$n] ?? 0)) {
+                        $eat = $n + 1;
+                    }
+                } else if ('[' === ($value[$n = $i + 1] ?? 0)) {
+                    // <https://spec.commonmark.org/0.31.2#collapsed-reference-link>
+                    if (']' === ($value[$n + 1] ?? 0) && ($key = s(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' '))) {
+                        // <https://spec.commonmark.org/0.31.2#matches>
+                        $key = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($key, \MB_CASE_FOLD, 'UTF-8') : \strtolower($key);
+                        if ($v = ($lot[0][$key] ?? 0)) {
+                            $eat = $i + 3;
+                        }
+                    // <https://spec.commonmark.org/0.31.2#full-reference-link>
+                    } else if ($key = k($value, $n, $limit)) {
+                        // <https://spec.commonmark.org/0.31.2#matches>
+                        $key[0] = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($key[0], \MB_CASE_FOLD, 'UTF-8') : \strtolower($key[0]);
+                        if ($v = ($lot[0][$key[0]] ?? 0)) {
+                            $eat = $key[1] + $n;
+                        }
+                    }
+                // <https://spec.commonmark.org/0.31.2#shortcut-reference-link>
+                } else if ($key = s(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' ')) {
+                    // <https://spec.commonmark.org/0.31.2#matches>
+                    $key = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($key, \MB_CASE_FOLD, 'UTF-8') : \strtolower($key);
+                    if ($v = ($lot[0][$key] ?? 0)) {
+                        $eat = $i + 1;
+                    }
                 }
-                // Replace `![` and `[` node
-                $row[$from] = '[' === $stack[$z][0] ? ['a', $children, ['href' => $url]] : ['img', false, [
-                    'alt' => $children,
-                    'src' => $url
-                ]];
-                $stack[$z][1][1] = false;
-                $i = $n + 1;
+                if (null !== $eat && isset($v[0])) {
+                    $current = $stack[$at][2][0];
+                    $nest = [];
+                    foreach ($row as $k => $r) {
+                        if ($k <= $current) {
+                            continue;
+                        }
+                        $nest[] = $r;
+                        unset($row[$k]);
+                    }
+                    // <https://spec.commonmark.org/0.31.2#links>
+                    if ('[' === $stack[$at][0]) {
+                        $row[$current] = ['a', $nest, ($v[2] ?? []) + [
+                            'href' => $v[0],
+                            'title' => $v[1]
+                        ]];
+                    // <https://spec.commonmark.org/0.31.2#images>
+                    } else {
+                        $row[$current] = ['img', false, [
+                            // 'alt' => $nest,
+                            'alt' => "",
+                            'src' => $v[0],
+                            'title' => $v[1],
+                        ]];
+                    }
+                    $i = $eat;
+                    $stack[$at][1][1] = false;
+                    // Check for attribute syntax after link or image
+                    if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
+                        $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
+                        $i += $a[1];
+                    }
+                    continue;
+                }
+                $s .= $c;
+                ++$i;
                 continue;
             }
-            if ($n = \strcspn($value, c2 . '!&*<[' . "\\", $i)) {
+            if ($n = \strcspn($value, c2 . '!&*<[]_`' . "\\", $i)) {
                 $s .= \substr($value, $i, $n);
                 $i += $n;
                 continue;
@@ -1292,17 +1364,20 @@ namespace x\markdown\from {
             $rows[] = ['p', \trim($s), []];
         }
         if ($deep > 0 && $rows) {
-            // order abbreviation(s) from the longest key to the shortest key
+            // Sort the abbreviation list based on the length of the key(s), from longest to shortest. This ensures
+            // that, during parsing, the text “JavaScript” will be processed before the text “Java”, for example.
             $lot[1] && \uksort($lot[1], function ($a, $b) {
                 return \strlen($b) <=> \strlen($a);
             });
             foreach ($rows as &$row) {
+                // Container block(s)
                 if ('blockquote' === $row[0]) {
                     $row[1] = rows($row[1], $lot, $deep - 1, 0, \strlen($row[1]))[0] ?: "";
                     continue;
                 }
                 if ('dl' === $row[0]) {}
                 if (\in_array($row[0], ['ol', 'ul'], true)) {}
+                // Leaf block(s)
                 if (false !== $row[0] && \is_string($row[1])) {
                     $row[1] = row($row[1], $lot, $deep - 1, 0, \strlen($row[1]));
                 }

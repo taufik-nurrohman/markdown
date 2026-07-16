@@ -130,18 +130,7 @@ function view(string $text) {
 }
 
 function view_result(string $text) {
-    $i = 0;
-    while (false !== ($from = stripos($text, '<script', $i))) {
-        if (false === ($from = strpos($text, '>', $from))) {
-            break;
-        }
-        if (false === ($to = stripos($text, '</script>', $from + 1))) {
-            break;
-        }
-        $text = substr_replace($text, "", $from + 1, $to - $from - 1);
-        $i = $from + 1;
-    }
-    return $text;
+    return false !== stripos($text, '</script>') ? preg_replace('~(<script>)([\s\S]*?)(</script>)~i', '$1$3', $text) : $text;
 }
 
 function view_source(string $text) {
@@ -344,6 +333,11 @@ article del {
 }
 article li:where(:not(:first-child)) > :where({$blocks}):where(:first-child) {
   margin-top: 1rem;
+}
+article p img {
+  display: inline-block;
+  position: relative;
+  top: 0.25rem;
 }
 article pre code {
   background: #000;
