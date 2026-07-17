@@ -222,7 +222,7 @@ namespace x\markdown\from {
             }
             $s .= $r[1];
         }
-        return s($s, ' ');
+        return \htmlspecialchars_decode(s($s, ' '));
     }
     function d(string $value, int $i, int $limit) {
         if (false === \strpos(c1, $value[$i])) {
@@ -953,7 +953,7 @@ namespace x\markdown\from {
                         // Don’t put the fragment into the `alt` attribute yet. We need to make sure that any emphasis
                         // gets processed first, and then we can move the result into the `alt` attribute.
                         $row[$current] = ['img', false, [
-                            'alt' => \htmlspecialchars_decode(alt($chunk)),
+                            'alt' => alt($chunk),
                             'src' => $v[0],
                             'title' => $v[1]
                         ]];
@@ -962,7 +962,7 @@ namespace x\markdown\from {
                     $stack[$at][1][1] = false;
                     // Check for attribute syntax after link or image
                     if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
-                        $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
+                        $row[$current][2] = $a[0] + $row[$current][2];
                         $i += $a[1];
                     }
                     continue;
@@ -1576,11 +1576,14 @@ namespace x\markdown\from {
         $b = "" !== $tab && isset($blocks[$row[0]]);
         $tab = \str_repeat($tab, $deep);
         $s = $tab . '<' . $row[0];
-        if ($row[2]) foreach ($row[2] as $k => $v) {
-            if (false === $v || null === $v) {
-                continue;
+        if ($row[2]) {
+            \ksort($row[2]);
+            foreach ($row[2] as $k => $v) {
+                if (false === $v || null === $v) {
+                    continue;
+                }
+                $s .= ' ' . $k . (true === $v ? "" : '="' . \strtr(h($v), ['"' => '&quot;']) . '"');
             }
-            $s .= ' ' . $k . (true === $v ? "" : '="' . \strtr(h($v), ['"' => '&quot;']) . '"');
         }
         if (false === $row[1]) {
             return $s .= ' />';
