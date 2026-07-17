@@ -19,11 +19,11 @@ namespace x\markdown {
         if (empty($state['block'])) {
             $lot = [];
             $state['tab'] = 0;
-            $r = from\c(from\row($value, $lot, 25, 0, \strlen($value)), $state);
+            $r = from\tags(from\row($value, $lot, 25, 0, \strlen($value)), $state);
             return "" !== $r ? $r : null;
         }
         $lot = [];
-        $r = from\c(from\rows($value, $lot, 25, 0, \strlen($value))[0], $state);
+        $r = from\tags(from\rows($value, $lot, 25, 0, \strlen($value))[0], $state);
         return "" !== $r ? $r : null;
     }
 }
@@ -198,15 +198,22 @@ namespace x\markdown\from {
         return [$r, $n];
     }
     // <https://spec.commonmark.org/0.31.2#image-description>
-    function alt(array $row) {
+    function alt($row) {
+        if (\is_string($row)) {
+            return \strtr($row, ['"' => '&quot;']);
+        }
         $s = "";
         foreach ($row as $r) {
             if (\is_string($r)) {
-                $s .= $r;
+                $s .= \strtr($r, ['"' => '&quot;']);
                 continue;
             }
             if (\is_array($r[1])) {
                 $s .= alt($r[1]);
+                continue;
+            }
+            if (false === $r[0]) {
+                $s .= '&' === $r[1][0] ? $r[1] : \strtr(h($r[1]), ['"' => '&quot;']);
                 continue;
             }
             if ('img' === $r[0]) {
@@ -215,22 +222,7 @@ namespace x\markdown\from {
             }
             $s .= $r[1];
         }
-        return $s;
-    }
-    function c($rows, array $state) {
-        if (\is_string($rows)) {
-            return \trim($rows);
-        }
-        $s = "";
-        if (\is_int($tab = $state['tab'] ?? "")) {
-            $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
-        } else if (!\is_string($tab)) {
-            $tab = "";
-        }
-        foreach ($rows as $row) {
-            $s .= ("" === $s || "" === $tab ? "" : "\n") . \x\markdown\from\o($row, $state);
-        }
-        return $s;
+        return s($s, ' ');
     }
     function d(string $value, int $i, int $limit) {
         if (false === \strpos(c1, $value[$i])) {
@@ -253,115 +245,96 @@ namespace x\markdown\from {
         }
         return [$d, $n];
     }
+    // <https://spec.commonmark.org/0.31.2#process-emphasis>
     function e(array $row, array $stack, ?int $last) {
-        // 1. Find the bottom (start) of the stack
-        $bottom = $last;
-        if (null !== $bottom) {
-            while (null !== $stack[$bottom][2][1]) {
-                $bottom = $stack[$bottom][2][1];
-            }
+        // Find the bottom (start) of the stack
+        if (null !== $last) while (null !== $stack[$last][2][1]) {
+            $last = $stack[$last][2][1];
         }
-        // 2. Process closers from left to right
-        $after = $bottom;
-        while (null !== $after) {
-            // Not an active emphasis closer?
-            if (!$stack[$after][1][1] ||
-                ('*' !== $stack[$after][0] && '_' !== $stack[$after][0]) ||
-                !$stack[$after][1][3]
-            ) {
-                $after = $stack[$after][2][2];
+        // Process closing marker from left ro right
+        $right = $last;
+        while (null !== $right) {
+            // Not an active closing marker of emphasis?
+            if (!$stack[$right][1][1] || ('*' !== $stack[$right][0] && '_' !== $stack[$right][0]) || !$stack[$right][1][3]) {
+                $right = $stack[$right][2][2];
                 continue;
             }
-            $matched = false;
-            // 3. Look backward for a valid opener
-            for ($before = $stack[$after][2][1]; null !== $before; $before = $stack[$before][2][1]) {
-                // Must be active, match the character, and be capable of opening
-                if (!$stack[$before][1][1] ||
-                    $stack[$before][0] !== $stack[$after][0] ||
-                    !$stack[$before][1][2]
-                ) {
+            $valid = false;
+            // Look backward for a valid opening marker
+            for ($left = $stack[$right][2][1]; null !== $left; $left = $stack[$left][2][1]) {
+                // Must be active, match the character, and can open
+                if (!$stack[$left][1][1] || $stack[$left][0] !== $stack[$right][0] || !$stack[$left][1][2]) {
                     continue;
                 }
-                $opener_len = $stack[$before][1][0];
-                $closer_len = $stack[$after][1][0];
-                // 4. The "Rule of 3" for multiple delimiters
-                if (($stack[$before][1][3] || $stack[$after][1][2]) &&
-                    ($opener_len + $closer_len) % 3 === 0 &&
-                    $opener_len % 3 !== 0 &&
-                    $closer_len % 3 !== 0
-                ) {
+                $end_n = $stack[$right][1][0];
+                $start_n = $stack[$left][1][0];
+                // The “rule of 3” for multiple marker(s)
+                if (($stack[$left][1][3] || $stack[$right][1][2]) && 0 === ($start_n + $end_n) % 3 && 0 !== $start_n % 3 && 0 !== $end_n % 3) {
                     continue;
                 }
-                // --- MATCH FOUND ---
-                $matched = true;
-                // Determine whether to use 1 or 2 delimiters (em vs strong)
-                $use_delims = ($opener_len >= 2 && $closer_len >= 2) ? 2 : 1;
-                $tag = $use_delims === 2 ? 'strong' : 'em';
-                $char = $stack[$before][0];
-                // 5. Build the AST node in $row dynamically
-                $o_idx = $stack[$before][2][0];
-                $c_idx = $stack[$after][2][0];
-                // Gather all parsed nodes between the opener and closer
-                $children = [];
-                for ($k = $o_idx + 1; $k < $c_idx; $k++) {
-                    if (null !== $row[$k] && '' !== $row[$k]) {
-                        $children[] = $row[$k];
+                $valid = true;
+                // Determine whether to use 1 or 2 marker(s)
+                $n = ($start_n >= 2 && $end_n >= 2) ? 2 : 1;
+                $stack[$left][1][0] -= $n;
+                $stack[$right][1][0] -= $n;
+                $k = 2 === $n ? 'strong' : 'em';
+                $end_k = $stack[$right][2][0];
+                $start_k = $stack[$left][2][0];
+                $c = $stack[$left][0];
+                $chunk = [];
+                for ($i = $start_k + 1; $i < $end_k; ++$i) {
+                    if (null !== $row[$i] && "" !== $row[$i]) {
+                        $chunk[] = $row[$i];
                     }
-                    // Nullify extracted items so they are removed from the flat $row
-                    $row[$k] = null;
+                    $row[$i] = null;
                 }
-                // Determine leftover characters for the opener
-                $leftover_opener = $opener_len - $use_delims;
-                $row[$o_idx] = $leftover_opener > 0 ? \str_repeat($char, $leftover_opener) : null;
-                // Determine leftover characters for the closer
-                $leftover_closer = $closer_len - $use_delims;
-                $row[$c_idx] = $leftover_closer > 0 ? \str_repeat($char, $leftover_closer) : null;
-                // Place the newly constructed AST node back into the tree.
-                // Because delimiter runs are grouped by strspn, $c_idx is always > $o_idx + 1.
-                // This means $o_idx + 1 is always a safe empty slot to store our new AST branch.
-                if ($o_idx + 1 < $c_idx) {
-                    $row[$o_idx + 1] = [$tag, $children, []];
+                // Put the excess marker back as plain text in case it still exists
+                $row[$end_k] = ($x = $end_n - $n) ? \str_repeat($c, $x) : null;
+                $row[$start_k] = ($x = $start_n - $n) ? \str_repeat($c, $x) : null;
+                // Put the newly created AST node back into the tree. Since `strspn()` groups runs of the same marker,
+                // the value of `$end_k` is always greater than the value of `$start_k + 1`. Thus, `$start_k + 1` is
+                // always a safe, empty slot in which to store the new AST sub-tree.
+                if ($start_k + 1 < $end_k) {
+                    $row[$start_k + 1] = [$k, y($chunk), []];
                 } else {
-                    // Anomaly fallback (theoretically impossible in standard CommonMark)
-                    $row[$o_idx] = [$tag, $children, []];
+                    // $row[$start_k] = [$k, y($chunk), []];
                 }
-                // 6. Deduct lengths
-                $stack[$before][1][0] -= $use_delims;
-                $stack[$after][1][0] -= $use_delims;
-                // 7. Sever links for all delimiters physically between $before and $after
-                $stack[$before][2][2] = $after;
-                $stack[$after][2][1] = $before;
-                // 8. Check Opener Exhaustion (remove from stack if 0)
-                if ($stack[$before][1][0] === 0) {
-                    $prev = $stack[$before][2][1];
-                    $stack[$after][2][1] = $prev;
-                    if (null !== $prev) {
-                        $stack[$prev][2][2] = $after;
+                // Sever link(s) for all marker(s) physically between `$left` and `$right`
+                $stack[$left][2][2] = $right;
+                $stack[$right][2][1] = $left;
+                // Check for opener and closer exhaustion, then remove it from the stack if it is 0
+                if (0 === $stack[$left][1][0]) {
+                    if (null !== ($prev = $stack[$left][2][1])) {
+                        $stack[$prev][2][2] = $right;
                     }
+                    $stack[$right][2][1] = $prev;
                 }
-                // 9. Check Closer Exhaustion (remove from stack if 0)
-                if ($stack[$after][1][0] === 0) {
-                    $next = $stack[$after][2][2];
-                    $prev = $stack[$after][2][1];
+                if (0 === $stack[$right][1][0]) {
+                    $next = $stack[$right][2][2];
+                    $prev = $stack[$right][2][1];
                     if (null !== $prev) {
                         $stack[$prev][2][2] = $next;
                     }
                     if (null !== $next) {
                         $stack[$next][2][1] = $prev;
                     }
-                    // Move pointer to the next delimiter for the outer loop
-                    $after = $next;
+                    // Move pointer to the next marker for the outer loop
+                    $right = $next;
                 }
                 // Break the backward search and continue with the outer loop
                 break;
             }
-            // If no match was found, we must advance $after safely.
-            // If a match WAS found but $after wasn't exhausted, we let it stay on the same $after so it can attempt to close additional tags.
-            if (!$matched) {
-                $after = $stack[$after][2][2];
+            // If no match was found, we must advance `$right` safely. If a match was found but `$right` wasn’t
+            // exhausted, we let it stay on the same `$right` so it can attempt to close additional tag(s).
+            if (!$valid) {
+                $right = $stack[$right][2][2];
             }
         }
-        return $row;
+        $y = [];
+        foreach ($row as $r) {
+            null !== $r && ($y[] = $r);
+        }
+        return $y;
     }
     function h(string $text) {
         return \strtr($text, ['&' => '&amp;', '<' => '&lt;', '>' => '&gt;']);
@@ -413,51 +386,6 @@ namespace x\markdown\from {
     }
     function m(string $value, int $i, int $limit) {
         return [$n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit)];
-    }
-    function o($r, array $state, int $deep = 0) {
-        if (!$r) {
-            return "";
-        }
-        if (false === $r[0]) {
-            return $r[1];
-        }
-        if (\is_string($r)) {
-            return $r;
-        }
-        static $blocks = [
-            'blockquote' => 1,
-            'dd' => 1,
-            'dl' => 1,
-            'li' => 1,
-            'ol' => 1,
-            'ul' => 1
-        ];
-        if (\is_int($tab = $state['tab'] ?? "")) {
-            $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
-        } else if (!\is_string($tab)) {
-            $tab = "";
-        }
-        $b = "" !== $tab && isset($blocks[$r[0]]);
-        $tab = \str_repeat($tab, $deep);
-        $s = $tab . '<' . $r[0];
-        if ($r[2]) foreach ($r[2] as $k => $v) {
-            if (false === $v || null === $v) {
-                continue;
-            }
-            $s .= ' ' . $k . (true === $v ? "" : '="' . \strtr(h($v), ['"' => '&quot;']) . '"');
-        }
-        if (false === $r[1]) {
-            return $s .= ' />';
-        }
-        $s .= '>' . ($b ? "\n" : "");
-        if (\is_array($r[1])) {
-            foreach ($r[1] as $v) {
-                $s .= (\is_string($v) ? $v : o($v, $state, $b ? $deep + 1 : 0)) . ($b ? "\n" : "");
-            }
-        } else {
-            $s .= $r[1];
-        }
-        return $s . ($b ? $tab : "") . '</' . $r[0] . '>';
     }
     function r(string $value, int $i, int $limit) {
         if ($i >= $limit) {
@@ -513,7 +441,7 @@ namespace x\markdown\from {
                 // <https://spec.commonmark.org/0.31.2#softbreak>
                 $i += \strspn($value, c1, $i, $limit - $i) + $r;
                 // Also, remove the initial tab(s) and space(s) on the next line
-                $i += \strspn($value, c1, $i, $limit - $i);
+                $i += \strspn($value, c3, $i, $limit - $i);
                 $s .= ' ';
                 continue;
             }
@@ -770,28 +698,31 @@ namespace x\markdown\from {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $current = \count($stack);
                 $n = \strspn($value, $c, $i, $limit - $i);
-                // 1. Extract Previous and Next UTF-8 Characters
-                $prev_char = $i === 0 ? ' ' : \mb_substr(\substr($value, 0, $i), -1, 1, 'UTF-8');
-                $next_char = $i + $n >= $limit ? ' ' : \mb_substr(\substr($value, $i + $n, 4), 0, 1, 'UTF-8');
-                // 2. Determine Character Types (Whitespace / Punctuation)
-                // \p{Z} and \s cover Unicode whitespace. \p{P} and \p{S} cover Unicode punctuation.
-                $prev_is_ws = \preg_match('/^[\p{Z}\s]$/u', $prev_char);
-                $prev_is_punct = !$prev_is_ws && \preg_match('/^[\p{P}\p{S}]$/u', $prev_char);
-                $next_is_ws = \preg_match('/^[\p{Z}\s]$/u', $next_char);
-                $next_is_punct = !$next_is_ws && \preg_match('/^[\p{P}\p{S}]$/u', $next_char);
-                // 3. Determine Flanking
-                $left_flanking = !$next_is_ws && (!$next_is_punct || $prev_is_ws || $prev_is_punct);
-                $right_flanking = !$prev_is_ws && (!$prev_is_punct || $next_is_ws || $next_is_punct);
-                // 4. Set Open / Close permissions based on character type
+                if (\function_exists("\\mb_substr")) {
+                    $c_left = 0 === $i ? ' ' : \mb_substr(\substr($value, \max(0, $i - 4), \min($i, 4)), -1, 1, 'UTF-8');
+                    $c_right = $i + $n >= $limit ? ' ' : \mb_substr(\substr($value, $i + $n, 4), 0, 1, 'UTF-8');
+                } else {
+                    $c_left = 0 === $i ? ' ' : $value[$i - 1];
+                    $c_right = $i + $n >= $limit ? ' ' : $value[$i + $n];
+                }
+                // <https://spec.commonmark.org/0.31.2#left-flanking-delimiter-run>
+                $left_w = false !== \strpos(c3, $c_left) || \preg_match('/^[\p{Z}\s]$/u', $c_left);
+                $left_x = !$left_w && (false !== \strpos(c16, $c_left) || \preg_match('/^[\p{P}\p{S}]$/u', $c_left));
+                // <https://spec.commonmark.org/0.31.2#right-flanking-delimiter-run>
+                $right_w = false !== \strpos(c3, $c_right) || \preg_match('/^[\p{Z}\s]$/u', $c_right);
+                $right_x = !$right_w && (false !== \strpos(c16, $c_right) || \preg_match('/^[\p{P}\p{S}]$/u', $c_right));
+                // Determine whether the current marker is flanking to the left or right
+                $left_f = !$right_w && (!$right_x || $left_w || $left_x);
+                $right_f = !$left_w && (!$left_x || $right_w || $right_x);
                 if ('*' === $c) {
-                    $can_open = $left_flanking;
-                    $can_close = $right_flanking;
-                } else { // '_'
-                    $can_open = $left_flanking && (!$right_flanking || $prev_is_punct);
-                    $can_close = $right_flanking && (!$left_flanking || $next_is_punct);
+                    $can_end = $right_f;
+                    $can_start = $left_f;
+                } else {
+                    $can_end = $right_f && (!$left_f || $right_x);
+                    $can_start = $left_f && (!$right_f || $left_x);
                 }
                 $row[] = \substr($value, $i, $n);
-                $stack[] = [$c, [$n, true, $can_open, $can_close], [\array_key_last($row), $last, null, $i += $n]];
+                $stack[] = [$c, [$n, true, $can_start, $can_end], [\array_key_last($row), $last, null, $i += $n]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
@@ -805,7 +736,7 @@ namespace x\markdown\from {
             // <https://github.com/michelf/php-markdown/blob/2.0.0/Michelf/MarkdownExtra.php#L1845-L1847>
             if ($lot[1]) {
                 $best = [null, -1];
-                // The abbreviation list is already sorted by the length of its key, from longest to shortest
+                // The abbreviation list is already sorted by the length of the key(s), from longest to shortest
                 foreach ($lot[1] as $k => $v) {
                     if (false === ($n = \strpos($value, $k, $i))) {
                         continue;
@@ -969,15 +900,48 @@ namespace x\markdown\from {
                 }
                 if (null !== $eat && isset($v[0])) {
                     $chunk = [];
+                    $chunk_map = [];
                     $current = $stack[$at][2][0];
-                    $row_after_emph = e($row, $stack, $last);
-                    foreach ($row_after_emph as $k => $r) {
+                    foreach ($row as $k => $r) {
                         if ($k <= $current) {
                             continue;
                         }
+                        $chunk_map[$k] = \count($chunk);
                         $chunk[] = $r;
-                        unset($row[$k]);
+                        $row[$k] = null;
                     }
+                    $chunk_stack = [];
+                    $chunk_last = null;
+                    $d = $stack[$at][2][2];
+                    while (null !== $d && isset($chunk_map[$stack[$d][2][0]])) {
+                        $next = $stack[$d][2][2];
+                        $entry = $stack[$d];
+                        // Remap row index into $chunk
+                        $entry[2][0] = $chunk_map[$entry[2][0]];
+                        // Build new linked list
+                        $entry[2][1] = $chunk_last;
+                        $entry[2][2] = null;
+                        $chunk_stack[] = $entry;
+                        $id = \array_key_last($chunk_stack);
+                        if (null !== $chunk_last) {
+                            $chunk_stack[$chunk_last][2][2] = $id;
+                        }
+                        $chunk_last = $id;
+                        // Unlink from outer stack
+                        $outerPrev = $stack[$d][2][1];
+                        $outerNext = $stack[$d][2][2];
+                        if (null !== $outerPrev) {
+                            $stack[$outerPrev][2][2] = $outerNext;
+                        }
+                        if (null !== $outerNext) {
+                            $stack[$outerNext][2][1] = $outerPrev;
+                        }
+                        // Mark detached
+                        $stack[$d][2][1] = null;
+                        $stack[$d][2][2] = null;
+                        $d = $next;
+                    }
+                    $chunk = y(e($chunk, $chunk_stack, $chunk_last));
                     // <https://spec.commonmark.org/0.31.2#links>
                     if ('[' === $stack[$at][0]) {
                         $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
@@ -986,12 +950,12 @@ namespace x\markdown\from {
                         ]];
                     // <https://spec.commonmark.org/0.31.2#images>
                     } else {
-                        echo htmlspecialchars(json_encode([$value,$chunk]));
-                        echo '<br>';
+                        // Don’t put the fragment into the `alt` attribute yet. We need to make sure that any emphasis
+                        // gets processed first, and then we can move the result into the `alt` attribute.
                         $row[$current] = ['img', false, [
-                            'alt' => \trim(alt($chunk)),
+                            'alt' => \htmlspecialchars_decode(alt($chunk)),
                             'src' => $v[0],
-                            'title' => $v[1],
+                            'title' => $v[1]
                         ]];
                     }
                     $i = $eat;
@@ -1019,12 +983,7 @@ namespace x\markdown\from {
         if ("" !== $s) {
             $row[] = h($s);
         }
-        // <https://spec.commonmark.org/0.31.2#process-emphasis>
-        $row = \array_values(e($row, $stack, $last));
-        if (1 === \count($row) && \is_string($row[0])) {
-            return $row[0];
-        }
-        return $row ?: "";
+        return y(\array_values(e($row, $stack, $last)));
     }
     function rows(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         $lot = \array_replace([[], [], []], $lot);
@@ -1591,6 +1550,69 @@ namespace x\markdown\from {
         }
         return false !== $join ? \implode($join, $r) : $r;
     }
+    function tag($row, array $state, int $deep = 0) {
+        if (!$row) {
+            return "";
+        }
+        if (false === $row[0]) {
+            return $row[1];
+        }
+        if (\is_string($row)) {
+            return $row;
+        }
+        static $blocks = [
+            'blockquote' => 1,
+            'dd' => 1,
+            'dl' => 1,
+            'li' => 1,
+            'ol' => 1,
+            'ul' => 1
+        ];
+        if (\is_int($tab = $state['tab'] ?? "")) {
+            $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
+        } else if (!\is_string($tab)) {
+            $tab = "";
+        }
+        $b = "" !== $tab && isset($blocks[$row[0]]);
+        $tab = \str_repeat($tab, $deep);
+        $s = $tab . '<' . $row[0];
+        if ($row[2]) foreach ($row[2] as $k => $v) {
+            if (false === $v || null === $v) {
+                continue;
+            }
+            $s .= ' ' . $k . (true === $v ? "" : '="' . \strtr(h($v), ['"' => '&quot;']) . '"');
+        }
+        if (false === $row[1]) {
+            return $s .= ' />';
+        }
+        $s .= '>' . ($b ? "\n" : "");
+        if (\is_array($row[1])) {
+            foreach ($row[1] as $r) {
+                $s .= (\is_string($r) ? $r : tag($r, $state, $b ? $deep + 1 : 0)) . ($b ? "\n" : "");
+            }
+        } else {
+            $s .= $row[1];
+        }
+        return $s . ($b ? $tab : "") . '</' . $row[0] . '>';
+    }
+    function tags($rows, array $state) {
+        if (!$rows) {
+            return "";
+        }
+        if (\is_string($rows)) {
+            return \trim($rows);
+        }
+        $s = "";
+        if (\is_int($tab = $state['tab'] ?? "")) {
+            $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
+        } else if (!\is_string($tab)) {
+            $tab = "";
+        }
+        foreach ($rows as $row) {
+            $s .= ("" === $s || "" === $tab ? "" : "\n") . tag($row, $state);
+        }
+        return $s;
+    }
     function u(string $text) {
         $limit = \strlen($text);
         $raw = c14 . c15;
@@ -1648,5 +1670,8 @@ namespace x\markdown\from {
             break;
         }
         return [$i - $start, "", $max - $n];
+    }
+    function y($r) {
+        return \is_array($r) && 1 === \count($r) && \is_string($r[$k = \array_key_first($r)]) ? $r[$k] : ($r ?: "");
     }
 }

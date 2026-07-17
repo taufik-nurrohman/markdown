@@ -39,48 +39,6 @@ if (!function_exists('array_is_list')) {
     }
 }
 
-function view_raw(string $text) {
-    $s = "";
-    foreach (token_get_all($text) as $t) {
-        if (is_array($t)) {
-            $color = '00b';
-            switch ($t[0]) {
-                case T_OPEN_TAG:
-                    // $color = 'f70';
-                    $color = '00b';
-                    break;
-                case T_INLINE_HTML:
-                    $color = '000';
-                    break;
-                case T_DOUBLE_ARROW:
-                case T_END_HEREDOC:
-                case T_RETURN:
-                case T_START_HEREDOC:
-                    $color = '070';
-                    break;
-                case T_CONSTANT_ENCAPSED_STRING:
-                case T_ENCAPSED_AND_WHITESPACE:
-                    $color = 'd00';
-                    break;
-            }
-            $s .= '<span style="color:#' . $color . ';">' . strtr(htmlspecialchars($t[1]), [
-                "\t" => "<span class=\"c c-t\">\t</span>",
-                "\x1e" => "<span class=\"c\">\x1e</span>",
-                "\x2" => "<span class=\"c\">\x2</span>",
-                "\x3" => "<span class=\"c\">\x3</span>"
-            ]) . '</span>';
-            continue;
-        }
-        $s .= '<span style="color:#070;">' . strtr(htmlspecialchars($t), [
-            "\t" => "<span class=\"c c-t\">\t</span>",
-            "\x1e" => "<span class=\"c\">\x1e</span>",
-            "\x2" => "<span class=\"c\">\x2</span>",
-            "\x3" => "<span class=\"c\">\x3</span>"
-        ]) . '</span>';
-    }
-    return $s;
-}
-
 function view(string $text) {
     $i = 0;
     $limit = strlen($text);
@@ -178,7 +136,10 @@ function view_source(string $text) {
             }
             if (false !== ($n = strpos($text, '>', $i))) {
                 $s .= '<span style="color:#00b;font-weight:bold;">';
-                $s .= htmlspecialchars(substr($text, $i, $n += 1 - $i));
+                $part = substr($text, $i, $n += 1 - $i);
+                $s .= '&lt;';
+                $s .= view_source(substr($part, 1, -1));
+                $s .= '&gt;';
                 $s .= '</span>';
                 $i += $n;
                 continue;
@@ -213,6 +174,48 @@ function view_source(string $text) {
         }
         $s .= substr($text, $i, $n = strcspn($text, " &<\\\t", $i));
         $i += $n;
+    }
+    return $s;
+}
+
+function view_tree(string $text) {
+    $s = "";
+    foreach (token_get_all($text) as $t) {
+        if (is_array($t)) {
+            $color = '00b';
+            switch ($t[0]) {
+                case T_OPEN_TAG:
+                    // $color = 'f70';
+                    $color = '00b';
+                    break;
+                case T_INLINE_HTML:
+                    $color = '000';
+                    break;
+                case T_DOUBLE_ARROW:
+                case T_END_HEREDOC:
+                case T_RETURN:
+                case T_START_HEREDOC:
+                    $color = '070';
+                    break;
+                case T_CONSTANT_ENCAPSED_STRING:
+                case T_ENCAPSED_AND_WHITESPACE:
+                    $color = 'd00';
+                    break;
+            }
+            $s .= '<span style="color:#' . $color . ';">' . strtr(htmlspecialchars($t[1]), [
+                "\t" => "<span class=\"c c-t\">\t</span>",
+                "\x1e" => "<span class=\"c\">\x1e</span>",
+                "\x2" => "<span class=\"c\">\x2</span>",
+                "\x3" => "<span class=\"c\">\x3</span>"
+            ]) . '</span>';
+            continue;
+        }
+        $s .= '<span style="color:#070;">' . strtr(htmlspecialchars($t), [
+            "\t" => "<span class=\"c c-t\">\t</span>",
+            "\x1e" => "<span class=\"c\">\x1e</span>",
+            "\x2" => "<span class=\"c\">\x2</span>",
+            "\x3" => "<span class=\"c\">\x3</span>"
+        ]) . '</span>';
     }
     return $s;
 }
@@ -567,7 +570,7 @@ foreach (array_merge(glob(PATH . D . 'from' . D . '*', GLOB_ONLYDIR), ['LICENSE'
 $s  = substr($s, 0, -1) . '</p>';
 $s .= '<p role="group">';
 $s .= '<select name="view">';
-foreach (['raw', 'result', 'source'] as $v) {
+foreach (['result', 'source', 'tree'] as $v) {
     $s .= '<option' . ($v === $view ? ' selected' : "") . ' value="' . htmlspecialchars($v) . '">';
     $s .= ucfirst($v);
     $s .= '</option>';
@@ -650,7 +653,7 @@ foreach ($files as $file) {
             $r = x\markdown\from\rows($raws, $lot, 25, 0, strlen($raws));
         }
         $end = (hrtime(true) - $start) / 1e6;
-        $s .= view_raw("<?php\n\nreturn " . export($r) . ';');
+        $s .= view_tree("<?php\n\nreturn " . export($r) . ';');
         $s .= '</code>';
         $s .= '</pre>';
     }
