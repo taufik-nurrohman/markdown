@@ -247,29 +247,29 @@ namespace x\markdown\from {
         if (null !== $last) while (null !== $stack[$last][2][1]) {
             $last = $stack[$last][2][1];
         }
-        // Process closing marker from left ro right
+        // Process closing delimiter from left ro right
         $right = $last;
         while (null !== $right) {
-            // Not an active closing marker of emphasis?
-            if (!$stack[$right][1][1] || ('*' !== $stack[$right][0] && '_' !== $stack[$right][0]) || !$stack[$right][1][3]) {
+            // Not an active closing delimiter of emphasis?
+            if (0 === $stack[$right][1][0] || ('*' !== $stack[$right][0] && '_' !== $stack[$right][0]) || !$stack[$right][1][2]) {
                 $right = $stack[$right][2][2];
                 continue;
             }
             $valid = false;
-            // Look backward for a valid opening marker
+            // Look backward for a valid opening delimiter
             for ($left = $stack[$right][2][1]; null !== $left; $left = $stack[$left][2][1]) {
                 // Must be active, match the character, and can open
-                if (!$stack[$left][1][1] || $stack[$left][0] !== $stack[$right][0] || !$stack[$left][1][2]) {
+                if (0 === $stack[$left][1][0] || $stack[$left][0] !== $stack[$right][0] || !$stack[$left][1][1]) {
                     continue;
                 }
                 $end_n = $stack[$right][1][0];
                 $start_n = $stack[$left][1][0];
-                // The “rule of 3” for multiple marker(s)
-                if (($stack[$left][1][3] || $stack[$right][1][2]) && 0 === ($start_n + $end_n) % 3 && 0 !== $start_n % 3 && 0 !== $end_n % 3) {
+                // The “rule of 3” for multiple delimiter(s)
+                if (($stack[$left][1][2] || $stack[$right][1][1]) && 0 === ($start_n + $end_n) % 3 && 0 !== $start_n % 3 && 0 !== $end_n % 3) {
                     continue;
                 }
                 $valid = true;
-                // Determine whether to use 1 or 2 marker(s)
+                // Determine whether to use 1 or 2 delimiter(s)
                 $n = ($start_n >= 2 && $end_n >= 2) ? 2 : 1;
                 $stack[$left][1][0] -= $n;
                 $stack[$right][1][0] -= $n;
@@ -279,23 +279,23 @@ namespace x\markdown\from {
                 $c = $stack[$left][0];
                 $chunk = [];
                 for ($i = $start_k + 1; $i < $end_k; ++$i) {
-                    if (null !== $row[$i] && "" !== $row[$i]) {
+                    if ("" !== $row[$i]) {
                         $chunk[] = $row[$i];
                     }
-                    $row[$i] = null;
+                    $row[$i] = "";
                 }
-                // Put the excess marker back as plain text in case it still exists
-                $row[$end_k] = ($x = $end_n - $n) ? \str_repeat($c, $x) : null;
-                $row[$start_k] = ($x = $start_n - $n) ? \str_repeat($c, $x) : null;
-                // Put the newly created AST node back into the tree. Since `strspn()` groups runs of the same marker,
-                // the value of `$end_k` is always greater than the value of `$start_k + 1`. Thus, `$start_k + 1` is
-                // always a safe, empty slot in which to store the new AST sub-tree.
+                // Put the excess delimiter back as plain text in case it still exists
+                $row[$end_k] = ($x = $end_n - $n) ? \str_repeat($c, $x) : "";
+                $row[$start_k] = ($x = $start_n - $n) ? \str_repeat($c, $x) : "";
+                // Put the newly created AST node back into the tree. Since `strspn()` groups runs of the same
+                // delimiter, the value of `$end_k` is always greater than the value of `$start_k + 1`. Thus,
+                // `$start_k + 1` is always a safe, empty slot in which to store the new AST sub-tree.
                 if ($start_k + 1 < $end_k) {
                     $row[$start_k + 1] = [$k, y($chunk), []];
                 } else {
                     // $row[$start_k] = [$k, y($chunk), []];
                 }
-                // Sever link(s) for all marker(s) physically between `$left` and `$right`
+                // Sever link(s) for all delimiter(s) physically between `$left` and `$right`
                 $stack[$left][2][2] = $right;
                 $stack[$right][2][1] = $left;
                 // Check for opener and closer exhaustion, then remove it from the stack if it is 0
@@ -314,7 +314,7 @@ namespace x\markdown\from {
                     if (null !== $next) {
                         $stack[$next][2][1] = $prev;
                     }
-                    // Move pointer to the next marker for the outer loop
+                    // Move pointer to the next delimiter for the outer loop
                     $right = $next;
                 }
                 // Break the backward search and continue with the outer loop
@@ -328,7 +328,7 @@ namespace x\markdown\from {
         }
         $y = [];
         foreach ($row as $r) {
-            null !== $r && ($y[] = $r);
+            "" !== $r && ($y[] = $r);
         }
         return $y;
     }
@@ -674,7 +674,7 @@ namespace x\markdown\from {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $current = \count($stack);
                 $row[] = $c .= '[';
-                $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last, null, $i += 2]];
+                $stack[] = [$c, [2, true, false], [\array_key_last($row), $last, null, $i += 2]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
@@ -686,7 +686,7 @@ namespace x\markdown\from {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $current = \count($stack);
                 $row[] = $c;
-                $stack[] = [$c, [1, true, true, false], [\array_key_last($row), $last, null, ++$i]];
+                $stack[] = [$c, [1, true, false], [\array_key_last($row), $last, null, ++$i]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
@@ -711,7 +711,7 @@ namespace x\markdown\from {
                 // <https://spec.commonmark.org/0.31.2#right-flanking-delimiter-run>
                 $right_w = false !== \strpos(c3, $c_right) || \preg_match('/^[\p{Z}\s]$/u', $c_right);
                 $right_x = !$right_w && (false !== \strpos(c16, $c_right) || \preg_match('/^[\p{P}\p{S}]$/u', $c_right));
-                // Determine whether the current marker is flanking to the left or right
+                // Determine whether the current delimiter is flanking to the left or right
                 $left_f = !$right_w && (!$right_x || $left_w || $left_x);
                 $right_f = !$left_w && (!$left_x || $right_w || $right_x);
                 if ('*' === $c) {
@@ -722,7 +722,7 @@ namespace x\markdown\from {
                     $can_start = $left_f && (!$right_f || $left_x);
                 }
                 $row[] = \substr($value, $i, $n);
-                $stack[] = [$c, [$n, true, $can_start, $can_end], [\array_key_last($row), $last, null, $i += $n]];
+                $stack[] = [$c, [$n, $can_start, $can_end], [\array_key_last($row), $last, null, $i += $n]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
                 }
@@ -776,7 +776,7 @@ namespace x\markdown\from {
                 }
                 // Iterate over the delimiter stack from the stack’s bottom to find the nearest `[` or `![`
                 for ($at = $last; null !== $at; $at = $stack[$at][2][1]) {
-                    if (('![' === $stack[$at][0] || '[' === $stack[$at][0]) && $stack[$at][1][1]) {
+                    if (('![' === $stack[$at][0] || '[' === $stack[$at][0]) && $stack[$at][1][0] > 0) {
                         break;
                     }
                 }
@@ -902,7 +902,7 @@ namespace x\markdown\from {
                         }
                         $chunk_set[$k] = \count($chunk);
                         $chunk[] = $r;
-                        $row[$k] = null;
+                        $row[$k] = "";
                     }
                     $chunk_at = $stack[$at][2][2];
                     $chunk_last = null;
@@ -945,6 +945,13 @@ namespace x\markdown\from {
                             'href' => $v[0],
                             'title' => $v[1]
                         ]];
+                        if ('[' === $stack[$at][0]) {
+                            for ($k = $stack[$at][2][1]; null !== $k; $k = $stack[$k][2][1]) {
+                                if ('[' === $stack[$k][0]) {
+                                    $stack[$k][1][0] = 0;
+                                }
+                            }
+                        }
                     // <https://spec.commonmark.org/0.31.2#images>
                     } else {
                         $row[$current] = ['img', false, [
@@ -954,7 +961,10 @@ namespace x\markdown\from {
                         ]];
                     }
                     $i = $eat;
-                    $stack[$at][1][1] = false;
+                    // We don’t store the active state of the stack data on the delimiter stack to save space. Instead,
+                    // we use the delimiter length to determine if a stack is active. For example, to turn off a stack,
+                    // we simply set the delimiter length to `0`.
+                    $stack[$at][1][0] = 0;
                     // Check for attribute syntax after link or image
                     if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
                         $row[$current][2] = $a[0] + $row[$current][2];
