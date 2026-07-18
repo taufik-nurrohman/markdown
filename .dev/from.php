@@ -204,23 +204,19 @@ namespace x\markdown\from {
         }
         $s = "";
         foreach ($row as $r) {
-            if (\is_string($r)) {
-                $s .= \strtr($r, ['"' => '&quot;']);
+            if (\is_array($r)) {
+                if ('img' === $r[0]) {
+                    $s .= $r[2]['alt'] ?? "";
+                    continue;
+                }
+                if (\is_array($r[1])) {
+                    $s .= alt($r[1]);
+                    continue;
+                }
+                $s .= $r[1];
                 continue;
             }
-            if (\is_array($r[1])) {
-                $s .= alt($r[1]);
-                continue;
-            }
-            if (false === $r[0]) {
-                $s .= '&' === $r[1][0] ? $r[1] : \strtr(h($r[1]), ['"' => '&quot;']);
-                continue;
-            }
-            if ('img' === $r[0]) {
-                $s .= $r[2]['alt'] ?? "";
-                continue;
-            }
-            $s .= $r[1];
+            $s .= $r;
         }
         return \htmlspecialchars_decode(s($s, ' '));
     }
@@ -336,8 +332,12 @@ namespace x\markdown\from {
         }
         return $y;
     }
+    // <https://spec.commonmark.org/0.31.2#matches>
+    function f(string $text) {
+        return \defined("\\MB_CASE_FOLD") ? \mb_convert_case($text, \MB_CASE_FOLD, 'UTF-8') : \strtolower($text);
+    }
     function h(string $text) {
-        return \strtr($text, ['&' => '&amp;', '<' => '&lt;', '>' => '&gt;']);
+        return \htmlspecialchars($text, \ENT_HTML5 | \ENT_NOQUOTES, 'UTF-8', false);
     }
     // <https://spec.commonmark.org/0.31.2#link-label>
     function k(string $value, int $i, int $limit, int $deep = 0) {
@@ -877,70 +877,67 @@ namespace x\markdown\from {
                 } else if ('[' === ($value[$n = $i + 1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#collapsed-reference-link>
                     if (']' === ($value[$n + 1] ?? 0) && ($key = s(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' '))) {
-                        // <https://spec.commonmark.org/0.31.2#matches>
-                        $key = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($key, \MB_CASE_FOLD, 'UTF-8') : \strtolower($key);
-                        if ($v = ($lot[0][$key] ?? 0)) {
+                        if ($v = ($lot[0][f($key)] ?? 0)) {
                             $eat = $i + 3;
                         }
                     // <https://spec.commonmark.org/0.31.2#full-reference-link>
                     } else if ($key = k($value, $n, $limit)) {
-                        // <https://spec.commonmark.org/0.31.2#matches>
-                        $key[0] = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($key[0], \MB_CASE_FOLD, 'UTF-8') : \strtolower($key[0]);
-                        if ($v = ($lot[0][$key[0]] ?? 0)) {
+                        if ($v = ($lot[0][f($key[0])] ?? 0)) {
                             $eat = $key[1] + $n;
                         }
                     }
                 // <https://spec.commonmark.org/0.31.2#shortcut-reference-link>
                 } else if ($key = s(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' ')) {
-                    // <https://spec.commonmark.org/0.31.2#matches>
-                    $key = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($key, \MB_CASE_FOLD, 'UTF-8') : \strtolower($key);
-                    if ($v = ($lot[0][$key] ?? 0)) {
+                    if ($v = ($lot[0][f($key)] ?? 0)) {
                         $eat = $i + 1;
                     }
                 }
                 if (null !== $eat && isset($v[0])) {
                     $chunk = [];
-                    $chunk_map = [];
+                    $chunk_set = [];
                     $current = $stack[$at][2][0];
                     foreach ($row as $k => $r) {
                         if ($k <= $current) {
                             continue;
                         }
-                        $chunk_map[$k] = \count($chunk);
+                        $chunk_set[$k] = \count($chunk);
                         $chunk[] = $r;
                         $row[$k] = null;
                     }
-                    $chunk_stack = [];
+                    $chunk_at = $stack[$at][2][2];
                     $chunk_last = null;
-                    $d = $stack[$at][2][2];
-                    while (null !== $d && isset($chunk_map[$stack[$d][2][0]])) {
-                        $next = $stack[$d][2][2];
-                        $entry = $stack[$d];
-                        // Remap row index into $chunk
-                        $entry[2][0] = $chunk_map[$entry[2][0]];
-                        // Build new linked list
-                        $entry[2][1] = $chunk_last;
-                        $entry[2][2] = null;
-                        $chunk_stack[] = $entry;
-                        $id = \array_key_last($chunk_stack);
-                        if (null !== $chunk_last) {
-                            $chunk_stack[$chunk_last][2][2] = $id;
+                    $chunk_stack = [];
+                    while (null !== $chunk_at && isset($chunk_set[$stack[$chunk_at][2][0]])) {
+                        $chunk_next = $stack[$chunk_at][2][2];
+                        $chunk_v = $stack[$chunk_at];
+                        $chunk_v[2][0] = $chunk_set[$chunk_v[2][0]];
+                        $chunk_v[2][1] = $chunk_last;
+                        $chunk_v[2][2] = null;
+                        $chunk_stack[] = $chunk_v;
+                        $chunk_current = \array_key_last($chunk_stack);
+                        if (null !== $chunk_current) {
+                            $chunk_stack[$chunk_last][2][2] = $chunk_current;
                         }
-                        $chunk_last = $id;
-                        // Unlink from outer stack
-                        $outerPrev = $stack[$d][2][1];
-                        $outerNext = $stack[$d][2][2];
-                        if (null !== $outerPrev) {
-                            $stack[$outerPrev][2][2] = $outerNext;
+                        $chunk_last = $chunk_current;
+                        // Cleanly unlink from the main stack
+                        $parent_next = $stack[$chunk_at][2][2];
+                        $parent_prev = $stack[$chunk_at][2][1];
+                        if (null !== $parent_prev) {
+                            $stack[$parent_prev][2][2] = $parent_next;
                         }
-                        if (null !== $outerNext) {
-                            $stack[$outerNext][2][1] = $outerPrev;
+                        if (null !== $parent_next) {
+                            $stack[$parent_next][2][1] = $parent_prev;
                         }
-                        // Mark detached
-                        $stack[$d][2][1] = null;
-                        $stack[$d][2][2] = null;
-                        $d = $next;
+                        // Once we have successfully separated the current chunk’s stack from the main stack, we can
+                        // safely move the main `$last` cursor backward to the previous node of the main stack.
+                        if ($last === $chunk_at) {
+                            $last = $parent_prev;
+                        }
+                        $stack[$chunk_at][2][1] = null;
+                        $stack[$chunk_at][2][2] = null;
+                        $chunk_at = $chunk_next;
                     }
+                    // Process emphasis in the chunk
                     $chunk = y(e($chunk, $chunk_stack, $chunk_last));
                     // <https://spec.commonmark.org/0.31.2#links>
                     if ('[' === $stack[$at][0]) {
@@ -950,8 +947,6 @@ namespace x\markdown\from {
                         ]];
                     // <https://spec.commonmark.org/0.31.2#images>
                     } else {
-                        // Don’t put the fragment into the `alt` attribute yet. We need to make sure that any emphasis
-                        // gets processed first, and then we can move the result into the `alt` attribute.
                         $row[$current] = ['img', false, [
                             'alt' => alt($chunk),
                             'src' => $v[0],
@@ -983,7 +978,8 @@ namespace x\markdown\from {
         if ("" !== $s) {
             $row[] = h($s);
         }
-        return y(\array_values(e($row, $stack, $last)));
+        // Process emphasis
+        return y(e($row, $stack, $last));
     }
     function rows(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         $lot = \array_replace([[], [], []], $lot);
@@ -1208,6 +1204,7 @@ namespace x\markdown\from {
             // to the link reference definition block. It acts as a leaf block that cannot interrupt a paragraph. It can
             // span multiple line(s), but it cannot contain any blank line(s).
             if ("" === $s && '*' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && ($k = k($value, $n, $limit)) && ':' === ($value[$n + $k[1]] ?? 0)) {
+                $key = $k[0];
                 $n += $k[1] + 1;
                 $n += \strspn($value, c1, $n);
                 // Refresh the cursor in case the label spans multiple line(s)
@@ -1239,13 +1236,12 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $deep > 0 && !isset($lot[1][$k[0]]) && ($lot[1][$k[0]] = "" !== ($s = s($s, ' ')) ? $s : null);
+                $deep > 0 && !isset($lot[1][$key]) && ($lot[1][$key] = "" !== ($s = s($s, ' ')) ? $s : null);
                 $s = "";
                 continue;
             }
             if ("" === $s && '[' === $value[$n = $d + $i] && '^' === ($value[$n + 1] ?? 0) && ($k = k($value, $n, $limit)) && ':' === ($value[$n + $k[1]] ?? 0)) {
-                // <https://spec.commonmark.org/0.31.2#matches>
-                $k[0] = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($k[0], \MB_CASE_FOLD, 'UTF-8') : \strtolower($k[0]);
+                $key = f($k[0]);
                 $n += $k[1] + 1;
                 $n += \strspn($value, c1, $n);
                 // Refresh the cursor in case the label spans multiple line(s)
@@ -1284,14 +1280,13 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $deep > 0 && !isset($lot[2][$k[0]]) && ($lot[2][$k[0]] = $s);
+                $deep > 0 && !isset($lot[2][$key]) && ($lot[2][$key] = $s);
                 $s = "";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#link-reference-definition>
             if ("" === $s && '[' === $value[$n = $d + $i] && ($k = k($value, $n, $limit)) && ':' === ($value[$n + $k[1]] ?? 0)) {
-                // <https://spec.commonmark.org/0.31.2#matches>
-                $k[0] = \defined("\\MB_CASE_FOLD") ? \mb_convert_case($k[0], \MB_CASE_FOLD, 'UTF-8') : \strtolower($k[0]);
+                $key = f($k[0]);
                 $n += $k[1] + 1;
                 $n += \strspn($value, c1, $n);
                 $n += ($r = r($value, $n, $limit));
@@ -1327,7 +1322,7 @@ namespace x\markdown\from {
                     $n += $r;
                     // A blank line ends the current block
                     if (r($value, $n + \strspn($value, c1, $n), $limit)) {
-                        $deep > 0 && ($lot[0][$k[0]] = $v);
+                        $deep > 0 && !isset($lot[0][$key]) && ($lot[0][$key] = $v);
                         $i = $n;
                         continue;
                     }
@@ -1356,7 +1351,7 @@ namespace x\markdown\from {
                         $n += $r;
                         // A blank line ends the current block
                         if (r($value, $n + \strspn($value, c1, $n), $limit)) {
-                            $deep > 0 && ($lot[0][$k[0]] = $v);
+                            $deep > 0 && !isset($lot[0][$key]) && ($lot[0][$key] = $v);
                             $i = $n;
                             continue;
                         }
@@ -1373,14 +1368,14 @@ namespace x\markdown\from {
                         $n += $r;
                         // A blank line ends the current block
                         if (r($value, $n + \strspn($value, c1, $n), $limit)) {
-                            $deep > 0 && ($lot[0][$k[0]] = $v);
+                            $deep > 0 && !isset($lot[0][$key]) && ($lot[0][$key] = $v);
                             $i = $n;
                             continue;
                         }
                     }
                 }
                 if (isset($v[0]) && ($r || $n >= $limit)) {
-                    $deep > 0 && !isset($lot[0][$k[0]]) && ($lot[0][$k[0]] = $v);
+                    $deep > 0 && !isset($lot[0][$key]) && ($lot[0][$key] = $v);
                     $i = $n;
                     continue;
                 }

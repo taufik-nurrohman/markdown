@@ -1,0 +1,3 @@
+![[asdf]](asdf.gif)
+
+[asdf]: asdf

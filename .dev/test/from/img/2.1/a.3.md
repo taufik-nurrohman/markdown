@@ -1,0 +1,3 @@
+![<asdf:asdf>](asdf.gif)
+
+![<asdf@asdf>](asdf.gif)
