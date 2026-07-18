@@ -546,7 +546,7 @@ namespace x\markdown\from {
                                 $m += \strcspn($value, c17 . ' <>', $m + $n + 1) + 1;
                                 if ($end === $m + $n) {
                                     "" !== $s && ($row[] = h($s)) && ($s = "");
-                                    $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [3]];
+                                    $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [5]];
                                     // Check for attribute syntax after link
                                     if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
                                         $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
@@ -563,7 +563,7 @@ namespace x\markdown\from {
                             $m += \strspn($value, c11 . '.', $m + $n + 1) + 1;
                             if ($end === $m + $n) {
                                 "" !== $s && ($row[] = h($s)) && ($s = "");
-                                $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [3]];
+                                $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [6]];
                                 // Check for attribute syntax after link
                                 if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
                                     $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
@@ -786,7 +786,7 @@ namespace x\markdown\from {
                     continue;
                 }
                 $eat = null;
-                $v = [null, null];
+                $v = [null, null, []];
                 // <https://spec.commonmark.org/0.31.2#inline-link>
                 if ('(' === ($value[$n = $i + 1] ?? 0)) {
                     $n += \strspn($value, c3, $n + 1) + 1;
@@ -794,7 +794,7 @@ namespace x\markdown\from {
                     if ('<' === ($value[$n] ?? 0)) {
                         $eat = ++$n;
                         while ($n < $limit) {
-                            $n += \strcspn($value, c2 . "\\>", $n);
+                            $n += \strcspn($value, c2 . "\\<>", $n);
                             if ($n >= $limit || "\\" !== $value[$n]) {
                                 break;
                             }
@@ -871,6 +871,7 @@ namespace x\markdown\from {
                         $v[0] = $eat = null;
                     } else {
                         $eat = $n + 1;
+                        $v[3] = 4;
                     }
                 } else if ('[' === ($value[$n = $i + 1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#collapsed-reference-link>
@@ -878,12 +879,14 @@ namespace x\markdown\from {
                         if ($f = ($lot[0][f($key)] ?? 0)) {
                             $eat = $i + 3;
                             $v = $f;
+                            $v[3] = 2;
                         }
                     // <https://spec.commonmark.org/0.31.2#full-reference-link>
                     } else if ($key = k($value, $n, $limit)) {
                         if ($f = ($lot[0][f($key[0])] ?? 0)) {
                             $eat = $key[1] + $n;
                             $v = $f;
+                            $v[3] = 1;
                         }
                     }
                 // <https://spec.commonmark.org/0.31.2#shortcut-reference-link>
@@ -891,12 +894,13 @@ namespace x\markdown\from {
                     if ($f = ($lot[0][f($key)] ?? 0)) {
                         $eat = $i + 1;
                         $v = $f;
+                        $v[3] = 3;
                     }
                 }
                 if (null === $eat) {
-                    // Remove this opener from the delimiter stack.
-                    $prev = $stack[$at][2][1];
+                    // Remove current opener from the delimiter stack
                     $next = $stack[$at][2][2];
+                    $prev = $stack[$at][2][1];
                     if (null !== $prev) {
                         $stack[$prev][2][2] = $next;
                     }
@@ -906,9 +910,8 @@ namespace x\markdown\from {
                     if ($last === $at) {
                         $last = $prev;
                     }
-                    $stack[$at][2][1] = null;
-                    $stack[$at][2][2] = null;
                     $stack[$at][1][0] = 0;
+                    $stack[$at][2][1] = $stack[$at][2][2] = null;
                     $s .= $c;
                     ++$i;
                     continue;
@@ -948,8 +951,8 @@ namespace x\markdown\from {
                     if (null !== $parent_next) {
                         $stack[$parent_next][2][1] = $parent_prev;
                     }
-                    // Once we have successfully separated the current chunk’s stack from the main stack, we can
-                    // safely move the main `$last` cursor backward to the previous node of the main stack.
+                    // Once we have successfully separated the current chunk’s stack from the main stack, we can safely
+                    // move the main `$last` cursor backward to the previous node of the main stack.
                     if ($last === $chunk_at) {
                         $last = $parent_prev;
                     }
@@ -964,7 +967,7 @@ namespace x\markdown\from {
                     $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
                         'href' => $v[0],
                         'title' => $v[1]
-                    ]];
+                    ], [$v[3]]];
                     if ('[' === $stack[$at][0]) {
                         for ($k = $stack[$at][2][1]; null !== $k; $k = $stack[$k][2][1]) {
                             if ('[' === $stack[$k][0]) {
@@ -978,7 +981,7 @@ namespace x\markdown\from {
                         'alt' => alt($chunk),
                         'src' => $v[0],
                         'title' => $v[1]
-                    ]];
+                    ], [$v[3]]];
                 }
                 $i = $eat;
                 // We don’t store the active state of the stack data on the delimiter stack to save space. Instead,
@@ -1330,7 +1333,7 @@ namespace x\markdown\from {
                     }
                     $eat = ++$n + $w;
                     while ($n + $w < $limit) {
-                        $n += \strcspn($value, c2 . "\\>", $n + $w);
+                        $n += \strcspn($value, c2 . "\\<>", $n + $w);
                         if ($n + $w >= $limit || "\\" !== $value[$n + $w]) {
                             break;
                         }
