@@ -776,7 +776,7 @@ namespace x\markdown\from {
                 }
                 // Iterate over the delimiter stack from the stack’s bottom to find the nearest `[` or `![`
                 for ($at = $last; null !== $at; $at = $stack[$at][2][1]) {
-                    if (('![' === $stack[$at][0] || '[' === $stack[$at][0]) && $stack[$at][1][0] > 0) {
+                    if (('![' === $stack[$at][0] || '[' === $stack[$at][0]) && 0 !== $stack[$at][1][0]) {
                         break;
                     }
                 }
@@ -858,122 +858,138 @@ namespace x\markdown\from {
                             }
                             // Title isn’t closed properly
                             if ($n >= $limit || $q !== $value[$n]) {
-                                $s .= $c;
-                                ++$i;
-                                continue;
+                                $v[0] = $eat = null;
+                            } else {
+                                $v[1] = v(\substr($value, $eat, $n - $eat));
+                                ++$n;
                             }
-                            $v[1] = v(\substr($value, $eat, $n - $eat));
-                            ++$n;
                         }
                     }
                     $n += \strspn($value, c3, $n);
                     // Link or image isn’t closed properly
                     if (!isset($v[0]) || ')' !== ($value[$n] ?? 0)) {
-                        $s .= $c;
-                        ++$i;
-                        continue;
+                        $v[0] = $eat = null;
+                    } else {
+                        $eat = $n + 1;
                     }
-                    $eat = $n + 1;
                 } else if ('[' === ($value[$n = $i + 1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#collapsed-reference-link>
                     if (']' === ($value[$n + 1] ?? 0) && ($key = s(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' '))) {
-                        if ($v = ($lot[0][f($key)] ?? 0)) {
+                        if ($f = ($lot[0][f($key)] ?? 0)) {
                             $eat = $i + 3;
+                            $v = $f;
                         }
                     // <https://spec.commonmark.org/0.31.2#full-reference-link>
                     } else if ($key = k($value, $n, $limit)) {
-                        if ($v = ($lot[0][f($key[0])] ?? 0)) {
+                        if ($f = ($lot[0][f($key[0])] ?? 0)) {
                             $eat = $key[1] + $n;
+                            $v = $f;
                         }
                     }
                 // <https://spec.commonmark.org/0.31.2#shortcut-reference-link>
                 } else if ($key = s(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' ')) {
-                    if ($v = ($lot[0][f($key)] ?? 0)) {
+                    if ($f = ($lot[0][f($key)] ?? 0)) {
                         $eat = $i + 1;
+                        $v = $f;
                     }
                 }
-                if (null !== $eat && isset($v[0])) {
-                    $chunk = [];
-                    $chunk_set = [];
-                    $current = $stack[$at][2][0];
-                    foreach ($row as $k => $r) {
-                        if ($k <= $current) {
-                            continue;
-                        }
-                        $chunk_set[$k] = \count($chunk);
-                        $chunk[] = $r;
-                        $row[$k] = "";
+                if (null === $eat) {
+                    // Remove this opener from the delimiter stack.
+                    $prev = $stack[$at][2][1];
+                    $next = $stack[$at][2][2];
+                    if (null !== $prev) {
+                        $stack[$prev][2][2] = $next;
                     }
-                    $chunk_at = $stack[$at][2][2];
-                    $chunk_last = null;
-                    $chunk_stack = [];
-                    while (null !== $chunk_at && isset($chunk_set[$stack[$chunk_at][2][0]])) {
-                        $chunk_next = $stack[$chunk_at][2][2];
-                        $chunk_v = $stack[$chunk_at];
-                        $chunk_v[2][0] = $chunk_set[$chunk_v[2][0]];
-                        $chunk_v[2][1] = $chunk_last;
-                        $chunk_v[2][2] = null;
-                        $chunk_stack[] = $chunk_v;
-                        $chunk_current = \array_key_last($chunk_stack);
-                        if (null !== $chunk_current) {
-                            $chunk_stack[$chunk_last][2][2] = $chunk_current;
-                        }
-                        $chunk_last = $chunk_current;
-                        // Cleanly unlink from the main stack
-                        $parent_next = $stack[$chunk_at][2][2];
-                        $parent_prev = $stack[$chunk_at][2][1];
-                        if (null !== $parent_prev) {
-                            $stack[$parent_prev][2][2] = $parent_next;
-                        }
-                        if (null !== $parent_next) {
-                            $stack[$parent_next][2][1] = $parent_prev;
-                        }
-                        // Once we have successfully separated the current chunk’s stack from the main stack, we can
-                        // safely move the main `$last` cursor backward to the previous node of the main stack.
-                        if ($last === $chunk_at) {
-                            $last = $parent_prev;
-                        }
-                        $stack[$chunk_at][2][1] = null;
-                        $stack[$chunk_at][2][2] = null;
-                        $chunk_at = $chunk_next;
+                    if (null !== $next) {
+                        $stack[$next][2][1] = $prev;
                     }
-                    // Process emphasis in the chunk
-                    $chunk = y(e($chunk, $chunk_stack, $chunk_last));
-                    // <https://spec.commonmark.org/0.31.2#links>
-                    if ('[' === $stack[$at][0]) {
-                        $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
-                            'href' => $v[0],
-                            'title' => $v[1]
-                        ]];
-                        if ('[' === $stack[$at][0]) {
-                            for ($k = $stack[$at][2][1]; null !== $k; $k = $stack[$k][2][1]) {
-                                if ('[' === $stack[$k][0]) {
-                                    $stack[$k][1][0] = 0;
-                                }
-                            }
-                        }
-                    // <https://spec.commonmark.org/0.31.2#images>
-                    } else {
-                        $row[$current] = ['img', false, [
-                            'alt' => alt($chunk),
-                            'src' => $v[0],
-                            'title' => $v[1]
-                        ]];
+                    if ($last === $at) {
+                        $last = $prev;
                     }
-                    $i = $eat;
-                    // We don’t store the active state of the stack data on the delimiter stack to save space. Instead,
-                    // we use the delimiter length to determine if a stack is active. For example, to turn off a stack,
-                    // we simply set the delimiter length to `0`.
+                    $stack[$at][2][1] = null;
+                    $stack[$at][2][2] = null;
                     $stack[$at][1][0] = 0;
-                    // Check for attribute syntax after link or image
-                    if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
-                        $row[$current][2] = $a[0] + $row[$current][2];
-                        $i += $a[1];
-                    }
+                    $s .= $c;
+                    ++$i;
                     continue;
                 }
-                $s .= $c;
-                ++$i;
+                $chunk = [];
+                $chunk_set = [];
+                $current = $stack[$at][2][0];
+                foreach ($row as $k => $r) {
+                    if ($k <= $current) {
+                        continue;
+                    }
+                    $chunk_set[$k] = \count($chunk);
+                    $chunk[] = $r;
+                    $row[$k] = "";
+                }
+                $chunk_at = $stack[$at][2][2];
+                $chunk_last = null;
+                $chunk_stack = [];
+                while (null !== $chunk_at && isset($chunk_set[$stack[$chunk_at][2][0]])) {
+                    $chunk_next = $stack[$chunk_at][2][2];
+                    $chunk_v = $stack[$chunk_at];
+                    $chunk_v[2][0] = $chunk_set[$chunk_v[2][0]];
+                    $chunk_v[2][1] = $chunk_last;
+                    $chunk_v[2][2] = null;
+                    $chunk_stack[] = $chunk_v;
+                    $chunk_current = \array_key_last($chunk_stack);
+                    if (null !== $chunk_current) {
+                        $chunk_stack[$chunk_last][2][2] = $chunk_current;
+                    }
+                    $chunk_last = $chunk_current;
+                    // Cleanly unlink from the main stack
+                    $parent_next = $stack[$chunk_at][2][2];
+                    $parent_prev = $stack[$chunk_at][2][1];
+                    if (null !== $parent_prev) {
+                        $stack[$parent_prev][2][2] = $parent_next;
+                    }
+                    if (null !== $parent_next) {
+                        $stack[$parent_next][2][1] = $parent_prev;
+                    }
+                    // Once we have successfully separated the current chunk’s stack from the main stack, we can
+                    // safely move the main `$last` cursor backward to the previous node of the main stack.
+                    if ($last === $chunk_at) {
+                        $last = $parent_prev;
+                    }
+                    $stack[$chunk_at][2][1] = null;
+                    $stack[$chunk_at][2][2] = null;
+                    $chunk_at = $chunk_next;
+                }
+                // Process emphasis in the chunk
+                $chunk = y(e($chunk, $chunk_stack, $chunk_last));
+                // <https://spec.commonmark.org/0.31.2#links>
+                if ('[' === $stack[$at][0]) {
+                    $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
+                        'href' => $v[0],
+                        'title' => $v[1]
+                    ]];
+                    if ('[' === $stack[$at][0]) {
+                        for ($k = $stack[$at][2][1]; null !== $k; $k = $stack[$k][2][1]) {
+                            if ('[' === $stack[$k][0]) {
+                                $stack[$k][1][0] = 0;
+                            }
+                        }
+                    }
+                // <https://spec.commonmark.org/0.31.2#images>
+                } else {
+                    $row[$current] = ['img', false, [
+                        'alt' => alt($chunk),
+                        'src' => $v[0],
+                        'title' => $v[1]
+                    ]];
+                }
+                $i = $eat;
+                // We don’t store the active state of the stack data on the delimiter stack to save space. Instead,
+                // we use the delimiter length to determine if a stack is active. For example, to turn off a stack,
+                // we simply set the delimiter length to `0`.
+                $stack[$at][1][0] = 0;
+                // Check for attribute syntax after link or image
+                if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
+                    $row[$current][2] = $a[0] + $row[$current][2];
+                    $i += $a[1];
+                }
                 continue;
             }
             // At this point, it is safe to skip ahead to the next character that Markdown finds “interesting”
