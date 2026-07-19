@@ -9,22 +9,30 @@ namespace x\markdown {
             $state = ['block' => !!$state];
         }
         $state = \array_replace_recursive([
-            '0' => [],
-            '1' => [],
-            '2' => [],
             'block' => true,
-            'hook' => null,
-            'tab' => 2
+            'tab' => 2,
+            'with' => []
         ], $state);
-        if (empty($state['block'])) {
+        $block = !empty($state['block']);
+        $with = (array) ($state['with'] ?? []);
+        if (!$block) {
             $lot = [];
-            $state['tab'] = 0;
-            $r = from\tags(from\row($value, $lot, 25, 0, \strlen($value)), $state);
-            return "" !== $r ? $r : null;
+            $row = from\row($value, $lot, 25, 0, \strlen($value));
+            $row['state'] = ['tab' => 0] + $state;
+            if ($with) foreach ($with as $w) {
+                $row[0] = $w(...$row);
+            }
+            $s = from\tags($row[0], $row['state']);
+            return "" !== $s ? $s : null;
         }
         $lot = [];
-        $r = from\tags(from\rows($value, $lot, 25, 0, \strlen($value))[0], $state);
-        return "" !== $r ? $r : null;
+        $rows = from\rows($value, $lot, 25, 0, \strlen($value));
+        $rows['state'] = $state;
+        if ($with) foreach ($with as $w) {
+            $rows[0] = $w(...$rows);
+        }
+        $s = from\tags($rows[0], $rows['state']);
+        return "" !== $s ? $s : null;
     }
 }
 
@@ -403,13 +411,13 @@ namespace x\markdown\from {
         return 0;
     }
     function row(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
-        if ($deep < 1) {
-            return \substr($value, $i, $limit - $i);
-        }
         $lot = \array_replace([[], [], []], $lot);
+        if ($deep < 1) {
+            return [\substr($value, $i, $limit - $i), $lot, 0];
+        }
         // In case the entire text is an abbreviation, parse it right away!
         if ($v = $lot[2][$value] ?? 0) {
-            return [['abbr', h(v($value)), ['title' => $v]]];
+            return [[['abbr', h(v($value)), ['title' => $v]]], $lot, 0];
         }
         $last = null;
         $row = [];
@@ -634,6 +642,9 @@ namespace x\markdown\from {
                         }
                     }
                 }
+                            echo htmlspecialchars(json_encode(substr($value,$n)));
+                            echo '<br>';
+                            exit;
                 $s .= $c;
                 ++$i;
                 continue;
@@ -1009,7 +1020,7 @@ namespace x\markdown\from {
             $row[] = h($s);
         }
         // Process emphasis
-        return y(e($row, $stack, $last));
+        return [y(e($row, $stack, $last)), $lot, 0];
     }
     function rows(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         $lot = \array_replace([[], [], []], $lot);
@@ -1143,7 +1154,7 @@ namespace x\markdown\from {
                     for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                     // HTML block type 7 must be “complete”
                     if ($n > $i && '>' === $value[$n - 1]) {
-                        $row = row($value, $lot, 1, $d + $i, $n);
+                        $row = row($value, $lot, 1, $d + $i, $n)[0];
                         if (\is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && false === $row[0] && 7 === $row[3][0]) {
                             $s = \substr($value, $i, $m[0]);
                             $i += $m[0] + $m[1];
@@ -1554,7 +1565,7 @@ namespace x\markdown\from {
                 if (\in_array($row[0], ['ol', 'ul'], true)) {}
                 // Leaf block(s)
                 if (false !== $row[0] && \is_string($row[1])) {
-                    $row[1] = row($row[1], $lot, $deep - 1, 0, \strlen($row[1]));
+                    $row[1] = row($row[1], $lot, $deep - 1, 0, \strlen($row[1]))[0];
                 }
             }
             unset($row);
