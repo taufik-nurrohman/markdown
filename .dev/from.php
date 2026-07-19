@@ -642,9 +642,6 @@ namespace x\markdown\from {
                         }
                     }
                 }
-                            echo htmlspecialchars(json_encode(substr($value,$n)));
-                            echo '<br>';
-                            exit;
                 $s .= $c;
                 ++$i;
                 continue;

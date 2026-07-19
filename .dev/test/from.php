@@ -134,7 +134,24 @@ function view_source(string $text) {
                 $i += $n;
                 continue;
             }
-            if (false !== ($n = strpos($text, '>', $i))) {
+            $q = "";
+            for ($n = $i + 1; $n < $limit; ++$n) {
+                $c = $text[$n];
+                if ($q) {
+                    if ($c === $q) {
+                        $q = "";
+                    }
+                    continue;
+                }
+                if ($c === '"' || $c === "'") {
+                    $q = $c;
+                    continue;
+                }
+                if ('>' === $c) {
+                    break;
+                }
+            }
+            if ("" === $q && $n < $limit) {
                 $s .= '<span style="color:#00b;font-weight:bold;">';
                 $part = substr($text, $i, $n += 1 - $i);
                 $s .= '&lt;';
@@ -144,6 +161,9 @@ function view_source(string $text) {
                 $i += $n;
                 continue;
             }
+            $s .= '&lt;';
+            ++$i;
+            continue;
         }
         if ("\\" === $c) {
             $s .= '<span style="color:#d00;font-weight:bold;">' . $c . '</span>';
