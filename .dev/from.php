@@ -418,6 +418,7 @@ namespace x\markdown\from {
         while ($i < $limit) {
             $c = $value[$i];
             if ("\\" === $c && $i + 1 < $limit && false !== \strpos(c16, $value[$i + 1])) {
+                $s .= $value[++$i];
                 ++$i;
                 continue;
             }
