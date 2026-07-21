@@ -1241,54 +1241,58 @@ namespace x\markdown\from {
                 $s = "";
                 continue;
             }
-            // If an image stands alone in a paragraph, then the paragraph will be converted into a figure element. This
-            // is an improvement that I came up with. The CommonMark specification does not state that it has to behave
-            // this way. An image block cannot interrupt a paragraph.
+            // If an image stands alone in a paragraph, the paragraph will be converted into a figure element. This is
+            // an improvisation that I came up with. The CommonMark specification does not specify that it has to
+            // behave this way.
             if ("" === $s && '!' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && k($value, $n, $limit)) {
                 for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                 // Image block must be “complete”
                 if ($n > $i && false !== \strpos(')]}', $value[$n - 1])) {
-                    $row = row($value, $lot, 1, $d + $i, $n)[0];
-                    if (\is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && 'img' === $row[0]) {
-                        $s = \substr($value, $i, $m[0]) . x1a;
-                        $i += $m[0] + $m[1];
-                        while ($i < $limit) {
-                            $m = m($value, $i, $limit);
-                            // A blank line continues the current block
-                            if ($m[0] === \strspn($value, c1, $i, $m[0])) {
-                                $s .= "\n";
-                                $i += $m[0] + $m[1];
-                                continue;
-                            }
-                            $w = w($value, $i, $d + 1, d($value, $i, $limit)[0]);
-                            // Found a non-blank line that is more indented than the image block
-                            if (d($value, $i, $limit)[0] > $d) {
-                                // If an image block is immediately followed by a non-paragraph continuation text, put a
-                                // blank line between them to mark the potential figure caption as a container block.
-                                if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                                    if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                                        $s .= "\n";
-                                    }
-                                }
-                                $s .= "\n" . $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
-                                $i += $m[0] + $m[1];
-                                continue;
-                            }
-                            // At this point, the figure caption must be a leaf block
-                            if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                                if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
-                                    $s .= "\n" . $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
-                                    $i += $m[0] + $m[1];
-                                    continue;
-                                }
-                            }
-                            break;
+                    $s = \substr($value, $i, $m[0]) . x1a;
+                    $i += $m[0] + $m[1];
+                    // Capture potential image caption
+                    while ($i < $limit) {
+                        $m = m($value, $i, $limit);
+                        // A blank line continues the current block
+                        if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                            $s .= "\n";
+                            $i += $m[0] + $m[1];
+                            continue;
                         }
-                        $rows[] = ['figure', \rtrim($s, "\n"), []];
-                        $s = "";
-                        continue;
+                        $w = w($value, $i, 5);
+                        // Found a line that is not blank and is more indented than the line with the image
+                        if (d($value, $i, $limit)[0] > $d) {
+                            // If an image block is immediately followed a non-paragraph continuation text, insert
+                            // a blank line to mark the image caption as a container block.
+                            if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                                if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                                    $s .= "\n";
+                                }
+                            }
+                            $s .= "\n" . \substr($w[2], $d + 1) . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                            $i += $m[0] + $m[1];
+                            continue;
+                        }
+                        // At this point, the image caption must be a leaf block
+                        if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                            if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
+                                $s .= "\n" . \substr($value, $i, $m[0]);
+                                $i += $m[0] + $m[1];
+                                continue;
+                            }
+                        }
+                        if ("\n" === $s[-1]) {
+                            ++$void;
+                        }
+                        break;
                     }
+                    $rows[] = ['figure', \rtrim($s, "\n"), []];
+                    $s = "";
+                    continue;
                 }
+                $s .= \substr($value, $i, $m[0]) . "\n";
+                $i += $m[0] + $m[1];
+                continue;
             }
             // There is no formal specification for the abbreviation block in CommonMark, so I will treat it similarly
             // to the link reference definition block. It acts as a leaf block that cannot interrupt a paragraph. It can
@@ -1611,18 +1615,21 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ('figure' === $row[0]) {
-                    $r = \explode(x1a, $row[1], 2);
+                    $part = \explode(x1a, $row[1], 2);
                     $row[1] = [];
-                    $row[1][0] = row($r[0], $lot, $deep - 1, $d = \strspn($r[0], ' '), \strlen($r[0]))[0][0];
-                    if (isset($r[1]) && "" !== $r[1]) {
-                        if (false !== \strpos($r[1], "\n\n")) {
-                            $row[1][1] = ['figcaption', rows($r[1] = \trim($r[1], "\n"), $lot, $deep - 1, 0, \strlen($r[1]))[0], []];
-                        } else {
-                            $row[1][1] = ['figcaption', row($r[1] = \trim($r[1]), $lot, $deep - 1, 0, \strlen($r[1]))[0], []];
-                        }
-                        // Remove empty caption
-                        if (!$row[1][1][1]) {
-                            unset($row[1][1]);
+                    $r = row($part[0], $lot, $deep - 1, $d = \strspn($part[0], ' '), \strlen($part[0]))[0];
+                    if (\is_array($r) && 1 === \count($r) && \is_array($r = \reset($r)) && 'img' === $r[0]) {
+                        $row[1][0] = $r;
+                    } else {
+                        $row[1][0] = ['p', $part[0], ['role' => 'img']]; // Broken image block :(
+                    }
+                    if (isset($part[1]) && "" !== $part[1]) {
+                        // Image caption as a container block
+                        if (false !== \strpos($part[1], "\n\n") && ($r = rows($part[1] = \trim($part[1], "\n"), $lot, $deep - 1, 0, \strlen($part[1]))[0])) {
+                            $row[1][1] = ['figcaption', $r, []];
+                        // Image caption as a leaf block
+                        } else if ($r = row($part[1] = \trim($part[1]), $lot, $deep - 1, 0, \strlen($part[1]))[0]) {
+                            $row[1][1] = ['figcaption', $r, []];
                         }
                     }
                     continue;
@@ -1767,20 +1774,22 @@ namespace x\markdown\from {
     }
     function w(string $value, int $i, int $max = 4, int $d = 0) {
         $n = 0;
+        $s = "";
         $start = $i;
         while ($n < $max) {
             $c = $value[$i] ?? 0;
             if (' ' === $c) {
+                $s .= $c;
                 ++$d;
                 ++$i;
                 ++$n;
                 continue;
             }
             if ("\t" === $c) {
-                $w = 4 - ($d % 4);
+                $s .= \str_repeat(' ', $w = 4 - ($d % 4));
                 if ($n + $w > $max) {
                     ++$i;
-                    return [$i - $start, \str_repeat(' ', ($n + $w) - $max), 0];
+                    return [$i - $start, \str_repeat(' ', ($n + $w) - $max), $s];
                 }
                 $d += $w;
                 $n += $w;
@@ -1789,7 +1798,7 @@ namespace x\markdown\from {
             }
             break;
         }
-        return [$i - $start, "", $max - $n];
+        return [$i - $start, "", $s];
     }
     function y($r) {
         return \is_array($r) && 1 === \count($r) && \is_string($r[$k = \array_key_first($r)]) ? $r[$k] : ($r ?: "");
