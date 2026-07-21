@@ -68,7 +68,9 @@ function view(string $text) {
                 // Space at the start of the line
                 ($w === $limit || "\n" === $text[$w] || "\r" === $text[$w]) ||
                 // Space at the end of the line
-                (0 === $i || "\n" === $text[$i - 1] || "\r" === $text[$i - 1])
+                (0 === $i || "\n" === $text[$i - 1] || "\r" === $text[$i - 1]) ||
+                // Space after a tab character
+                ($i > 0 && "\t" === $text[$i - 1])
             ) {
                 $s .= str_repeat('<mark class="c c-s"> </mark>', $w - $i);
             } else {
@@ -183,7 +185,9 @@ function view_source(string $text) {
                 // Space at the start of the line
                 ($w === $limit || "\n" === $text[$w] || "\r" === $text[$w]) ||
                 // Space at the end of the line
-                (0 === $i || "\n" === $text[$i - 1] || "\r" === $text[$i - 1])
+                (0 === $i || "\n" === $text[$i - 1] || "\r" === $text[$i - 1]) ||
+                // Space after a tab character
+                ($i > 0 && "\t" === $text[$i - 1])
             ) {
                 $s .= str_repeat('<mark class="c c-s"> </mark>', $w - $i);
             } else {
@@ -341,7 +345,6 @@ article abbr {
 article blockquote {
   border-left: 4px solid #eee;
   color: #666;
-  font-size: 100%;
   padding: 0 0 0 0.75em;
 }
 article details:open > summary {
@@ -349,6 +352,18 @@ article details:open > summary {
 }
 article del {
   text-decoration: line-through;
+}
+article figcaption {
+  color: #666;
+  font-style: italic;
+  margin-top: 0.5em;
+}
+article figure {
+  text-align: center;
+}
+article figure img {
+  display: block;
+  margin: 0 auto;
 }
 article li:where(:not(:first-child)) > :where({$where}):where(:first-child) {
   margin-top: 1rem;

@@ -18,20 +18,20 @@ namespace x\markdown {
         if (!$block) {
             $lot = [];
             $row = from\row($value, $lot, 25, 0, \strlen($value));
-            $row['state'] = ['tab' => 0] + $state;
+            $row[] = $state = ['tab' => 0] + $state;
             if ($with) foreach ($with as $w) {
                 $row[0] = $w(...$row);
             }
-            $s = from\tags($row[0], $row['state']);
+            $s = from\tags($row[0], $state);
             return "" !== $s ? $s : null;
         }
         $lot = [];
         $rows = from\rows($value, $lot, 25, 0, \strlen($value));
-        $rows['state'] = $state;
+        $rows[] = $state;
         if ($with) foreach ($with as $w) {
             $rows[0] = $w(...$rows);
         }
-        $s = from\tags($rows[0], $rows['state']);
+        $s = from\tags($rows[0], $state);
         return "" !== $s ? $s : null;
     }
 }
@@ -216,6 +216,9 @@ namespace x\markdown\from {
                 if ('img' === $r[0]) {
                     $s .= $r[2]['alt'] ?? "";
                     continue;
+                }
+                if (false === $r[0] && '&' !== ($r[1][0] ?? 0)) {
+                    continue; // Strip raw HTML element(s)
                 }
                 if (\is_array($r[1])) {
                     $s .= alt($r[1]);
@@ -1054,7 +1057,7 @@ namespace x\markdown\from {
                     $m = m($value, $i, $limit);
                     if ($m[0] !== \strspn($value, c1, $i, $m[0]) && d($value, $i, $limit)[0] < 4) {
                         // Previous line was a blank line
-                        if ("" !== $s && "\n" === $s[\strlen($s) - 1]) {
+                        if ("" !== $s && "\n" === $s[-1]) {
                             $s = \rtrim($s, "\n");
                             ++$void;
                         }
@@ -1078,7 +1081,7 @@ namespace x\markdown\from {
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
             // I am so sorry about the order, especially for those of you with ADHD. This parser does not process HTML
-            // block type 1 through 7 in order. It instead starts with a type of block that’s easier to spot.
+            // block of type 1 through 7 in order. It instead starts with a type of block that’s easier to spot.
             // <https://spec.commonmark.org/0.31.2#html-block>
             if ('<' === $value[$d + $i]) {
                 // <https://spec.commonmark.org/0.31.2#processing-instruction>
@@ -1122,9 +1125,9 @@ namespace x\markdown\from {
                     $i = $to + r($value, $to, $limit);
                     continue;
                 }
-                // HTML block type 6 does not treat open and close tag(s) differently. The initial tag does not need to
-                // be a valid HTML tag. As long as it starts like one, it will be interpreted as such. Even a start tag
-                // that looks like `<div <!— <?asdf` still counts as a valid HTML block type 6.
+                // HTML block of type 6 does not treat open and close tag(s) differently. The initial tag does not need
+                // to be a valid HTML tag. As long as it starts like one, it will be interpreted as such. Even a start
+                // tag that looks like `<div <!— <?asdf` still counts as a valid HTML block of type 6.
                 if (isset(b6[$b = \trim($b, '/')])) {
                     "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
                     $s = \substr($value, $i, $m[0]);
@@ -1146,10 +1149,10 @@ namespace x\markdown\from {
                     $s = "";
                     continue;
                 }
-                // HTML block type 7 cannot interrupt a paragraph
+                // HTML block of type 7 cannot interrupt a paragraph
                 if ("" === $s && $d + $i + 2 < $limit) {
                     for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
-                    // HTML block type 7 must be “complete”
+                    // HTML block of type 7 must be “complete”
                     if ($n > $i && '>' === $value[$n - 1]) {
                         $row = row($value, $lot, 1, $d + $i, $n)[0];
                         if (\is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && false === $row[0] && 7 === $row[3][0]) {
@@ -1207,7 +1210,7 @@ namespace x\markdown\from {
                     // block(s) usually will close when a blank line follows. As such, we can assume that quote block
                     // content that ends with a blank line is safe to mark as a closed block, which will not accept
                     // paragraph continuation text.
-                    if ("" !== $s && "\n" === $s[\strlen($s) - 1]) {
+                    if ("" !== $s && "\n" === $s[-1]) {
                         break;
                     }
                     // For all other case(s), we need to verify that the last block in the quote block content can
@@ -1237,6 +1240,56 @@ namespace x\markdown\from {
                 $rows[] = ['blockquote', $s, []];
                 $s = "";
                 continue;
+            }
+            // If an image stands alone in a paragraph, then the paragraph will be converted into a figure element. This
+            // is an improvement that I came up with. The CommonMark specification does not state that it has to behave
+            // this way. An image block cannot interrupt a paragraph.
+            if ("" === $s && '!' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && k($value, $n, $limit)) {
+                for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
+                // Image block must be “complete”
+                if ($n > $i && false !== \strpos(')]}', $value[$n - 1])) {
+                    $row = row($value, $lot, 1, $d + $i, $n)[0];
+                    if (\is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && 'img' === $row[0]) {
+                        $s = \substr($value, $i, $m[0]) . x1a;
+                        $i += $m[0] + $m[1];
+                        while ($i < $limit) {
+                            $m = m($value, $i, $limit);
+                            // A blank line continues the current block
+                            if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                                $s .= "\n";
+                                $i += $m[0] + $m[1];
+                                continue;
+                            }
+                            $w = w($value, $i, 1, $d);
+                            // Found a non-blank line that is more indented than the image block
+                            if (d($value, $i, $limit)[0] > $d) {
+                                // If an image block is immediately followed by a non-paragraph continuation text, put a
+                                // blank line between them to mark the potential figure caption as a container block.
+                                if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                                    if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                                        $s .= "\n";
+                                    }
+                                }
+                                $s .= "\n" . $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                                $i += $m[0] + $m[1];
+                                continue;
+                            }
+                            // At this point, the figure caption must be a leaf block
+                            if ("\n" !== $s[-1] && false === \strpos($s, "\n\n")) {
+                                $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                                if (($b = \reset($b)) && ('p' === $b[0] || false === $b[0] && 7 === $b[3][0])) {
+                                    $s .= "\n" . $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                                    $i += $m[0] + $m[1];
+                                    continue;
+                                }
+                            }
+                            break;
+                        }
+                        $rows[] = ['figure', \rtrim($s, "\n"), []];
+                        $s = "";
+                        continue;
+                    }
+                }
             }
             // There is no formal specification for the abbreviation block in CommonMark, so I will treat it similarly
             // to the link reference definition block. It acts as a leaf block that cannot interrupt a paragraph. It can
@@ -1300,7 +1353,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     // Previous line was a blank line
-                    if ("" !== $s && "\n" === $s[\strlen($s) - 1]) {
+                    if ("" !== $s && "\n" === $s[-1]) {
                         $s = \substr($s, 0, -1);
                         ++$void;
                         break;
@@ -1332,7 +1385,7 @@ namespace x\markdown\from {
                 $w = \strspn($value, c1, $n);
                 // <https://spec.commonmark.org/0.31.2#link-destination>
                 if ('<' === ($value[$n + $w] ?? 0)) {
-                    // Make sure it is not an HTML block other than type 7
+                    // Make sure it is not an HTML block of other than type 7
                     if ($r && ($b = rows($value, $lot, 0, $n, $n + \strcspn($value, c2, $n))[0][0] ?? 0)) {
                         if (false === $b[0] && 7 !== $b[3][0]) {
                             $s .= \substr($value, $i, $m[0]) . "\n";
@@ -1558,6 +1611,23 @@ namespace x\markdown\from {
                     $row[1] = rows($row[1], $lot, $deep - 1, 0, \strlen($row[1]))[0] ?: "";
                     continue;
                 }
+                if ('figure' === $row[0]) {
+                    $r = \explode(x1a, $row[1], 2);
+                    $row[1] = [];
+                    $row[1][0] = row($r[0], $lot, $deep - 1, $d = \strspn($r[0], ' '), \strlen($r[0]))[0][0];
+                    if (isset($r[1]) && "" !== $r[1]) {
+                        if (false !== \strpos($r[1], "\n\n")) {
+                            $row[1][1] = ['figcaption', rows($r[1] = \trim($r[1], "\n"), $lot, $deep - 1, 0, \strlen($r[1]))[0], []];
+                        } else {
+                            $row[1][1] = ['figcaption', row($r[1] = \trim($r[1]), $lot, $deep - 1, 0, \strlen($r[1]))[0], []];
+                        }
+                        // Remove empty caption
+                        if (!$row[1][1][1]) {
+                            unset($row[1][1]);
+                        }
+                    }
+                    continue;
+                }
                 if ('dl' === $row[0]) {}
                 if (\in_array($row[0], ['ol', 'ul'], true)) {}
                 // Leaf block(s)
@@ -1595,9 +1665,11 @@ namespace x\markdown\from {
         }
         static $blocks = [
             'blockquote' => 1,
-            'dd' => 1,
+            'dd' => 2,
             'dl' => 1,
-            'li' => 1,
+            'figcaption' => 2,
+            'figure' => 1,
+            'li' => 2,
             'ol' => 1,
             'ul' => 1
         ];
@@ -1607,6 +1679,19 @@ namespace x\markdown\from {
             $tab = "";
         }
         $b = "" !== $tab && isset($blocks[$row[0]]);
+        // The `dl`, `figcaption`, and `li` block(s) can behave as either a container or leaf block in the final result
+        if ($b && 2 === $blocks[$row[0]]) {
+            if (\is_array($row[1])) {
+                foreach ($row[1] as $r) {
+                    if (\is_string($r) || \is_array($r) && isset($blocks[$r[0]])) {
+                        $b = false;
+                        break;
+                    }
+                }
+            } else if (\is_string($row[1])) {
+                $b = false;
+            }
+        }
         $tab = \str_repeat($tab, $deep);
         $s = $tab . '<' . $row[0];
         if ($row[2]) {
