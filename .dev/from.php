@@ -1260,12 +1260,12 @@ namespace x\markdown\from {
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
-                            $w = w($value, $i, 1, $d);
+                            $w = w($value, $i, $d + 1, d($value, $i, $limit)[0]);
                             // Found a non-blank line that is more indented than the image block
                             if (d($value, $i, $limit)[0] > $d) {
                                 // If an image block is immediately followed by a non-paragraph continuation text, put a
                                 // blank line between them to mark the potential figure caption as a container block.
-                                if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                                if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
                                     if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                                         $s .= "\n";
                                     }
@@ -1275,9 +1275,8 @@ namespace x\markdown\from {
                                 continue;
                             }
                             // At this point, the figure caption must be a leaf block
-                            if ("\n" !== $s[-1] && false === \strpos($s, "\n\n")) {
-                                $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
-                                if (($b = \reset($b)) && ('p' === $b[0] || false === $b[0] && 7 === $b[3][0])) {
+                            if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                                if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
                                     $s .= "\n" . $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
                                     $i += $m[0] + $m[1];
                                     continue;
