@@ -75,7 +75,9 @@ namespace x\markdown\from {
     const c17 = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x7f";
     // <https://en.wikipedia.org/wiki/Latin_script_in_Unicode>
     const c18 = c4 . c10 . '_ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĹĺĻļĽľĿŀŁłŃńŅņŇňŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽž';
-    const x1a = "\x1a";
+    const x1 = "\x1"; // SOH
+    const x2 = "\x2"; // STX
+    const x3 = "\x3"; // ETX
     // Currently, there is no official attribute syntax specification in CommonMark except for the raw HTML attribute.
     // To make it as close as possible to the CommonMark specification or to prepare for the possibility of such
     // specification in the future, I will make the attribute syntax rule(s) as close as possible to the raw HTML
@@ -337,11 +339,7 @@ namespace x\markdown\from {
                 $right = $stack[$right][2][2];
             }
         }
-        $y = [];
-        foreach ($row as $r) {
-            "" !== $r && ($y[] = $r);
-        }
-        return $y;
+        return $row;
     }
     // <https://spec.commonmark.org/0.31.2#matches>
     function f(string $text) {
@@ -415,9 +413,6 @@ namespace x\markdown\from {
     }
     function row(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         $lot = \array_replace([[], [], []], $lot);
-        if ($deep < 1) {
-            return [\substr($value, $i, $limit - $i), $lot, 0];
-        }
         // In case the entire text is an abbreviation, parse it right away!
         if ($v = $lot[2][$value] ?? 0) {
             return [[['abbr', h(v($value)), ['title' => $v]]], $lot, 0];
@@ -461,7 +456,7 @@ namespace x\markdown\from {
             if ('&' === $c && false !== ($end = \strpos($value, ';', $i + 2))) {
                 static $e;
                 if ('#' === ($value[$n = $i + 1] ?? 0)) {
-                    if (false !== \strpos('Xx', $value[$i + 2] ?? x1a)) {
+                    if (false !== \strpos('Xx', $value[$i + 2] ?? x1)) {
                         // <https://spec.commonmark.org/0.31.2#hexadecimal-numeric-character-references>
                         $n += \strspn($value, c7, $n + 2) + 2;
                         if ($end === $n && $n - $i - 3 < 7) {
@@ -682,7 +677,7 @@ namespace x\markdown\from {
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#image-description>
-            if ('!' === $c && '[' === ($value[$i + 1] ?? 0)) {
+            if ($deep > 0 && '!' === $c && '[' === ($value[$i + 1] ?? 0)) {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $current = \count($stack);
                 $row[] = $c .= '[';
@@ -694,7 +689,7 @@ namespace x\markdown\from {
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#link-text>
-            if ('[' === $c) {
+            if ($deep > 0 && '[' === $c) {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $current = \count($stack);
                 $row[] = $c;
@@ -706,7 +701,7 @@ namespace x\markdown\from {
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#delimiter-run>
-            if ('*' === $c || '_' === $c) {
+            if ($deep > 1 && ('*' === $c || '_' === $c)) {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 $current = \count($stack);
                 $n = \strspn($value, $c, $i, $limit - $i);
@@ -746,7 +741,7 @@ namespace x\markdown\from {
             // yet I already have a list of word(s) to examine the character that precedes and follows the current
             // portion of text. Below is my effort to achieve the same result, without regular expression.
             // <https://github.com/michelf/php-markdown/blob/2.0.0/Michelf/MarkdownExtra.php#L1845-L1847>
-            if ($lot[1]) {
+            if ($deep > 0 && $lot[1]) {
                 $best = [null, -1];
                 // The abbreviation list is already sorted by the length of the key(s), from longest to shortest
                 foreach ($lot[1] as $k => $v) {
@@ -778,7 +773,7 @@ namespace x\markdown\from {
                 }
             }
             // <https://spec.commonmark.org/0.31.2#look-for-link-or-image>
-            if (']' === $c) {
+            if ($deep > 0 && ']' === $c) {
                 "" !== $s && ($row[] = h($s)) && ($s = "");
                 // No `[` and `![`
                 if (null === $last) {
@@ -973,7 +968,10 @@ namespace x\markdown\from {
                     $chunk_at = $chunk_next;
                 }
                 // Process emphasis in the chunk
-                $chunk = y(e($chunk, $chunk_stack, $chunk_last));
+                if ($deep > 1) {
+                    $chunk = e($chunk, $chunk_stack, $chunk_last);
+                }
+                $chunk = y($chunk);
                 // <https://spec.commonmark.org/0.31.2#links>
                 if ('[' === $stack[$at][0]) {
                     $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
@@ -989,7 +987,7 @@ namespace x\markdown\from {
                     }
                 // <https://spec.commonmark.org/0.31.2#images>
                 } else {
-                    $row[$current] = ['img', false, [
+                    $row[$current] = ['img', false, ($v[2] ?? []) + [
                         'alt' => alt($chunk),
                         'src' => $v[0],
                         'title' => $v[1]
@@ -1008,7 +1006,7 @@ namespace x\markdown\from {
                 continue;
             }
             // At this point, it is safe to skip ahead to the next character that Markdown finds “interesting”
-            if ($n = \strcspn($value, c2 . '!&*<[]_`' . "\\", $i)) {
+            if ($n = \strcspn($value, c2 . '&<`' . "\\" . ($deep > 0 ? '![]' : "") . ($deep > 1 ? '*_' : ""), $i)) {
                 $s .= \substr($value, $i, $n);
                 $i += $n;
                 continue;
@@ -1020,7 +1018,10 @@ namespace x\markdown\from {
             $row[] = h($s);
         }
         // Process emphasis
-        return [y(e($row, $stack, $last)), $lot, 0];
+        if ($deep > 1) {
+            $row = e($row, $stack, $last);
+        }
+        return [y($row), $lot, 0];
     }
     function rows(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         $lot = \array_replace([[], [], []], $lot);
@@ -1222,7 +1223,7 @@ namespace x\markdown\from {
                     // There is a special case for a paragraph continuation text that looks like a setext heading’s
                     // underline. From the “dingus”, it needs to be treated as textual content, somehow.
                     $w = w($value, $i);
-                    if (false !== \strpos('-=', $value[$i + $w[0]] ?? x1a)) {
+                    if (false !== \strpos('-=', $value[$i + $w[0]] ?? x1)) {
                         $s .= "\n" . \substr($value, $i, $w[0]);
                         // Add a back-slash escape so current line will not be treated as a setext heading’s underline
                         $s .= "\\" . \substr($value, $i + $w[0], $m[0] - $w[0]);
@@ -1244,51 +1245,69 @@ namespace x\markdown\from {
             // If an image stands alone in a paragraph, the paragraph will be converted into a figure element. This is
             // an improvisation that I came up with. The CommonMark specification does not specify that it has to
             // behave this way.
-            if ("" === $s && '!' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && k($value, $n, $limit)) {
+            if ("" === $s && '!' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && ($k = k($value, $n, $limit)) && false !== \strpos(c3 . '([{', $value[$n + $k[1]] ?? x1)) {
                 for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                 // Image block must be “complete”
                 if ($n > $i && false !== \strpos(')]}', $value[$n - 1])) {
-                    $s = \substr($value, $i, $m[0]) . x1a;
-                    $i += $m[0] + $m[1];
-                    // Capture potential image caption
-                    while ($i < $limit) {
-                        $m = m($value, $i, $limit);
-                        // A blank line continues the current block
-                        if ($m[0] === \strspn($value, c1, $i, $m[0])) {
-                            $s .= "\n";
-                            $i += $m[0] + $m[1];
-                            continue;
+                    // Attempt to parse the image syntax on the current line right away and then verify that it is the
+                    // only image element in the final result.
+                    $row = row($value, $lot, 1, $d + $i, $n)[0];
+                    $valid = \is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && 'img' === $row[0];
+                    // It is tricky to verify a reference-style image. In order for a reference-style label to be valid,
+                    // the reference link must exist before the label. Since we are attempting to parse the image syntax
+                    // immediately, there may be a case where the parsing fails due to the missing reference link. This
+                    // requires an extra step to capture reference link(s) that may exist further down the current line.
+                    if (!$valid && false !== \strpos($value, ']:', $i + $m[0] + $m[1])) {
+                        // Attempt to collect reference link(s) further down the current line
+                        rows($value, $lot, 1, $i + $m[0] + $m[1], $limit);
+                        // Verify the image syntax once more
+                        if (!empty($lot[0]) && ($row = row($value, $lot, 1, $d + $i, $n)[0])) {
+                            $valid = \is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && 'img' === $row[0];
                         }
-                        $w = w($value, $i, 5);
-                        // Found a line that is not blank and is more indented than the line with the image
-                        if (d($value, $i, $limit)[0] > $d) {
-                            // If an image block is immediately followed a non-paragraph continuation text, insert
-                            // a blank line to mark the image caption as a container block.
-                            if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                                if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                                    $s .= "\n";
-                                }
-                            }
-                            $s .= "\n" . \substr($w[2], $d + 1) . \substr($value, $i + $w[0], $m[0] - $w[0]);
-                            $i += $m[0] + $m[1];
-                            continue;
-                        }
-                        // At this point, the image caption must be a leaf block
-                        if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                            if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
-                                $s .= "\n" . \substr($value, $i, $m[0]);
+                    }
+                    if ($valid) {
+                        $s = \substr($value, $i, $m[0]) . x2;
+                        $i += $m[0] + $m[1];
+                        // Capture potential image caption
+                        while ($i < $limit) {
+                            $m = m($value, $i, $limit);
+                            // A blank line continues the current block
+                            if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                                $s .= "\n";
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
+                            $w = w($value, $i, 5);
+                            // Found a line that is not blank and is more indented than the line with the image
+                            if (d($value, $i, $limit)[0] > $d) {
+                                // If an image block is immediately followed a non-paragraph continuation text, append a
+                                // blank line to mark the image caption as a container block.
+                                if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                                    if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                                        $s .= "\n";
+                                    }
+                                }
+                                $s .= "\n" . \substr($w[2], $d + 1) . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                                $i += $m[0] + $m[1];
+                                continue;
+                            }
+                            // At this point, the image caption must be a leaf block
+                            if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                                if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
+                                    $s .= "\n" . \substr($value, $i, $m[0]);
+                                    $i += $m[0] + $m[1];
+                                    continue;
+                                }
+                            }
+                            if ("\n" === $s[-1]) {
+                                ++$void;
+                            }
+                            break;
                         }
-                        if ("\n" === $s[-1]) {
-                            ++$void;
-                        }
-                        break;
+                        $rows[] = ['figure', \rtrim($s, "\n"), []];
+                        $s = "";
+                        continue;
                     }
-                    $rows[] = ['figure', \rtrim($s, "\n"), []];
-                    $s = "";
-                    continue;
                 }
                 $s .= \substr($value, $i, $m[0]) . "\n";
                 $i += $m[0] + $m[1];
@@ -1603,8 +1622,8 @@ namespace x\markdown\from {
             $rows[] = ['p', \trim($s), []];
         }
         if ($deep > 0 && $rows) {
-            // Sort the abbreviation list based on the length of the key(s), from longest to shortest. This ensures
-            // that, during parsing, the text “JavaScript” will be processed before the text “Java”, for example.
+            // Sort the abbreviation list based on the length of the key(s), from longest to shortest. This ensures that
+            // during parsing, the text “JavaScript” will be processed before the text “Java”, for example.
             $lot[1] && \uksort($lot[1], function ($a, $b) {
                 return \strlen($b) <=> \strlen($a);
             });
@@ -1615,14 +1634,9 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ('figure' === $row[0]) {
-                    $part = \explode(x1a, $row[1], 2);
+                    $part = \explode(x2, $row[1], 2);
                     $row[1] = [];
-                    $r = row($part[0], $lot, $deep - 1, $d = \strspn($part[0], ' '), \strlen($part[0]))[0];
-                    if (\is_array($r) && 1 === \count($r) && \is_array($r = \reset($r)) && 'img' === $r[0]) {
-                        $row[1][0] = $r;
-                    } else {
-                        $row[1][0] = ['p', $part[0], ['role' => 'img']]; // Broken image block :(
-                    }
+                    $row[1][0] = row($part[0], $lot, $deep - 1, $d = \strspn($part[0], ' '), \strlen($part[0]))[0][0];
                     if (isset($part[1]) && "" !== $part[1]) {
                         // Image caption as a container block
                         if (false !== \strpos($part[1], "\n\n") && ($r = rows($part[1] = \trim($part[1], "\n"), $lot, $deep - 1, 0, \strlen($part[1]))[0])) {
@@ -1800,7 +1814,12 @@ namespace x\markdown\from {
         }
         return [$i - $start, "", $s];
     }
-    function y($r) {
-        return \is_array($r) && 1 === \count($r) && \is_string($r[$k = \array_key_first($r)]) ? $r[$k] : ($r ?: "");
+    function y($row) {
+        if (\is_array($row)) {
+            $row = \array_values(\array_filter($row, function ($r) {
+                return "" !== $r;
+            }));
+        }
+        return \is_array($row) && 1 === \count($row) && \is_string($row[$k = \array_key_first($row)]) ? $row[$k] : ($row ?: "");
     }
 }
