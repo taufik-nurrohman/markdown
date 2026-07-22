@@ -1223,6 +1223,7 @@ namespace x\markdown\from {
                     // There is a special case for a paragraph continuation text that looks like a setext heading’s
                     // underline. From the “dingus”, it needs to be treated as textual content, somehow.
                     $w = w($value, $i);
+                    // <https://spec.commonmark.org/0.31.2#example-93>
                     if (false !== \strpos('-=', $value[$i + $w[0]] ?? x1)) {
                         $s .= "\n" . \substr($value, $i, $w[0]);
                         // Add a back-slash escape so current line will not be treated as a setext heading’s underline
