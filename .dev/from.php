@@ -311,7 +311,7 @@ namespace x\markdown\from {
                 // Sever link(s) for all delimiter(s) physically between `$left` and `$right`
                 $stack[$left][2][2] = $right;
                 $stack[$right][2][1] = $left;
-                // Check for opener and closer exhaustion, then remove it from the stack if it is 0
+                // Check for opener and closer exhaustion, then remove it from the stack if it is `0`
                 if (0 === $stack[$left][1][0]) {
                     if (null !== ($prev = $stack[$left][2][1])) {
                         $stack[$prev][2][2] = $right;
@@ -1244,24 +1244,26 @@ namespace x\markdown\from {
             }
             // If an image stands alone in a paragraph, the paragraph will be converted into a figure element. This is
             // an improvisation that I came up with. The CommonMark specification does not specify that it has to
-            // behave this way.
+            // behave this way. Since there is no special delimiter to mark the boundary of this block, it has been
+            // configured so that it cannot interrupt a paragraph, similar to setext heading(s).
             if ("" === $s && '!' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && ($k = k($value, $n, $limit)) && false !== \strpos(c3 . '([{', $value[$n + $k[1]] ?? x1)) {
                 for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                 // Image block must be “complete”
                 if ($n > $i && false !== \strpos(')]}', $value[$n - 1])) {
-                    // Attempt to parse the image syntax on the current line right away and then verify that it is the
-                    // only image element in the final result.
+                    // Attempt to parse the image on the current line right away
                     $row = row($value, $lot, 1, $d + $i, $n)[0];
+                    // Verify that the final result is a lone image element
                     $valid = \is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && 'img' === $row[0];
                     // It is tricky to verify a reference-style image. In order for a reference-style label to be valid,
-                    // the reference link must exist before the label. Since we are attempting to parse the image syntax
+                    // the reference link must exist before the label. Since we are attempting to parse the image
                     // immediately, there may be a case where the parsing fails due to the missing reference link. This
                     // requires an extra step to capture reference link(s) that may exist further down the current line.
                     if (!$valid && false !== \strpos($value, ']:', $i + $m[0] + $m[1])) {
                         // Attempt to collect reference link(s) further down the current line
-                        rows($value, $lot, 1, $i + $m[0] + $m[1], $limit);
-                        // Verify the image syntax once more
-                        if (!empty($lot[0]) && ($row = row($value, $lot, 1, $d + $i, $n)[0])) {
+                        $try = [];
+                        rows($value, $try, 1, $i + $m[0] + $m[1], $limit);
+                        // Verify the final result once more
+                        if (!empty($try[0]) && ($row = row($value, $try, 1, $d + $i, $n)[0])) {
                             $valid = \is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && 'img' === $row[0];
                         }
                     }

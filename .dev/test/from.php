@@ -510,34 +510,43 @@ td, th {
   vertical-align: top;
 }
 .c {
+  font-style: normal;
+  font-weight: normal;
   position: relative;
 }
-.c::after {
-  background: rgb(0 0 0 / 0.15);
+.c::before {
+  background: #dda;
   bottom: 0;
-  color: rgb(0 0 0 / 0.5);
+  color: #774;
   content: "";
+  text-align: center;
+}
+.c-n::before {
+  content: '\\5c n';
+}
+.c-r::before {
+  content: '\\5c r';
+}
+.c-s::before {
+  bottom: 0;
+  content: '\\22c5';
   left: 0;
   position: absolute;
   right: 0;
-  text-align: center;
   top: 0;
 }
-.c-n::after {
-  content: '\\5c n';
-}
-.c-r::after {
-  content: '\\5c r';
-}
-.c-s::after {
-  content: '\\22c5';
-}
-.c-t::after {
-  content: '\\5c t';
+.c-t::before {
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+  position: absolute;
+  right: 0;
   text-align: left;
+  top: 0;
 }
-:where(.c-n, .c-r, .c-t)::before {
-  content: '  ';
+pre:focus .c-t::before,
+pre:hover .c-t::before {
+  content: '1234';
 }
 :disabled {
   cursor: not-allowed;
@@ -655,21 +664,21 @@ foreach ($files as $file) {
     $raws = strtr($raws, ["\n" => 'CR' === $line ? "\r" : ('CRLF' === $line ? "\r\n" : "\n")]);
     $size = strlen($raws);
     $s .= '<div>';
-    $s .= '<pre>';
+    $s .= '<pre tabindex="0">';
     $s .= '<code>';
     $s .= view($raws);
     $s .= '</code>';
     $s .= '</pre>';
     $end = $start = 0;
     if ('result' === $view) {
-        $s .= '<article>';
+        $s .= '<article tabindex="0">';
         $start = hrtime(true);
         $r = x\markdown\from($raws, ['block' => $block]) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
         $s .= view_result($r);
         $s .= '</article>';
     } else if ('source' === $view) {
-        $s .= '<pre>';
+        $s .= '<pre tabindex="0">';
         $s .= '<code>';
         $start = hrtime(true);
         $r = x\markdown\from($raws, ['block' => $block]) ?? "";
@@ -678,7 +687,7 @@ foreach ($files as $file) {
         $s .= '</code>';
         $s .= '</pre>';
     } else {
-        $s .= '<pre>';
+        $s .= '<pre tabindex="0">';
         $s .= '<code>';
         $start = hrtime(true);
         $lot = [];
