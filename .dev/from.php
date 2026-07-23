@@ -1819,9 +1819,21 @@ namespace x\markdown\from {
     }
     function y($row) {
         if (\is_array($row)) {
-            $row = \array_values(\array_filter($row, function ($r) {
-                return "" !== $r;
-            }));
+            $limit = \count($row);
+            $r = [];
+            $s = "";
+            for ($i = 0; $i < $limit; ++$i) {
+                if (\is_string($c = $row[$i])) {
+                    $s .= $c;
+                    continue;
+                }
+                "" !== $s && ($r[] = $s) && ($s = "");
+                $r[] = $c;
+            }
+            if ("" !== $s) {
+                $r[] = $s;
+            }
+            $row = $r;
         }
         return \is_array($row) && 1 === \count($row) && \is_string($row[$k = \array_key_first($row)]) ? $row[$k] : ($row ?: "");
     }
