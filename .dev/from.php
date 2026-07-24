@@ -431,18 +431,20 @@ namespace x\markdown\from {
             if ($r = r($value, $i, $limit)) {
                 // <https://spec.commonmark.org/0.31.2#hard-line-break>
                 if ("\\" === ($value[$i - 1] ?? 0)) {
-                    "" !== $s && ($row[] = h(\substr($s, 0, -1))) && ($s = "");
+                    "" !== $s && ($row[] = h(\substr($s, 0, -1)));
                     $row[] = ['br', false, []];
                     $i += $r;
                     $i += \strspn($value, c1, $i, $limit - $i); // <https://spec.commonmark.org/0.31.2#example-637>
+                    $s = "";
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#hard-line-break>
                 if ("\t" === ($value[$i - 1] ?? 0) || (' ' === ($value[$i - 1] ?? 0) && ' ' === ($value[$i - 2] ?? 0))) {
-                    "" !== $s && ($row[] = h(\rtrim($s))) && ($s = "");
+                    "" !== $s && ($row[] = h(\rtrim($s)));
                     $row[] = ['br', false, []];
                     $i += $r;
                     $i += \strspn($value, c1, $i, $limit - $i); // <https://spec.commonmark.org/0.31.2#example-636>
+                    $s = "";
                     continue;
                 }
                 // <https://spec.commonmark.org/0.31.2#softbreak>
@@ -463,9 +465,10 @@ namespace x\markdown\from {
                             $e ??= [];
                             $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
                             if ("" !== ($e[$k] ?? "")) {
-                                "" !== $s && ($row[] = h($s)) && ($s = "");
+                                "" !== $s && ($row[] = h($s));
                                 $row[] = [false, $k, [], [3, $e[$k]]];
                                 $i = $end;
+                                $s = "";
                                 continue;
                             }
                         }
@@ -479,9 +482,10 @@ namespace x\markdown\from {
                         $e ??= [];
                         $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
                         if ("" !== ($e[$k] ?? "")) {
-                            "" !== $s && ($row[] = h($s)) && ($s = "");
+                            "" !== $s && ($row[] = h($s));
                             $row[] = [false, $k, [], [2, $e[$k]]];
                             $i = $end;
+                            $s = "";
                             continue;
                         }
                     }
@@ -500,9 +504,10 @@ namespace x\markdown\from {
                     // the matching entity pattern is not valid.
                     $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
                     if ("" !== ($e[$k] ?? "")) {
-                        "" !== $s && ($row[] = h($s)) && ($s = "");
+                        "" !== $s && ($row[] = h($s));
                         $row[] = [false, $k, [], [1, $e[$k]]];
                         $i = $end;
+                        $s = "";
                         continue;
                     }
                 }
@@ -513,31 +518,35 @@ namespace x\markdown\from {
             if ('<' === $c) {
                 // <https://spec.commonmark.org/0.31.2#processing-instruction>
                 if ('?' === ($value[$i + 1] ?? 0) && false !== ($n = \strpos($value, '?>', $i + 2))) {
-                    "" !== $s && ($row[] = h($s)) && ($s = "");
+                    "" !== $s && ($row[] = h($s));
                     $row[] = [false, \substr($value, $i, $n += 2 - $i), [], [3]];
                     $i += $n;
+                    $s = "";
                     continue;
                 }
                 if ('!' === ($value[$i + 1] ?? 0)) {
                     // <https://spec.commonmark.org/0.31.2#html-comment>
                     if (0 === \substr_compare($value, '--', $i + 2, 2) && false !== ($n = \strpos($value, '-->', $i + 2))) {
-                        "" !== $s && ($row[] = h($s)) && ($s = "");
+                        "" !== $s && ($row[] = h($s));
                         $row[] = [false, \substr($value, $i, $n += 3 - $i), [], [2]];
                         $i += $n;
+                        $s = "";
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#cdata-section>
                     if (0 === \substr_compare($value, '[CDATA[', $i + 2, 7) && false !== ($n = \strpos($value, ']]>', $i + 2))) {
-                        "" !== $s && ($row[] = h($s)) && ($s = "");
+                        "" !== $s && ($row[] = h($s));
                         $row[] = [false, \substr($value, $i, $n += 3 - $i), [], [5]];
                         $i += $n;
+                        $s = "";
                         continue;
                     }
                     // <https://spec.commonmark.org/0.31.2#declaration>
                     if (\strspn($value, c10, $i + 2, 1) && false !== ($n = \strpos($value, '>', $i + 3))) {
-                        "" !== $s && ($row[] = h($s)) && ($s = "");
+                        "" !== $s && ($row[] = h($s));
                         $row[] = [false, \substr($value, $i, $n += 1 - $i), [], [4]];
                         $i += $n;
+                        $s = "";
                         continue;
                     }
                     $s .= $c;
@@ -552,13 +561,14 @@ namespace x\markdown\from {
                             if (':' === ($value[$m + $n] ?? 0)) {
                                 $m += \strcspn($value, c17 . ' <>', $m + $n + 1) + 1;
                                 if ($end === $m + $n) {
-                                    "" !== $s && ($row[] = h($s)) && ($s = "");
+                                    "" !== $s && ($row[] = h($s));
                                     $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [5]];
                                     // Check for attribute syntax after link
                                     if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
                                         $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
                                         $i += $a[1];
                                     }
+                                    $s = "";
                                     continue;
                                 }
                             }
@@ -569,13 +579,14 @@ namespace x\markdown\from {
                         if ('@' === ($value[$m + $n] ?? 0)) {
                             $m += \strspn($value, c11 . '.', $m + $n + 1) + 1;
                             if ($end === $m + $n) {
-                                "" !== $s && ($row[] = h($s)) && ($s = "");
+                                "" !== $s && ($row[] = h($s));
                                 $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [6]];
                                 // Check for attribute syntax after link
                                 if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
                                     $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
                                     $i += $a[1];
                                 }
+                                $s = "";
                                 continue;
                             }
                         }
@@ -633,9 +644,10 @@ namespace x\markdown\from {
                             }
                         }
                         if ('>' === ($value[$n] ?? 0)) {
-                            "" !== $s && ($row[] = h($s)) && ($s = "");
+                            "" !== $s && ($row[] = h($s));
                             $row[] = [false, \substr($value, $i, ($n += 1) - $i), [], [7]];
                             $i = $n;
+                            $s = "";
                             continue;
                         }
                     }
@@ -657,9 +669,10 @@ namespace x\markdown\from {
                         if (\strlen($text) > 1 && ' ' === $text[0] && ' ' === \substr($text, -1) && "" !== \trim($text, ' ')) {
                             $text = \substr($text, 1, -1);
                         }
-                        "" !== $s && ($row[] = h($s)) && ($s = "");
+                        "" !== $s && ($row[] = h($s));
                         $row[] = ['code', h($text), []];
                         $i = $eat + $n;
+                        $s = "";
                         break;
                     }
                     $eat += \strspn($value, $c, $eat);
@@ -678,9 +691,10 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.31.2#image-description>
             if ($deep > 0 && '!' === $c && '[' === ($value[$i + 1] ?? 0)) {
-                "" !== $s && ($row[] = h($s)) && ($s = "");
+                "" !== $s && ($row[] = h($s));
                 $current = \count($stack);
                 $row[] = $c .= '[';
+                $s = "";
                 $stack[] = [$c, [2, true, false], [\array_key_last($row), $last, null, $i += 2]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
@@ -690,9 +704,10 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.31.2#link-text>
             if ($deep > 0 && '[' === $c) {
-                "" !== $s && ($row[] = h($s)) && ($s = "");
+                "" !== $s && ($row[] = h($s));
                 $current = \count($stack);
                 $row[] = $c;
+                $s = "";
                 $stack[] = [$c, [1, true, false], [\array_key_last($row), $last, null, ++$i]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
@@ -702,7 +717,7 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.31.2#delimiter-run>
             if ($deep > 1 && ('*' === $c || '_' === $c)) {
-                "" !== $s && ($row[] = h($s)) && ($s = "");
+                "" !== $s && ($row[] = h($s));
                 $current = \count($stack);
                 $n = \strspn($value, $c, $i, $limit - $i);
                 if (\function_exists("\\mb_substr")) {
@@ -729,6 +744,7 @@ namespace x\markdown\from {
                     $can_start = $left_f && (!$right_f || $left_x);
                 }
                 $row[] = \substr($value, $i, $n);
+                $s = "";
                 $stack[] = [$c, [$n, $can_start, $can_end], [\array_key_last($row), $last, null, $i += $n]];
                 if (null !== $last) {
                     $stack[$last][2][2] = $current;
@@ -766,15 +782,15 @@ namespace x\markdown\from {
                         $s .= $k;
                         continue;
                     }
-                    "" !== $s && ($row[] = h($s)) && ($s = "");
+                    "" !== $s && ($row[] = h($s));
                     $i = $max + $n;
                     $row[] = ['abbr', h(v($k)), ['title' => $lot[1][$k]]];
+                    $s = "";
                     continue;
                 }
             }
             // <https://spec.commonmark.org/0.31.2#look-for-link-or-image>
             if ($deep > 0 && ']' === $c) {
-                "" !== $s && ($row[] = h($s)) && ($s = "");
                 // No `[` and `![`
                 if (null === $last) {
                     $s .= $c;
@@ -974,6 +990,7 @@ namespace x\markdown\from {
                 $chunk = y($chunk);
                 // <https://spec.commonmark.org/0.31.2#links>
                 if ('[' === $stack[$at][0]) {
+                    "" !== $s && ($row[] = h($s));
                     $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
                         'href' => $v[0],
                         'title' => $v[1]
@@ -987,6 +1004,7 @@ namespace x\markdown\from {
                     }
                 // <https://spec.commonmark.org/0.31.2#images>
                 } else {
+                    "" !== $s && ($row[] = h($s));
                     $row[$current] = ['img', false, ($v[2] ?? []) + [
                         'alt' => alt($chunk),
                         'src' => $v[0],
@@ -1003,6 +1021,7 @@ namespace x\markdown\from {
                     $row[$current][2] = $a[0] + $row[$current][2];
                     $i += $a[1];
                 }
+                $s = "";
                 continue;
             }
             // At this point, it is safe to skip ahead to the next character that Markdown finds “interesting”
@@ -1827,8 +1846,9 @@ namespace x\markdown\from {
                     $s .= $c;
                     continue;
                 }
-                "" !== $s && ($r[] = $s) && ($s = "");
+                "" !== $s && ($r[] = $s);
                 $r[] = $c;
+                $s = "";
             }
             if ("" !== $s) {
                 $r[] = $s;
