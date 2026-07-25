@@ -91,7 +91,7 @@ namespace x\markdown\from {
         }
         $m = $raw ? 0 : 1;
         $n = $m + \strspn($value, c3, $m + $i, $limit - ($m + $i));
-        $not = c3 . '"#.<=>`{}' . "'\\";
+        $not = c3 . '"#.<=>`{}' . "'";
         $r = [];
         while ($i + $n < $limit) {
             $c = $value[$i + $n];
@@ -146,23 +146,12 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#double-quoted-attribute-value>
                     // <https://spec.commonmark.org/0.31.2#single-quoted-attribute-value>
                     if ('"' === $q || "'" === $q) {
-                        // Unlike the raw HTML attribute value specification, the attribute syntax allows for escaped
-                        // character(s) within quoted attribute value(s), just like the link title specification. This
-                        // decision was made because there is currently no official specification for attribute syntax
-                        // in CommonMark. I will redo this part once the official attribute syntax specification exists.
                         $eat = ++$n;
-                        while ($i + $n < $limit) {
-                            $n += \strcspn($value, "\\" . $q, $i + $n);
-                            if ($i + $n >= $limit || "\\" !== $value[$i + $n]) {
-                                break;
-                            }
-                            $n += 2;
-                        }
-                        if ($i + $n >= $limit || $q !== $value[$i + $n]) {
+                        if (false === ($m = \strpos($value, $q, $eat + $i))) {
                             return [];
                         }
-                        $exist || ($r[$k] = v(\substr($value, $i + $eat, $n - $eat)));
-                        ++$n;
+                        $exist || ($r[$k] = \substr($value, $eat + $i, $m - ($eat + $i)));
+                        $n = $m - $i + 1;
                         continue;
                     }
                     $n += \strspn($value, c3, $i + $n, $limit - ($i + $n));
@@ -808,7 +797,9 @@ namespace x\markdown\from {
                     ++$i;
                     continue;
                 }
+                "" !== $s && ($row[] = h($s));
                 $eat = null;
+                $s = "";
                 $v = [null, null, []];
                 // <https://spec.commonmark.org/0.31.2#inline-link>
                 if ('(' === ($value[$n = $i + 1] ?? 0)) {
@@ -990,7 +981,6 @@ namespace x\markdown\from {
                 $chunk = y($chunk);
                 // <https://spec.commonmark.org/0.31.2#links>
                 if ('[' === $stack[$at][0]) {
-                    "" !== $s && ($row[] = h($s));
                     $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
                         'href' => $v[0],
                         'title' => $v[1]
@@ -1004,7 +994,6 @@ namespace x\markdown\from {
                     }
                 // <https://spec.commonmark.org/0.31.2#images>
                 } else {
-                    "" !== $s && ($row[] = h($s));
                     $row[$current] = ['img', false, ($v[2] ?? []) + [
                         'alt' => alt($chunk),
                         'src' => $v[0],
@@ -1021,7 +1010,6 @@ namespace x\markdown\from {
                     $row[$current][2] = $a[0] + $row[$current][2];
                     $i += $a[1];
                 }
-                $s = "";
                 continue;
             }
             // At this point, it is safe to skip ahead to the next character that Markdown finds “interesting”
@@ -1100,6 +1088,21 @@ namespace x\markdown\from {
             // than 4 character(s) must be made up of space(s) only. This variable can then be used to jump past the
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
+            // TODO: Description list block
+            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? c2[0])) {
+                if ("" === $s) {
+                    $s .= \substr($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
+                    continue;
+                }
+                $s .= x3; // This separate the description term(s) from their detail(s)
+                $s .= "\n" . \substr($value, $i, $m[0]);
+                $i += $m[0] + $m[1];
+                // TODO
+                echo json_encode($s);
+                echo '<br>';
+                continue;
+            }
             // I am so sorry about the order, especially for those of you with ADHD. This parser does not process HTML
             // block of type 1 through 7 in order. It instead starts with a type of block that’s easier to spot.
             // <https://spec.commonmark.org/0.31.2#html-block>
@@ -1258,14 +1261,16 @@ namespace x\markdown\from {
                         break;
                     }
                 }
+                // <https://spec.commonmark.org/0.31.2#example-218>
+                "" !== $s && \strpos($s, ']:') > 1 && rows($s, $lot, 1, 0, \strlen($s));
                 $rows[] = ['blockquote', $s, []];
                 $s = "";
                 continue;
             }
             // If an image stands alone in a paragraph, the paragraph will be converted into a figure element. This is
-            // an improvisation that I came up with. The CommonMark specification does not specify that it has to
-            // behave this way. Since there is no special delimiter to mark the boundary of this block, it has been
-            // configured so that it cannot interrupt a paragraph, similar to setext heading(s).
+            // an improvisation that I came up with. The CommonMark specification does not specify that it has to behave
+            // this way. Since there is no special delimiter to mark the boundary of this block, it has been configured
+            // so that it cannot interrupt a paragraph, similar to setext heading(s).
             if ("" === $s && '!' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && ($k = k($value, $n, $limit)) && false !== \strpos(c3 . '([{', $value[$n + $k[1]] ?? x1)) {
                 for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                 // Image block must be “complete”
@@ -1288,7 +1293,7 @@ namespace x\markdown\from {
                         }
                     }
                     if ($valid) {
-                        $s = \substr($value, $i, $m[0]) . x2;
+                        $s = \substr($value, $i, $m[0]) . x3;
                         $i += $m[0] + $m[1];
                         // Capture potential image caption
                         while ($i < $limit) {
@@ -1299,7 +1304,7 @@ namespace x\markdown\from {
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
-                            $w = w($value, $i, 5);
+                            $w = w($value, $i, 5); // 4 + 1 required space
                             // Found a line that is not blank and is more indented than the line with the image
                             if (d($value, $i, $limit)[0] > $d) {
                                 // If an image block is immediately followed a non-paragraph continuation text, append a
@@ -1656,7 +1661,7 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ('figure' === $row[0]) {
-                    $part = \explode(x2, $row[1], 2);
+                    $part = \explode(x3, $row[1], 2);
                     $row[1] = [];
                     $row[1][0] = row($part[0], $lot, $deep - 1, $d = \strspn($part[0], ' '), \strlen($part[0]))[0][0];
                     if (isset($part[1]) && "" !== $part[1]) {

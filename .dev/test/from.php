@@ -91,7 +91,144 @@ function view(string $text) {
 }
 
 function view_result(string $text) {
-    return false !== stripos($text, '</script>') ? preg_replace('~(<script>)([\s\S]*?)(</script>)~i', '$1$3', $text) : $text;
+    $blocks = 'blockquote, dd, div, dl, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, ol, p, pre, table, ul';
+    $s = '<!DOCTYPE html>';
+    $s .= '<html dir="ltr">';
+    $s .= '<head>';
+    $s .= '<meta content="width=device-width" name="viewport">';
+    $s .= '<title>Test</title>';
+    $s .= '<style>';
+    $s .= <<<CSS
+* {
+  background: 0 0;
+  border: 0;
+  box-sizing: border-box;
+  color: inherit;
+  font: inherit;
+  margin: 0;
+  padding: 0;
+  text-decoration: none;
+}
+a {
+  color: #00f;
+}
+a:focus {
+  color: #f00;
+}
+abbr {
+  border-bottom: 1px dotted #000;
+  cursor: help;
+}
+b, h1, h2, h3, h4, h5, h6, legend, strong, th {
+  font-weight: bold;
+}
+blockquote {
+  border-left: 4px solid #eee;
+  color: #666;
+  padding: 0 0 0 0.75em;
+}
+code {
+  font: normal normal 12px/1.25 'Courier New', monospace;
+}
+del {
+  text-decoration: line-through;
+}
+details:open > summary {
+  margin-bottom: 1rem;
+}
+em, i {
+  font-style: italic;
+}
+fieldset {
+  border: 1px solid #000;
+  padding: 1em;
+}
+figcaption {
+  color: #666;
+  font-style: italic;
+  margin-top: 0.5em;
+}
+figure {
+  text-align: center;
+}
+figure img {
+  display: block;
+  margin: 0 auto;
+}
+/* <https://www.modularscale.com/?16&px&1.25> */
+dt, h1, h2, h3, h4, h5, h6 {
+  line-height: 1.25;
+}
+h1 {
+  font-size: 3.815em;
+}
+h2 {
+  font-size: 3.052em;
+}
+h3 {
+  font-size: 2.441em;
+}
+h4 {
+  font-size: 1.953em;
+}
+h5 {
+  font-size: 1.563em;
+}
+dt, h6 {
+  font-size: 1.25em;
+}
+hr {
+  border-top: 1px solid #000;
+}
+:root {
+  background: #fff;
+  color: #000;
+  font: normal normal 13px/1.5 Verdana, sans-serif;
+  padding: 1em;
+}
+:where({$blocks}) + :where({$blocks}) {
+  margin-top: 1rem;
+}
+:where(small, sub, sup) {
+  font-size: 0.8em;
+}
+li:where(:not(:first-child)) > :where({$blocks}):where(:first-child) {
+  margin-top: 1rem;
+}
+p img {
+  display: inline-block;
+  position: relative;
+  top: 0.25rem;
+}
+pre {
+  overflow: auto;
+  tab-size: 4;
+}
+pre code {
+  background: #000;
+  color: #fff;
+  display: block;
+  padding: 0.5em;
+}
+table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+td, th {
+  border: 1px solid #000;
+  padding: 0.5em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
+CSS;
+    $s .= '</style>';
+    $s .= '</head>';
+    $s .= '<body>';
+    $s .= $text;
+    $s .= '</body>';
+    $s .= '</html>';
+    return $s;
 }
 
 function view_source(string $text) {
@@ -157,7 +294,7 @@ function view_source(string $text) {
                 $s .= '<span style="color:#00b;font-weight:bold;">';
                 $part = substr($text, $i, $n += 1 - $i);
                 $s .= '&lt;';
-                $s .= view_source(substr($part, 1, -1));
+                $s .= substr(view_source("\x1a" . substr($part, 1, -1) . "\x1a"), 1, -1);
                 $s .= '&gt;';
                 $s .= '</span>';
                 $i += $n;
@@ -332,52 +469,6 @@ a {
 a:focus {
   color: #f00;
 }
-article :where({$where}) + :where({$where}) {
-  margin-top: 1rem;
-}
-article :where(sub, sup) {
-  font-size: 0.8em;
-}
-article abbr {
-  border-bottom: 1px dotted #000;
-  cursor: help;
-}
-article blockquote {
-  border-left: 4px solid #eee;
-  color: #666;
-  padding: 0 0 0 0.75em;
-}
-article details:open > summary {
-  margin-bottom: 1rem;
-}
-article del {
-  text-decoration: line-through;
-}
-article figcaption {
-  color: #666;
-  font-style: italic;
-  margin-top: 0.5em;
-}
-article figure {
-  text-align: center;
-}
-article figure img {
-  display: block;
-  margin: 0 auto;
-}
-article li:where(:not(:first-child)) > :where({$where}):where(:first-child) {
-  margin-top: 1rem;
-}
-article p img {
-  display: inline-block;
-  position: relative;
-  top: 0.25rem;
-}
-article pre code {
-  background: #000;
-  color: #fff;
-  padding: 0.5em 0.75em;
-}
 body, html {
   scroll-behavior: smooth;
 }
@@ -394,7 +485,7 @@ body > main > div {
   display: flex;
   gap: 1em;
 }
-body > main > div > article,
+body > main > div > iframe,
 body > main > div > pre {
   border: 1px solid #000;
   flex: 1;
@@ -402,8 +493,9 @@ body > main > div > pre {
   padding: 0.75em;
   word-wrap: break-word;
 }
-body > main > div > article {
+body > main > div > iframe {
   border-width: 2px;
+  padding: 0;
 }
 body > main > div > p {
   flex: 1;
@@ -446,7 +538,7 @@ button, select {
   line-height: 1.5em;
   padding: 0.125em 0.5em;
 }
-code {
+code, textarea {
   font: normal normal 12px/1.25 'Courier New', monospace;
 }
 em, i {
@@ -464,6 +556,12 @@ select {
   background-position: right 0.4em center;
   background-size: 1rem;
   padding-right: 1.75em;
+}
+textarea {
+  border: 1px solid #000;
+  display: inline-block;
+  padding: 0 0.25em;
+  vertical-align: middle;
 }
 /* <https://www.modularscale.com/?16&px&1.25> */
 dt, h1, h2, h3, h4, h5, h6 {
@@ -671,12 +769,10 @@ foreach ($files as $file) {
     $s .= '</pre>';
     $end = $start = 0;
     if ('result' === $view) {
-        $s .= '<article tabindex="0">';
         $start = hrtime(true);
         $r = x\markdown\from($raws, ['block' => $block]) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
-        $s .= view_result($r);
-        $s .= '</article>';
+        $s .= '<iframe srcdoc="' . htmlspecialchars(view_result($r)) . '" tabindex="0"></iframe>';
     } else if ('source' === $view) {
         $s .= '<pre tabindex="0">';
         $s .= '<code>';
