@@ -127,7 +127,7 @@ blockquote {
   color: #666;
   padding: 0 0 0 0.75em;
 }
-code {
+code, textarea {
   font: normal normal 12px/1.25 'Courier New', monospace;
 }
 del {
@@ -179,6 +179,10 @@ dt, h6 {
 }
 hr {
   border-top: 1px solid #000;
+}
+textarea {
+  border: 1px solid #000;
+  padding: 0.25em 0.5em;
 }
 :root {
   background: #fff;

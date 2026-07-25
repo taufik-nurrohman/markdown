@@ -446,6 +446,7 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#entity-and-numeric-character-references>
             if ('&' === $c && false !== ($end = \strpos($value, ';', $i + 2))) {
                 static $e;
+                $x = h($c);
                 if ('#' === ($value[$n = $i + 1] ?? 0)) {
                     if (false !== \strpos('Xx', $value[$i + 2] ?? x1)) {
                         // <https://spec.commonmark.org/0.31.2#hexadecimal-numeric-character-references>
@@ -461,7 +462,7 @@ namespace x\markdown\from {
                                 continue;
                             }
                         }
-                        $s .= $c;
+                        $s .= $x;
                         ++$i;
                         continue;
                     }
@@ -478,7 +479,7 @@ namespace x\markdown\from {
                             continue;
                         }
                     }
-                    $s .= $c;
+                    $s .= $x;
                     ++$i;
                     continue;
                 }
@@ -500,7 +501,7 @@ namespace x\markdown\from {
                         continue;
                     }
                 }
-                $s .= $c;
+                $s .= $x;
                 ++$i;
                 continue;
             }
