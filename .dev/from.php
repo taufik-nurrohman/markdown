@@ -1123,7 +1123,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if (d($value, $i, $limit)[0] >= $d + 2) {
-                        $w = w($value, $i, 4 + 2);
+                        $w = w($value, $i, 8);
                         $s .= "\n" . \substr($w[2], 2) . \substr($value, $i + $w[0], $m[0] - $w[0]);
                         $i += $m[0] + $m[1];
                         continue;
@@ -1359,7 +1359,7 @@ namespace x\markdown\from {
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
-                            $w = w($value, $i, 4 + 1); // 1 required space
+                            $w = w($value, $i, 8);
                             // Found a line that is not blank and is more indented than the line with the image
                             if (d($value, $i, $limit)[0] > $d) {
                                 // If an image block is immediately followed a non-paragraph continuation text, append a

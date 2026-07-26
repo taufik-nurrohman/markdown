@@ -473,16 +473,14 @@ a {
 a:focus {
   color: #f00;
 }
-body, html {
-  scroll-behavior: smooth;
-}
 body > form {
   margin-bottom: 0.5em;
 }
 body > form:first-child {
   margin-top: -0.5em;
 }
-body > form > fieldset > p + p {
+body > form > fieldset > p + p,
+body > main {
   margin-top: 1em;
 }
 body > main > div {
@@ -514,20 +512,6 @@ body > main > div > pre {
 }
 body > main > div + div {
   margin-top: 1em;
-}
-body > main > h1 {
-  background: #000;
-  color: #fff;
-  font-size: 100%;
-  margin: 1em 0;
-  padding: 0.5em 0.75em;
-  scroll-margin: 1em;
-}
-body > main > h1:target {
-  background: #c00;
-}
-body > main > h1 > a {
-  color: #0f0;
 }
 b, h1, h2, h3, h4, h5, h6, legend, strong, th {
   font-weight: bold;
@@ -566,28 +550,6 @@ textarea {
   display: inline-block;
   padding: 0 0.25em;
   vertical-align: middle;
-}
-/* <https://www.modularscale.com/?16&px&1.25> */
-dt, h1, h2, h3, h4, h5, h6 {
-  line-height: 1.25;
-}
-h1 {
-  font-size: 3.815em;
-}
-h2 {
-  font-size: 3.052em;
-}
-h3 {
-  font-size: 2.441em;
-}
-h4 {
-  font-size: 1.953em;
-}
-h5 {
-  font-size: 1.563em;
-}
-dt, h6 {
-  font-size: 1.25em;
 }
 legend {
   line-height: 1;
@@ -753,15 +715,9 @@ $s .= '</form>';
 
 $s .= '<main>';
 
-$current = "";
 $error_count = 0;
 
 foreach ($files as $file) {
-    $n = basename($v = ".\\" . substr(strtr(dirname($file), ['/' => "\\"]), strlen(PATH . D . 'from' . D)));
-    if ($v !== $current || "" === $current) {
-        $s .= '<h1 id="to:' . htmlspecialchars($n) . '"><a aria-hidden="true" href="#to:' . $n . '">#</a> ' . $v . "\\*" . '</h1>';
-        $current = $v;
-    }
     $raws = file_get_contents($file);
     $raws = strtr($raws, ["\n" => 'CR' === $line ? "\r" : ('CRLF' === $line ? "\r\n" : "\n")]);
     $size = strlen($raws);
