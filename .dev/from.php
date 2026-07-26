@@ -446,7 +446,7 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#entity-and-numeric-character-references>
             if ('&' === $c && false !== ($end = \strpos($value, ';', $i + 2))) {
                 static $e;
-                $x = h($c);
+                $c = h($c);
                 if ('#' === ($value[$n = $i + 1] ?? 0)) {
                     if (false !== \strpos('Xx', $value[$i + 2] ?? x1)) {
                         // <https://spec.commonmark.org/0.31.2#hexadecimal-numeric-character-references>
@@ -462,7 +462,7 @@ namespace x\markdown\from {
                                 continue;
                             }
                         }
-                        $s .= $x;
+                        $s .= $c;
                         ++$i;
                         continue;
                     }
@@ -479,7 +479,7 @@ namespace x\markdown\from {
                             continue;
                         }
                     }
-                    $s .= $x;
+                    $s .= $c;
                     ++$i;
                     continue;
                 }
@@ -501,7 +501,7 @@ namespace x\markdown\from {
                         continue;
                     }
                 }
-                $s .= $x;
+                $s .= $c;
                 ++$i;
                 continue;
             }
@@ -1090,18 +1090,72 @@ namespace x\markdown\from {
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
             // TODO: Description list block
-            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? c2[0])) {
+            if (':' === $value[$d + $i] && false !== \strpos(c3, $value[$d + $i + 1] ?? c2[0])) {
                 if ("" === $s) {
-                    $s .= \substr($value, $i, $m[0]) . "\n";
-                    $i += $m[0] + $m[1];
+                    if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
+                        $s = $row[1] . "\n";
+                        unset($rows[$last]);
+                        --$void;
+                    } else {
+                        $s .= \substr($value, $i, $m[0]) . "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                }
+                // $s .= x3; // This separate the description term(s) from their detail(s)
+                $s .= "||\n";
+                $w = w($value, $i + ($n = $d + 1), 1, $n);
+                $s .= $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                $i += $m[0] + $m[1];
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
+                    if (($dx = d($value, $i, $limit))[0] < 4 && ':' === ($value[$dx[1] + $i] ?? 0)) {
+                        $s .= '|';
+                        $w = w($value, $i + ($n = $dx[1] + 1), 1, $n);
+                        $s .= "\n" . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    // A blank line continues the current block
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        $s .= "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if (d($value, $i, $limit)[0] >= $d + 2) {
+                        $w = w($value, $i, 4 + 2);
+                        $s .= "\n" . \substr($w[2], 2) . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" !== $s[-1]) {
+                        $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                        // Current line is not a paragraph continuation text
+                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            break;
+                        }
+                        $s .= "\n" . \substr($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" === $s[-1]) {
+                        ++$void;
+                    }
+                    break;
+                }
+                echo '<pre style="border:1px solid;margin:1em 0;">';
+                echo $value;
+                echo '<hr>';
+                echo $s;
+                echo '</pre>';
+                if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'dl' === $row[0]) {
+                    $rows[$last][1] .= "::::\n" . \rtrim($s, "\n");
+                    $s = "";
+                    --$void;
                     continue;
                 }
-                $s .= x3; // This separate the description term(s) from their detail(s)
-                $s .= "\n" . \substr($value, $i, $m[0]);
-                $i += $m[0] + $m[1];
-                // TODO
-                echo json_encode($s);
-                echo '<br>';
+                $rows[] = ['dl', \rtrim($s, "\n"), [], [$c]];
+                $s = "";
                 continue;
             }
             // I am so sorry about the order, especially for those of you with ADHD. This parser does not process HTML
@@ -1305,7 +1359,7 @@ namespace x\markdown\from {
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
-                            $w = w($value, $i, 5); // 4 + 1 required space
+                            $w = w($value, $i, 4 + 1); // 1 required space
                             // Found a line that is not blank and is more indented than the line with the image
                             if (d($value, $i, $limit)[0] > $d) {
                                 // If an image block is immediately followed a non-paragraph continuation text, append a
