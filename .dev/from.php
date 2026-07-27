@@ -1091,28 +1091,28 @@ namespace x\markdown\from {
             $d = $d[1];
             // TODO: Description list block
             if (':' === $value[$d + $i] && false !== \strpos(c3, $value[$d + $i + 1] ?? c2[0])) {
-                if ("" === $s) {
+                if ("" !== $s) {
+                    $s .= x2 . "\n";
+                } else {
                     if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
-                        $s = $row[1] . "\n";
-                        unset($rows[$last]);
+                        $s = $row[1] . x2 . "\n\n";
                         --$void;
+                        unset($rows[$last]);
                     } else {
                         $s .= \substr($value, $i, $m[0]) . "\n";
                         $i += $m[0] + $m[1];
                         continue;
                     }
                 }
-                // $s .= x3; // This separate the description term(s) from their detail(s)
-                $s .= "||\n";
                 $w = w($value, $i + ($n = $d + 1), 1, $n);
                 $s .= $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
                 $i += $m[0] + $m[1];
                 while ($i < $limit) {
+                    $d = d($value, $i, $limit);
                     $m = m($value, $i, $limit);
-                    if (($dx = d($value, $i, $limit))[0] < 4 && ':' === ($value[$dx[1] + $i] ?? 0)) {
-                        $s .= '|';
-                        $w = w($value, $i + ($n = $dx[1] + 1), 1, $n);
-                        $s .= "\n" . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                    if ($d[0] < 4 && ':' === ($value[$d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$d[1] + $i + 1] ?? c2[0])) {
+                        $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
+                        $s .= x2 . "\n" . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1122,7 +1122,7 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    if (d($value, $i, $limit)[0] >= $d + 2) {
+                    if ($d[0] >= 2) {
                         $w = w($value, $i, 8);
                         $s .= "\n" . \substr($w[2], 2) . \substr($value, $i + $w[0], $m[0] - $w[0]);
                         $i += $m[0] + $m[1];
@@ -1134,6 +1134,8 @@ namespace x\markdown\from {
                         if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                             break;
                         }
+                        echo json_encode($w);
+                        echo '<br/>';
                         $s .= "\n" . \substr($value, $i, $m[0]);
                         $i += $m[0] + $m[1];
                         continue;
@@ -1143,18 +1145,12 @@ namespace x\markdown\from {
                     }
                     break;
                 }
-                echo '<pre style="border:1px solid;margin:1em 0;">';
-                echo $value;
-                echo '<hr>';
-                echo $s;
-                echo '</pre>';
                 if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'dl' === $row[0]) {
-                    $rows[$last][1] .= "::::\n" . \rtrim($s, "\n");
+                    $rows[$last][1] .= x2 . \rtrim($s, "\n");
                     $s = "";
-                    --$void;
                     continue;
                 }
-                $rows[] = ['dl', \rtrim($s, "\n"), [], [$c]];
+                $rows[] = ['dl', \rtrim($s, "\n"), [], [':']];
                 $s = "";
                 continue;
             }
@@ -1348,7 +1344,7 @@ namespace x\markdown\from {
                         }
                     }
                     if ($valid) {
-                        $s = \substr($value, $i, $m[0]) . x3;
+                        $s = \substr($value, $i, $m[0]) . x2;
                         $i += $m[0] + $m[1];
                         // Capture potential image caption
                         while ($i < $limit) {
@@ -1716,7 +1712,7 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ('figure' === $row[0]) {
-                    $part = \explode(x3, $row[1], 2);
+                    $part = \explode(x2, $row[1], 2);
                     $row[1] = [];
                     $row[1][0] = row($part[0], $lot, $deep - 1, $d = \strspn($part[0], ' '), \strlen($part[0]))[0][0];
                     if (isset($part[1]) && "" !== $part[1]) {
@@ -1730,7 +1726,16 @@ namespace x\markdown\from {
                     }
                     continue;
                 }
-                if ('dl' === $row[0]) {}
+                if ('dl' === $row[0]) {
+                    $part = \explode(x2, $row[1]);
+                    $row[1] = [];
+                    foreach (\explode("\n", \trim(\array_shift($part), "\n")) as $r) {
+                        $row[1][] = ['dt', row($r = \trim($r, "\n"), $lot, $deep - 1, 0, \strlen($r))[0], []];
+                    }
+                    foreach ($part as $r) {
+                        $row[1][] = ['dd', row($r = \trim($r, "\n"), $lot, $deep - 1, 0, \strlen($r))[0], []];
+                    }
+                }
                 if (\in_array($row[0], ['ol', 'ul'], true)) {}
                 // Leaf block(s)
                 if (false !== $row[0] && \is_string($row[1])) {
