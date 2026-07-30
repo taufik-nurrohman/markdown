@@ -136,6 +136,9 @@ del {
 details:open > summary {
   margin-bottom: 1rem;
 }
+dl, ol, ul {
+  margin-left: 1em;
+}
 em, i {
   font-style: italic;
 }
@@ -340,6 +343,7 @@ function view_source(string $text) {
         $s .= substr($text, $i, $n = strcspn($text, " &<\\\t", $i));
         $i += $n;
     }
+    // return strtr($s, ["\x1" => "\\x1", "\x2" => "\\x2", "\x3" => "\\x3"]);
     return $s;
 }
 

@@ -220,10 +220,10 @@ namespace x\markdown\from {
             }
             $s .= $r;
         }
-        return \htmlspecialchars_decode(s($s, ' '));
+        return \htmlspecialchars_decode($s);
     }
     function d(string $value, int $i, int $limit) {
-        if (false === \strpos(c1, $value[$i])) {
+        if ($i >= $limit || false === \strpos(c1, $value[$i])) {
             return [0, 0];
         }
         $d = $n = 0;
@@ -440,7 +440,7 @@ namespace x\markdown\from {
                 $i += \strspn($value, c1, $i, $limit - $i) + $r;
                 // Also, remove the initial tab(s) and space(s) on the next line
                 $i += \strspn($value, c3, $i, $limit - $i);
-                $s .= ' ';
+                $s .= "\n";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#entity-and-numeric-character-references>
@@ -1029,7 +1029,7 @@ namespace x\markdown\from {
         if ($deep > 1) {
             $row = e($row, $stack, $last);
         }
-        return [y($row), $lot, 0];
+        return [y($row, true), $lot, 0];
     }
     function rows(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         $lot = \array_replace([[], [], []], $lot);
@@ -1090,30 +1090,35 @@ namespace x\markdown\from {
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
             // TODO: Description list block
-            if (':' === $value[$d + $i] && false !== \strpos(c3, $value[$d + $i + 1] ?? c2[0])) {
-                if ("" !== $s) {
-                    $s .= x2 . "\n";
+            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? c2[0])) {
+                if ("" === $s && $rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
+                    $s = x1 . \trim($row[1]) . x2 . "\n";
+                    --$void;
+                    unset($rows[$last]);
+                } else if ("" !== $s) {
+                    // if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'dl' === $row[0]) {
+                    //     $rows[$last][1] .= "\n\n" . $s;
+                    //     $s = "";
+                    // } else {
+                        $s = x1 . \trim($s) . x2;
+                    // }
                 } else {
-                    if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
-                        $s = $row[1] . x2 . "\n\n";
-                        --$void;
-                        unset($rows[$last]);
-                    } else {
-                        $s .= \substr($value, $i, $m[0]) . "\n";
-                        $i += $m[0] + $m[1];
-                        continue;
-                    }
+                    $s .= \substr($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
+                    continue;
                 }
                 $w = w($value, $i + ($n = $d + 1), 1, $n);
-                $s .= $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                $s .= "\n" . x3 . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
                 $i += $m[0] + $m[1];
+                $min = 2;
                 while ($i < $limit) {
                     $d = d($value, $i, $limit);
                     $m = m($value, $i, $limit);
                     if ($d[0] < 4 && ':' === ($value[$d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$d[1] + $i + 1] ?? c2[0])) {
                         $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
-                        $s .= x2 . "\n" . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                        $s .= "\n" . x3 . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
                         $i += $m[0] + $m[1];
+                        $min = $d[0] + 1 + d($value, $i + $d[0] + 1, $limit)[0];
                         continue;
                     }
                     // A blank line continues the current block
@@ -1122,9 +1127,9 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    if ($d[0] >= 2) {
-                        $w = w($value, $i, 8);
-                        $s .= "\n" . \substr($w[2], 2) . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                    if ($d[0] >= $min) {
+                        $w = w($value, $i, $min);
+                        $s .= "\n" . $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1134,8 +1139,6 @@ namespace x\markdown\from {
                         if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                             break;
                         }
-                        echo json_encode($w);
-                        echo '<br/>';
                         $s .= "\n" . \substr($value, $i, $m[0]);
                         $i += $m[0] + $m[1];
                         continue;
@@ -1146,11 +1149,11 @@ namespace x\markdown\from {
                     break;
                 }
                 if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'dl' === $row[0]) {
-                    $rows[$last][1] .= x2 . \rtrim($s, "\n");
+                    $rows[$last][1] .= "\n" . x3 . \trim($s, "\n");
                     $s = "";
                     continue;
                 }
-                $rows[] = ['dl', \rtrim($s, "\n"), [], [':']];
+                $rows[] = ['dl', \trim($s, "\n"), [], [null, ':', false]];
                 $s = "";
                 continue;
             }
@@ -1727,14 +1730,28 @@ namespace x\markdown\from {
                     continue;
                 }
                 if ('dl' === $row[0]) {
-                    $part = \explode(x2, $row[1]);
+                    $raws = \explode("\n" . x3, $row[1]);
+                    if (!$lax = false !== \strpos($row[1], "\n\n" . x3)) {
+                        foreach ($raws as $r) {
+                            if (false !== \strpos($r, "\n\n") && rows($r, $lot, 0, 0, \strlen($r))[2]) {
+                                $lax = true;
+                                break;
+                            }
+                        }
+                    }
                     $row[1] = [];
-                    foreach (\explode("\n", \trim(\array_shift($part), "\n")) as $r) {
-                        $row[1][] = ['dt', row($r = \trim($r, "\n"), $lot, $deep - 1, 0, \strlen($r))[0], []];
+                    foreach ($raws as $r) {
+                        $r = \trim($r, "\n");
+                        if (x1 === $r[0] && x2 === $r[-1]) {
+                            foreach (\explode("\n", \trim(\substr($r, 1, -1), "\n")) as $t) {
+                                $row[1][] = ['dt', row($t, $lot, $deep - 1, 0, \strlen($t))[0], []];
+                            }
+                            continue;
+                        }
+                        $row[1][] = ['dd', $lax ? rows($r, $lot, $deep - 1, 0, \strlen($r))[0] : row($r, $lot, $deep - 1, 0, \strlen($r))[0], []];
                     }
-                    foreach ($part as $r) {
-                        $row[1][] = ['dd', row($r = \trim($r, "\n"), $lot, $deep - 1, 0, \strlen($r))[0], []];
-                    }
+                    $row[3][2] = $lax;
+                    continue;
                 }
                 if (\in_array($row[0], ['ol', 'ul'], true)) {}
                 // Leaf block(s)
@@ -1901,14 +1918,14 @@ namespace x\markdown\from {
         }
         return [$i - $start, "", $s];
     }
-    function y($row) {
+    function y($row, $flat = false) {
         if (\is_array($row)) {
             $limit = \count($row);
             $r = [];
             $s = "";
             for ($i = 0; $i < $limit; ++$i) {
                 if (\is_string($c = $row[$i])) {
-                    $s .= $c;
+                    $s .= $flat ? \strtr($c, "\n", ' ') : $c;
                     continue;
                 }
                 "" !== $s && ($r[] = $s);
