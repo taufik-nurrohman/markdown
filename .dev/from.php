@@ -1124,15 +1124,15 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] < $min && ':' === ($value[$d[1] + $i] ?? 0) && false !== \strpos(c1, $value[$d[1] + $i + 1] ?? c2[0])) {
+                        $min = $d[0] + 1 + d($value, $d[0] + $i + 1, $limit)[0];
                         $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
                         $s .= "\n" . x3 . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
                         $i += $m[0] + $m[1];
-                        $min = d($value, $d[0] + $i + 1, $limit)[0];
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $w = w($value, $i, $min);
-                        $s .= "\n" . $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                        $w = w($value, $i, $min + 4);
+                        $s .= "\n" . \substr($w[2], $min) . \substr($value, $i + $w[0], $m[0] - $w[0]);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1352,6 +1352,7 @@ namespace x\markdown\from {
                     if ($valid) {
                         $s = \substr($value, $i, $m[0]) . x2;
                         $i += $m[0] + $m[1];
+                        $min = $d + 1;
                         // Capture potential image caption
                         while ($i < $limit) {
                             $m = m($value, $i, $limit);
@@ -1361,7 +1362,7 @@ namespace x\markdown\from {
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
-                            $w = w($value, $i, 8);
+                            $w = w($value, $i, $min + 4);
                             // Found a line that is not blank and is more indented than the line with the image
                             if (d($value, $i, $limit)[0] > $d) {
                                 // If an image block is immediately followed a non-paragraph continuation text, append a
@@ -1371,7 +1372,7 @@ namespace x\markdown\from {
                                         $s .= "\n";
                                     }
                                 }
-                                $s .= "\n" . \substr($w[2], $d + 1) . \substr($value, $i + $w[0], $m[0] - $w[0]);
+                                $s .= "\n" . \substr($w[2], $min) . \substr($value, $i + $w[0], $m[0] - $w[0]);
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
@@ -1746,12 +1747,25 @@ namespace x\markdown\from {
                     foreach ($raws as $r) {
                         $r = \trim($r, "\n");
                         if (x1 === $r[0] && x2 === $r[-1]) {
-                            foreach (\explode("\n", \trim(\substr($r, 1, -1), "\n")) as $t) {
-                                $row[1][] = ['dt', row($t, $lot, $deep - 1, 0, \strlen($t))[0], []];
+                            foreach (\explode("\n", \trim(\substr($r, 1, -1), "\n")) as $v) {
+                                $row[1][] = ['dt', row($v, $lot, $deep - 1, 0, \strlen($v))[0], []];
                             }
                             continue;
                         }
-                        $row[1][] = ['dd', $lax ? rows($r, $lot, $deep - 1, 0, \strlen($r))[0] : row($r, $lot, $deep - 1, 0, \strlen($r))[0], []];
+                        $r = rows($r, $lot, $deep - 1, 0, \strlen($r))[0];
+                        if (!$lax) {
+                            if (1 === \count($r) && \is_array($r[0]) && 'p' === $r[0][0]) {
+                                $r = $r[0][1];
+                            } else {
+                                foreach ($r as &$v) {
+                                    if (\is_array($v) && 'p' === $v[0]) {
+                                        $v[0] = null;
+                                    }
+                                }
+                            }
+                            unset($v);
+                        }
+                        $row[1][] = ['dd', $r, []];
                     }
                     $row[3][2] = $lax;
                     continue;
@@ -1806,21 +1820,22 @@ namespace x\markdown\from {
             $tab = "";
         }
         $b = "" !== $tab && isset($blocks[$row[0]]);
+        $t = null !== $row[0];
         // The `dd`, `figcaption`, and `li` block(s) can behave as either a container or leaf block in the final result
         if ($b && 2 === ($blocks[$row[0]] ?? 0)) {
             if (\is_array($row[1])) {
                 foreach ($row[1] as $r) {
-                    if (\is_string($r)) {
-                        $b = false;
+                    if (\is_string($r) || \is_array($r) && null === $r[0]) {
+                        $b = 0;
                         break;
                     }
                 }
             } else if (\is_string($row[1])) {
-                $b = false;
+                $b = 0;
             }
         }
         $tab = \str_repeat($tab, $deep);
-        $s = $tab . '<' . $row[0];
+        $s = $tab . ($t ? '<' . $row[0] : "");
         if ($row[2]) {
             \ksort($row[2]);
             foreach ($row[2] as $k => $v) {
@@ -1833,7 +1848,7 @@ namespace x\markdown\from {
         if (false === $row[1]) {
             return $s .= ' />';
         }
-        $s .= '>' . ($b ? "\n" : "");
+        $s .= ($t ? '>' : "") . ($b ? "\n" : "");
         if (\is_array($row[1])) {
             foreach ($row[1] as $r) {
                 $s .= (\is_string($r) ? $r : tag($r, $state, $b ? $deep + 1 : 0)) . ($b ? "\n" : "");
@@ -1841,7 +1856,7 @@ namespace x\markdown\from {
         } else {
             $s .= $row[1];
         }
-        return $s . ($b ? $tab : "") . '</' . $row[0] . '>';
+        return $s . ($b ? $tab : "") . ($t ? '</' . $row[0] . '>' : "");
     }
     function tags($rows, array $state) {
         if (!$rows) {
