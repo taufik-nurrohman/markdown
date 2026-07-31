@@ -1118,7 +1118,7 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    if ($d[0] < 4 && ':' === ($value[$d[1] + $i] ?? 0) && false !== \strpos(c1, $value[$d[1] + $i + 1] ?? c2[0])) {
+                    if ($d[0] < $min && ':' === ($value[$d[1] + $i] ?? 0) && false !== \strpos(c1, $value[$d[1] + $i + 1] ?? c2[0])) {
                         $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
                         $s .= "\n" . x3 . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
                         $i += $m[0] + $m[1];
@@ -1801,11 +1801,11 @@ namespace x\markdown\from {
             $tab = "";
         }
         $b = "" !== $tab && isset($blocks[$row[0]]);
-        // The `dl`, `figcaption`, and `li` block(s) can behave as either a container or leaf block in the final result
-        if ($b && 2 === $blocks[$row[0]]) {
+        // The `dd`, `figcaption`, and `li` block(s) can behave as either a container or leaf block in the final result
+        if ($b && 2 === ($blocks[$row[0]] ?? 0)) {
             if (\is_array($row[1])) {
                 foreach ($row[1] as $r) {
-                    if (\is_string($r) || \is_array($r) && isset($blocks[$r[0]])) {
+                    if (\is_string($r)) {
                         $b = false;
                         break;
                     }
