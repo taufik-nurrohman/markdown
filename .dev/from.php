@@ -1095,13 +1095,11 @@ namespace x\markdown\from {
                     $s = x1 . \trim($row[1]) . x2 . "\n";
                     --$void;
                     unset($rows[$last]);
-                } else if ("" !== $s) {
-                    // if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'dl' === $row[0]) {
-                    //     $rows[$last][1] .= "\n\n" . $s;
-                    //     $s = "";
-                    // } else {
-                        $s = x1 . \trim($s) . x2;
-                    // }
+                }
+                if ("" !== $s) {
+                    if (x1 !== $s[0]) {
+                        $s = x1 . \trim($s, "\n") . x2;
+                    }
                 } else {
                     $s .= \substr($value, $i, $m[0]) . "\n";
                     $i += $m[0] + $m[1];
@@ -1114,17 +1112,17 @@ namespace x\markdown\from {
                 while ($i < $limit) {
                     $d = d($value, $i, $limit);
                     $m = m($value, $i, $limit);
-                    if ($d[0] < 4 && ':' === ($value[$d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$d[1] + $i + 1] ?? c2[0])) {
-                        $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
-                        $s .= "\n" . x3 . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
-                        $i += $m[0] + $m[1];
-                        $min = $d[0] + 1 + d($value, $i + $d[0] + 1, $limit)[0];
-                        continue;
-                    }
                     // A blank line continues the current block
                     if ($m[0] === \strspn($value, c1, $i, $m[0])) {
                         $s .= "\n";
                         $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ($d[0] < 4 && ':' === ($value[$d[1] + $i] ?? 0) && false !== \strpos(c1, $value[$d[1] + $i + 1] ?? c2[0])) {
+                        $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
+                        $s .= "\n" . x3 . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                        $i += $m[0] + $m[1];
+                        $min = d($value, $d[0] + $i + 1, $limit)[0];
                         continue;
                     }
                     if ($d[0] >= $min) {
