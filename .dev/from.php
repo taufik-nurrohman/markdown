@@ -1089,15 +1089,20 @@ namespace x\markdown\from {
             // than 4 character(s) must be made up of space(s) only. This variable can then be used to jump past the
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
-            // TODO: Description list block
+            // The description list block uses Michel Fortin’s syntax. Unfortunately, this block cannot be processed in
+            // one direction because the colon only indicates the start of a description detail. Semantically,
+            // description detail(s) cannot stand alone without their term(s). To identify a valid description list,
+            // locate the description detail syntax then check the previous line. If it is a paragraph block, then the
+            // entire list is valid.
             if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? c2[0])) {
+                // In case the paragraph block has been put in the queue, pop it out!
                 if ("" === $s && $rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
                     $s = x1 . \trim($row[1]) . x2 . "\n";
-                    --$void;
                     unset($rows[$last]);
+                    --$void; // Cancel out the last blank line count because the last block is now part of this one
                 }
                 if ("" !== $s) {
-                    if (x1 !== $s[0]) {
+                    if (x1 !== $s[0] && x2 !== $s[-2]) {
                         $s = x1 . \trim($s, "\n") . x2;
                     }
                 } else {
