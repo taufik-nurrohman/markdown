@@ -1365,8 +1365,8 @@ namespace x\markdown\from {
                             $w = w($value, $i, $min + 4);
                             // Found a line that is not blank and is more indented than the line with the image
                             if (d($value, $i, $limit)[0] > $d) {
-                                // If an image block is immediately followed a non-paragraph continuation text, append a
-                                // blank line to mark the image caption as a container block.
+                                // If an image block is immediately followed by a non-paragraph continuation text,
+                                // append a blank line to mark the image caption as a container block.
                                 if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
                                     if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                                         $s .= "\n";
