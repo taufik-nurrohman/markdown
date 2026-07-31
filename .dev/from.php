@@ -1110,12 +1110,11 @@ namespace x\markdown\from {
                     $i += $m[0] + $m[1];
                     continue;
                 }
-                $w = w($value, $i + ($n = $d + 1), 1, $n);
-                $s .= "\n" . x3 . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                $w = w($value, $i + ($min = $d + 1), 1, $min);
+                $s .= "\n" . x3 . $w[1] . \substr($value, $i + $min + $w[0], $m[0] - $min - $w[0]);
+                $min += d($value, $i + $min, $limit)[0]; // Include white-space(s) after `:`
                 $i += $m[0] + $m[1];
-                $min = 2;
                 while ($i < $limit) {
-                    $d = d($value, $i, $limit);
                     $m = m($value, $i, $limit);
                     // A blank line continues the current block
                     if ($m[0] === \strspn($value, c1, $i, $m[0])) {
@@ -1123,10 +1122,11 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    if ($d[0] < $min && ':' === ($value[$d[1] + $i] ?? 0) && false !== \strpos(c1, $value[$d[1] + $i + 1] ?? c2[0])) {
-                        $min = $d[0] + 1 + d($value, $d[0] + $i + 1, $limit)[0];
-                        $w = w($value, $i + ($n = $d[1] + 1), 1, $n);
-                        $s .= "\n" . x3 . $w[1] . \substr($value, $i + ($n += $w[0]), $m[0] - $n);
+                    $d = d($value, $i, $limit);
+                    if ($d[0] < 4 && ':' === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c1, $value[$n + 1] ?? c2[0])) {
+                        $w = w($value, $i + ($min = $d[1] + 1), 1, $min);
+                        $s .= "\n" . x3 . $w[1] . \substr($value, $i + $min + $w[0], $m[0] - $min - $w[0]);
+                        $min += d($value, $i + $min, $limit)[0]; // Include white-space(s) after `:`
                         $i += $m[0] + $m[1];
                         continue;
                     }
