@@ -18,11 +18,11 @@ namespace x\markdown {
         if (!$block) {
             $lot = [];
             $row = from\row($value, $lot, 25, 0, \strlen($value));
-            $row[] = $state = ['tab' => 0] + $state;
+            $row[] = $state = ['tab' => -1] + $state;
             if ($with) foreach ($with as $w) {
                 $row[0] = $w(...$row);
             }
-            $s = from\tags($row[0], $state);
+            $s = \trim(from\tags($row[0], $state));
             return "" !== $s ? $s : null;
         }
         $lot = [];
