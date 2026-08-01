@@ -1031,7 +1031,7 @@ namespace x\markdown\from {
         }
         return [y($row, true), $lot, 0];
     }
-    function rows(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0, int $gutter = 0) {
+    function rows(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0, int $pad = 0) {
         $lot = \array_replace([[], [], []], $lot);
         if ("" === \trim($value)) {
             return [[], $lot, 0];
@@ -1060,7 +1060,7 @@ namespace x\markdown\from {
                     $i += $m[0] + $m[1];
                     continue;
                 }
-                $w = w($value, $i, 4, $gutter);
+                $w = w($value, $i, 4, $pad);
                 $s = $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
                 $i += $m[0] + $m[1];
                 while ($i < $limit) {
@@ -1073,7 +1073,7 @@ namespace x\markdown\from {
                         }
                         break;
                     }
-                    $w = w($value, $i, 4, $gutter);
+                    $w = w($value, $i, 4, $pad);
                     $s .= "\n" . $w[1] . \substr($value, $i + $w[0], $m[0] - $w[0]);
                     $i += $m[0] + $m[1];
                     // End of the stream
@@ -1097,7 +1097,7 @@ namespace x\markdown\from {
             // locate the description detail syntax then check the previous line. If it is a paragraph block, then the
             // entire list is valid.
             if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? c2[0])) {
-                $gutters = [];
+                $pads = [];
                 // In case the paragraph block has been put in the queue, pop it out!
                 if ("" === $s && $rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
                     $s = x1 . \trim($row[1]) . x2 . "\n";
@@ -1105,7 +1105,7 @@ namespace x\markdown\from {
                     --$void; // Cancel out the last blank line count because the last block is now part of this one
                 }
                 if ("" !== $s) {
-                    $gutters[] = 0;
+                    $pads[] = 0;
                     if (x1 !== $s[0] && x2 !== $s[-2]) {
                         $s = x1 . \trim($s, "\n") . x2;
                     }
@@ -1117,7 +1117,7 @@ namespace x\markdown\from {
                 $w = w($value, $i + ($min = $d + 1), 1, $min);
                 $s .= "\n" . x3 . $w[1] . \substr($value, $i + $min + $w[0], $m[0] - $min - $w[0]);
                 $i += $m[0] + $m[1];
-                $gutters[] = ++$min;
+                $pads[] = ++$min;
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
                     // A blank line continues the current block
@@ -1131,7 +1131,7 @@ namespace x\markdown\from {
                         $w = w($value, $i + ($min = $d[1] + 1), 1, $min);
                         $s .= "\n" . x3 . $w[1] . \substr($value, $i + $min + $w[0], $m[0] - $min - $w[0]);
                         $i += $m[0] + $m[1];
-                        $gutters[] = ++$min;
+                        $pads[] = ++$min;
                         continue;
                     }
                     if ($d[0] >= $min) {
@@ -1157,11 +1157,11 @@ namespace x\markdown\from {
                 }
                 if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'dl' === $row[0]) {
                     $rows[$last][1] .= "\n" . x3 . \trim($s, "\n");
-                    $rows[$last][3][3] = \array_merge($rows[$last][3][3] ?? [], $gutters);
+                    $rows[$last][3][3] = \array_merge($rows[$last][3][3] ?? [], $pads);
                     $s = "";
                     continue;
                 }
-                $rows[] = ['dl', \trim($s, "\n"), [], [null, ':', false, $gutters]];
+                $rows[] = ['dl', \trim($s, "\n"), [], [null, ':', false, $pads]];
                 $s = "";
                 continue;
             }
@@ -1749,7 +1749,7 @@ namespace x\markdown\from {
                         }
                     }
                     $row[1] = [];
-                    foreach ($raws as $i => $r) {
+                    foreach ($raws as $at => $r) {
                         $r = \trim($r, "\n");
                         if (x1 === $r[0] && x2 === $r[-1]) {
                             foreach (\explode("\n", \trim(\substr($r, 1, -1), "\n")) as $v) {
@@ -1757,7 +1757,7 @@ namespace x\markdown\from {
                             }
                             continue;
                         }
-                        $r = rows($r, $lot, $deep - 1, 0, \strlen($r), $row[3][3][$i] ?? 0)[0];
+                        $r = rows($r, $lot, $deep - 1, 0, \strlen($r), $pad + ($row[3][3][$at] ?? 0))[0];
                         if (!$lax) {
                             if (1 === \count($r) && \is_array($r[0]) && 'p' === $r[0][0]) {
                                 $r = $r[0][1];
@@ -1821,27 +1821,27 @@ namespace x\markdown\from {
             'ul' => 1
         ];
         if (\is_int($tab = $state['tab'] ?? "")) {
-            $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
+            $tab = 0 === $tab ? "" : ($tab > 0 ? \str_repeat(' ', $tab) : false);
         } else if (!\is_string($tab)) {
             $tab = "";
         }
-        $b = "" !== $tab && isset($blocks[$row[0]]);
-        $t = null !== $row[0];
+        $block = false !== $tab && isset($blocks[$row[0]]);
+        $tag = null !== $row[0];
         // The `dd`, `figcaption`, and `li` block(s) can behave as either a container or leaf block in the final result
-        if ($b && 2 === ($blocks[$row[0]] ?? 0)) {
+        if ($block && 2 === ($blocks[$row[0]] ?? 0)) {
             if (\is_array($row[1])) {
                 foreach ($row[1] as $r) {
                     if (\is_string($r)) {
-                        $b = 0;
+                        $block = 0;
                         break;
                     }
                 }
             } else if (\is_string($row[1])) {
-                $b = 0;
+                $block = 0;
             }
         }
-        $tab = \str_repeat($tab, $deep);
-        $s = $tab . ($t ? '<' . $row[0] : "");
+        $tab = \str_repeat($tab ?: "", $deep);
+        $s = $tab . ($tag ? '<' . $row[0] : "");
         if ($row[2]) {
             \ksort($row[2]);
             foreach ($row[2] as $k => $v) {
@@ -1854,15 +1854,15 @@ namespace x\markdown\from {
         if (false === $row[1]) {
             return $s .= ' />';
         }
-        $s .= ($t ? '>' : "") . ($b ? "\n" : "");
+        $s .= ($tag ? '>' : "") . ($block ? "\n" : "");
         if (\is_array($row[1])) {
             foreach ($row[1] as $r) {
-                $s .= (\is_string($r) ? $r : tag($r, $state, $b ? $deep + 1 : 0)) . ($b ? "\n" : "");
+                $s .= (\is_string($r) ? $r : tag($r, $state, $block ? $deep + 1 : 0)) . ($block ? "\n" : "");
             }
         } else {
             $s .= $row[1];
         }
-        return $s . ($b ? $tab : "") . ($t ? '</' . $row[0] . '>' : "");
+        return $s . ($block ? $tab : "") . ($tag ? '</' . $row[0] . '>' : "");
     }
     function tags($rows, array $state) {
         if (!$rows) {
@@ -1873,12 +1873,12 @@ namespace x\markdown\from {
         }
         $s = "";
         if (\is_int($tab = $state['tab'] ?? "")) {
-            $tab = \str_repeat(' ', $tab > 0 ? $tab : 0);
+            $tab = 0 === $tab ? "" : ($tab > 0 ? \str_repeat(' ', $tab) : false);
         } else if (!\is_string($tab)) {
             $tab = "";
         }
         foreach ($rows as $row) {
-            $s .= ("" === $s || "" === $tab ? "" : "\n") . tag($row, $state);
+            $s .= ("" === $s || false === $tab ? "" : "\n") . tag($row, $state);
         }
         return $s;
     }
