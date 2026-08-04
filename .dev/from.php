@@ -1111,7 +1111,7 @@ namespace x\markdown\from {
             // description detail(s) cannot stand alone without their term(s). To identify a valid description list,
             // locate the description detail syntax then check the previous line. If it is a paragraph block, then the
             // entire list is valid.
-            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? c2[0])) {
+            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? x3)) {
                 // In case the paragraph block has been put in the queue, pop it out!
                 if ("" === $s && $rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
                     $s = x1 . \trim($row[1]) . x2 . "\n";
@@ -1138,7 +1138,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     $d = d($value, $i, $limit);
-                    if ($d[0] < 4 && ':' === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c1, $value[$n + 1] ?? c2[0])) {
+                    if ($d[0] < 4 && ':' === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? x3)) {
                         $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min = $d[0] + 2);
                         $i += $m[0] + $m[1];
                         continue;
@@ -1685,8 +1685,50 @@ namespace x\markdown\from {
                 $i += $m[0] + $m[1];
                 continue;
             }
+            if (false !== \strpos('*+-', $c = $value[$n = $d + $i]) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+                "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                $s .= s($value, $i, $m[0], 0, $min = $d + 2);
+                $i += $m[0] + $m[1];
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
+                    // A blank line continues the current block
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        $s .= "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    $d = d($value, $i, $limit);
+                    if ($d[0] < 4 && $c === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min = $d[0] + 2);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ($d[0] >= $min) {
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" !== $s[-1]) {
+                        $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                        // Current line is not a paragraph continuation text
+                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            break;
+                        }
+                        $s .= "\n" . s($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" === $s[-1]) {
+                        ++$void;
+                    }
+                    break;
+                }
+                $rows[] = ['ul', \trim($s, "\n"), [], [null, $c, false]];
+                $s = "";
+                continue;
+            }
             // <https://spec.commonmark.org/0.31.2#atx-heading>
-            if (($level = \strspn($value, '#', $d + $i)) && $level < 7 && false !== \strpos(c3, $value[$n = $d + $i + $level] ?? c2[0])) {
+            if (($level = \strspn($value, '#', $d + $i)) && $level < 7 && false !== \strpos(c3, $value[$n = $d + $i + $level] ?? c3[0])) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]);
                 $s = \trim(s($value, $n + \strspn($value, c1, $n), $m[0] - $level));
                 if ($max = \strlen($s)) {
@@ -1765,7 +1807,7 @@ namespace x\markdown\from {
                         }
                     }
                     $row[1] = [];
-                    foreach ($raws as $at => $r) {
+                    foreach ($raws as $r) {
                         $r = \trim($r, "\n");
                         if (x1 === $r[0] && x2 === $r[-1]) {
                             foreach (\explode("\n", \trim(\substr($r, 1, -1), "\n")) as $v) {
@@ -1791,7 +1833,36 @@ namespace x\markdown\from {
                     $row[3][2] = $lax;
                     continue;
                 }
-                if (\in_array($row[0], ['ol', 'ul'], true)) {}
+                if (\in_array($row[0], ['ol', 'ul'], true)) {
+                    $raws = \explode("\n" . x3, $row[1]);
+                    if (!$lax = false !== \strpos($row[1], "\n\n" . x3)) {
+                        foreach ($raws as $r) {
+                            if (false !== \strpos($r, "\n\n") && rows($r, $lot, 0, 0, \strlen($r))[2]) {
+                                $lax = true;
+                                break;
+                            }
+                        }
+                    }
+                    $row[1] = [];
+                    foreach ($raws as $r) {
+                        $r = rows($r = \trim($r, "\n"), $lot, $deep - 1, 0, \strlen($r))[0];
+                        if (!$lax) {
+                            if (1 === \count($r) && \is_array($r[0]) && 'p' === $r[0][0]) {
+                                $r = $r[0][1];
+                            } else {
+                                foreach ($r as &$v) {
+                                    if (\is_array($v) && 'p' === $v[0]) {
+                                        $v[0] = null;
+                                    }
+                                }
+                            }
+                            unset($v);
+                        }
+                        $row[1][] = ['li', $r, []];
+                    }
+                    $row[3][2] = $lax;
+                    continue;
+                }
                 // Leaf block(s)
                 if (false !== $row[0] && \is_string($row[1])) {
                     $row[1] = row($row[1], $lot, $deep - 1, 0, \strlen($row[1]))[0];
