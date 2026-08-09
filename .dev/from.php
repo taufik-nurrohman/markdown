@@ -1168,7 +1168,7 @@ namespace x\markdown\from {
                     $s = "";
                     continue;
                 }
-                $rows[] = ['dl', \trim($s, "\n"), [], [null, ':', false]];
+                $rows[] = ['dl', \trim($s, "\n"), [], [':', false]];
                 $s = "";
                 continue;
             }
@@ -1685,6 +1685,7 @@ namespace x\markdown\from {
                 $i += $m[0] + $m[1];
                 continue;
             }
+            // <https://spec.commonmark.org/0.31.2#bullet-list>
             if (false !== \strpos('*+-', $c = $value[$n = $d + $i]) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
                 $s .= s($value, $i, $m[0], 0, $min = $d + 2);
@@ -1723,7 +1724,97 @@ namespace x\markdown\from {
                     }
                     break;
                 }
-                $rows[] = ['ul', \trim($s, "\n"), [], [null, $c, false]];
+                $rows[] = ['ul', \trim($s, "\n"), [], [$c, false]];
+                $s = "";
+                continue;
+            }
+            // <https://spec.commonmark.org/0.31.2#ordered-list>
+            if (($w = \strspn($value, c4, $n = $d + $i)) && $w < 10 && false !== \strpos(').', $c = $value[$n + $w] ?? x1) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+                if (1 !== ($start = (int) \substr($value, $n, $min = $w + 2)) && "" !== $s) {
+                    $s .= s($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
+                    continue;
+                }
+                "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                $s .= s($value, $i, $m[0], 0, $min);
+                $i += $m[0] + $m[1];
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
+                    // A blank line continues the current block
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        $s .= "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    $d = d($value, $i, $limit);
+                    if ($d[0] < 4 && ($w = \strspn($value, c4, $n = $d[1] + $i)) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min = $w + 2);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ($d[0] >= $min) {
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" !== $s[-1]) {
+                        $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                        // Current line is not a paragraph continuation text
+                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            break;
+                        }
+                        $s .= "\n" . s($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" === $s[-1]) {
+                        ++$void;
+                    }
+                    break;
+                }
+                $rows[] = ['ol', \trim($s, "\n"), 1 !== $start ? ['start' => $start] : [], [$c, false]];
+                $s = "";
+                continue;
+            }
+            if (false !== \strpos('*+-', $c = $value[$n = $d + $i]) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+                "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                $s .= s($value, $i, $m[0], 0, $min = $d + 2);
+                $i += $m[0] + $m[1];
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
+                    // A blank line continues the current block
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        $s .= "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    $d = d($value, $i, $limit);
+                    if ($d[0] < 4 && $c === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min = $d[0] + 2);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ($d[0] >= $min) {
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" !== $s[-1]) {
+                        $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                        // Current line is not a paragraph continuation text
+                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            break;
+                        }
+                        $s .= "\n" . s($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" === $s[-1]) {
+                        ++$void;
+                    }
+                    break;
+                }
+                $rows[] = ['ul', \trim($s, "\n"), [], [$c, false]];
                 $s = "";
                 continue;
             }
@@ -1830,7 +1921,7 @@ namespace x\markdown\from {
                         }
                         $row[1][] = ['dd', $r, []];
                     }
-                    $row[3][2] = $lax;
+                    $row[3][1] = $lax;
                     continue;
                 }
                 if (\in_array($row[0], ['ol', 'ul'], true)) {
@@ -1860,7 +1951,7 @@ namespace x\markdown\from {
                         }
                         $row[1][] = ['li', $r, []];
                     }
-                    $row[3][2] = $lax;
+                    $row[3][1] = $lax;
                     continue;
                 }
                 // Leaf block(s)
