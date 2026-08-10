@@ -137,7 +137,7 @@ details:open > summary {
   margin-bottom: 1rem;
 }
 dl, ol, ul {
-  margin-left: 1em;
+  margin-left: 2em;
 }
 em, i {
   font-style: italic;
@@ -763,8 +763,8 @@ foreach ($files as $file) {
     }
     $s .= '</div>';
     $s .= '<div>';
-    $s .= '<p style="color:#' . ($size > 1024 ? '900' : '090') . ';">Input size ' . $size . ' bytes.</p>';
-    $s .= '<p style="color:#' . ($end > 1 ? '900' : '090') . ';">Parsed in ' . $end . ' ms.</p>';
+    $s .= '<p style="color:#' . ($size > 1024 * 10 ? '900' : '090') . ';">Input size ' . $size . ' bytes.</p>';
+    $s .= '<p style="color:#' . ($end > 10 ? '900' : '090') . ';">Parsed in ' . $end . ' ms.</p>';
     $s .= '</div>';
 }
 
