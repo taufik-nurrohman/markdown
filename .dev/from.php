@@ -1120,6 +1120,14 @@ namespace x\markdown\from {
             // than 4 character(s) must be made up of space(s) only. This variable can then be used to jump past the
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
+            // Perform an early check for the first character after the optional white-space(s) that could mark a
+            // special block. If the minimum required block marker is not present, treat the current line as a
+            // paragraph block immediately.
+            if (false === \strpos('!#*+-=1:<>AI[_`ai|~', $value[$d + $i])) {
+                $s .= s($value, $i, $m[0]) . "\n";
+                $i += $m[0] + $m[1];
+                continue;
+            }
             // The description list block uses Michel Fortin’s syntax. Unfortunately, this block cannot be processed in
             // one direction because the colon only indicates the start of a description detail. Semantically,
             // description detail(s) cannot stand alone without their term(s). To identify a valid description list,
@@ -1402,7 +1410,6 @@ namespace x\markdown\from {
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
-                            //$w = w($value, $i, $min + 4);
                             // Found a line that is not blank and is more indented than the line with the image
                             if (d($value, $i, $limit)[0] > $d) {
                                 // If an image block is immediately followed by a non-paragraph continuation text,
@@ -1873,6 +1880,38 @@ namespace x\markdown\from {
                 $s = "";
                 continue;
             }
+            // TODO: Table
+            if (false !== ($p = \strpos($value, '|', $n = $d + $i)) && $p < $i + $m[0] && $m[0] === \strspn($value, c1 . '-:|', $i) && ("" === $s || (\strpos($s, "\n") + 1 === \strlen($s) && false !== \strpos($s, '|')))) {
+                $s = \trim(\trim(\trim($s), '|')) . x1 . \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
+                $i += $m[0] + $m[1];
+                while ($i < $limit) {
+                    $d = d($value, $i, $limit);
+                    $m = m($value, $i, $limit);
+                    // A blank line ends the current block
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        break;
+                    }
+                    $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                    // Current line is not a paragraph continuation text
+                    if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                        break;
+                    }
+                    if (false === \strpos($text = s($value, $i, $m[0]), '|')) {
+                        $s .= x2 . $text;
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    $s .= "\n" . \trim(\trim(\trim($text), '|'));
+                    $i += $m[0] + $m[1];
+                    // End of the stream
+                    if (0 === $m[1]) {
+                        break;
+                    }
+                }
+                $rows[] = ['table', $s, []];
+                $s = "";
+                continue;
+            }
             $s .= s($value, $i, $m[0]) . "\n";
             $i += $m[0] + $m[1];
         }
@@ -1903,6 +1942,48 @@ namespace x\markdown\from {
                         } else if ($r = row($part[1] = \trim($part[1]), $lot, $deep - 1, 0, \strlen($part[1]))[0] ?: "") {
                             $row[1][1] = ['figcaption', $r, []];
                         }
+                    }
+                    continue;
+                }
+                if ('table' === $row[0]) {
+                    $part = \explode(x1, $row[1], 2);
+                    $row[1] = [
+                        ['tbody', [], []]
+                    ];
+                    $part[1] = \explode(x2, $part[1] ?? "", 2);
+                    $body = \explode("\n", $part[1][0]);
+                    $cap = $part[1][1] ?? "";
+                    $style = \explode('|', \array_shift($body));
+                    foreach ($style as &$s) {
+                        $s = \trim($s);
+                        $align = "";
+                        if (':' === $s[0]) {
+                            $align = ':' === $s[-1] ? 'center' : 'left';
+                        } else if (':' === $s[-1]) {
+                            $align = 'right';
+                        }
+                        $s = $align ? ['style' => 'text-align: ' . $align . ';'] : [];
+                    }
+                    unset($s);
+                    if ("" !== ($head = $part[0])) {
+                        $r = ['tr', [], []];
+                        // TODO
+                        foreach (\explode('|', $head) as $k => $v) {
+                            $r[1][] = ['th', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
+                        }
+                        \array_unshift($row[1], ['thead', [$r], []]);
+                    }
+                    $at = "" === $head ? 0 : 1;
+                    foreach ($body as $b) {
+                        $r = ['tr', [], []];
+                        // TODO
+                        foreach (\explode('|', $b) as $k => $v) {
+                            $r[1][] = ['td', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
+                        }
+                        $row[1][$at][1][] = $r;
+                    }
+                    if ("" !== $cap) {
+                        \array_unshift($row[1], ['caption', row($cap, $lot, $deep - 1, 0, \strlen($cap))[0] ?: "", []]);
                     }
                     continue;
                 }
@@ -2025,6 +2106,10 @@ namespace x\markdown\from {
             'figure' => 1,
             'li' => 2,
             'ol' => 1,
+            'table' => 1,
+            'tbody' => 1,
+            'thead' => 1,
+            'tr' => 1,
             'ul' => 1
         ];
         if (\is_int($tab = $state['tab'] ?? "")) {
