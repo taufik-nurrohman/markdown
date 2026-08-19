@@ -222,6 +222,37 @@ namespace x\markdown\from {
         }
         return \htmlspecialchars_decode($s);
     }
+    // <https://spec.commonmark.org/0.31.2#code-span>
+    function code(string $value, int $i, int $limit) {
+        $c = '`';
+        if ($i + 2 >= $limit || "" === $value || $c !== ($value[$i] ?? 0)) {
+            return [];
+        }
+        $n = \strspn($value, $c, $i, $limit - $i);
+        if ($i + $n >= $limit) {
+            return [];
+        }
+        $eat = $i + $n;
+        while (false !== ($eat = \strpos($value, $c, $eat))) {
+            if ($eat >= $limit) {
+                break;
+            }
+            $w = \strspn($value, $c, $eat, $limit - $eat);
+            if ($n === $w && $eat + $w <= $limit) {
+                $text = \substr($value, $i + $n, $eat - ($i + $n));
+                // Line break(s) are converted to space(s)
+                $text = \strtr($text, ["\n" => ' ', "\r\n" => ' ', "\r" => ' ']);
+                // If the resulting string both begins and ends with a space character, but does not consist
+                // entirely of space character(s), a single space character is removed from the front and back.
+                if (\strlen($text) > 1 && ' ' === $text[0] && ' ' === \substr($text, -1) && "" !== \trim($text, ' ')) {
+                    $text = \substr($text, 1, -1);
+                }
+                return [$text, $eat + $n - $i];
+            }
+            $eat += $w;
+        }
+        return [];
+    }
     function d(string $value, int $i, int $limit) {
         if ($i >= $limit || false === \strpos(c1, $value[$i])) {
             return [0, 0];
@@ -399,6 +430,83 @@ namespace x\markdown\from {
         }
         return false !== $join ? \implode($join, $r) : $r;
     }
+    function node(string $value, int $i, int $limit) {
+        if ($i + 2 >= $limit || "" === $value || '<' !== ($value[$i] ?? 0)) {
+            return [];
+        }
+        // <https://spec.commonmark.org/0.31.2#processing-instruction>
+        if ('?' === ($value[$i + 1] ?? 0) && false !== ($n = \strpos($value, '?>', $i + 2))) {
+            return [\substr($value, $i, $n += 2 - $i), $n, 3];
+        }
+        if ('!' === ($value[$i + 1] ?? 0)) {
+            // <https://spec.commonmark.org/0.31.2#html-comment>
+            if (0 === \substr_compare($value, '--', $i + 2, 2) && false !== ($n = \strpos($value, '-->', $i + 2))) {
+                return [\substr($value, $i, $n += 3 - $i), $n, 2];
+            }
+            // <https://spec.commonmark.org/0.31.2#cdata-section>
+            if (0 === \substr_compare($value, '[CDATA[', $i + 2, 7) && false !== ($n = \strpos($value, ']]>', $i + 2))) {
+                return [\substr($value, $i, $n += 3 - $i), $n, 5];
+            }
+            // <https://spec.commonmark.org/0.31.2#declaration>
+            if (\strspn($value, c10, $i + 2, 1) && false !== ($n = \strpos($value, '>', $i + 3))) {
+                return [\substr($value, $i, $n += 1 - $i), $n, 4];
+            }
+            return [];
+        }
+        // <https://spec.commonmark.org/0.31.2#html-tag>
+        // <https://spec.commonmark.org/0.31.2#closing-tag>
+        if ($end = '/' === $value[$n = $i + 1]) {
+            ++$n;
+        }
+        // <https://spec.commonmark.org/0.31.2#tag-name>
+        if ($m = \strspn($value, c10, $n)) {
+            $n += \strspn($value, c11, $m + $n) + $m;
+            // <https://spec.commonmark.org/0.31.2#closing-tag>
+            if ($end) {
+                $n += \strspn($value, c3, $n);
+            // <https://spec.commonmark.org/0.31.2#open-tag>
+            } else {
+                if ($n < $limit && '>' !== $value[$n]) {
+                    // <https://spec.commonmark.org/0.31.2#attribute>
+                    while ($n < $limit) {
+                        if (!$m = \strspn($value, c3, $n)) {
+                            break;
+                        }
+                        // <https://spec.commonmark.org/0.31.2#attribute-name>
+                        if (!$m = \strspn($value, c12, $n += $m)) {
+                            break;
+                        }
+                        $n += \strspn($value, c13, $n + $m) + $m;
+                        // <https://spec.commonmark.org/0.31.2#attribute-value-specification>
+                        $n += \strspn($value, c3, $n);
+                        if ('=' === ($value[$n] ?? 0)) {
+                            $q = $value[$n += \strspn($value, c3, ++$n)] ?? 0;
+                            // <https://spec.commonmark.org/0.31.2#double-quoted-attribute-value>
+                            // <https://spec.commonmark.org/0.31.2#single-quoted-attribute-value>
+                            if ('"' === $q || "'" === $q) {
+                                if (false === ($m = \strpos($value, $q, ++$n))) {
+                                    break;
+                                }
+                                $n = $m + 1;
+                                continue;
+                            }
+                            // <https://spec.commonmark.org/0.31.2#unquoted-attribute-value>
+                            $n += \strcspn($value, c3 . '"<=>`' . "'", $n);
+                            continue;
+                        }
+                    }
+                }
+                if ('/' === ($value[$n] ?? 0)) {
+                    ++$n;
+                }
+            }
+        }
+        if ('>' === ($value[$n] ?? 0)) {
+            ++$n;
+            return [\substr($value, $i, $n -= $i), $n, 7];
+        }
+        return [];
+    }
     function r(string $value, int $i, int $limit) {
         if ($i >= $limit) {
             return 0;
@@ -522,72 +630,16 @@ namespace x\markdown\from {
                 ++$i;
                 continue;
             }
-            if ('<' === $c) {
-                // <https://spec.commonmark.org/0.31.2#processing-instruction>
-                if ('?' === ($value[$i + 1] ?? 0) && false !== ($n = \strpos($value, '?>', $i + 2))) {
-                    "" !== $s && ($row[] = h($s));
-                    $row[] = [false, \substr($value, $i, $n += 2 - $i), [], [3]];
-                    $i += $n;
-                    $s = "";
-                    continue;
-                }
-                if ('!' === ($value[$i + 1] ?? 0)) {
-                    // <https://spec.commonmark.org/0.31.2#html-comment>
-                    if (0 === \substr_compare($value, '--', $i + 2, 2) && false !== ($n = \strpos($value, '-->', $i + 2))) {
-                        "" !== $s && ($row[] = h($s));
-                        $row[] = [false, \substr($value, $i, $n += 3 - $i), [], [2]];
-                        $i += $n;
-                        $s = "";
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.31.2#cdata-section>
-                    if (0 === \substr_compare($value, '[CDATA[', $i + 2, 7) && false !== ($n = \strpos($value, ']]>', $i + 2))) {
-                        "" !== $s && ($row[] = h($s));
-                        $row[] = [false, \substr($value, $i, $n += 3 - $i), [], [5]];
-                        $i += $n;
-                        $s = "";
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.31.2#declaration>
-                    if (\strspn($value, c10, $i + 2, 1) && false !== ($n = \strpos($value, '>', $i + 3))) {
-                        "" !== $s && ($row[] = h($s));
-                        $row[] = [false, \substr($value, $i, $n += 1 - $i), [], [4]];
-                        $i += $n;
-                        $s = "";
-                        continue;
-                    }
-                    $s .= $c;
-                    ++$i;
-                    continue;
-                }
-                if (false !== ($end = \strpos($value, '>', $i + 2))) {
-                    // <https://spec.commonmark.org/0.31.2#uri-autolink>
-                    if (false !== \strpos($value, ':', $i + 3) && ($m = \strspn($value, c10, $n = $i + 1))) {
-                        $m += \strspn($value, c11 . '+.', $m + $n);
-                        if ($m >= 2 && $m <= 32) { // <https://spec.commonmark.org/0.31.2#scheme>
-                            if (':' === ($value[$m + $n] ?? 0)) {
-                                $m += \strcspn($value, c17 . ' <>', $m + $n + 1) + 1;
-                                if ($end === $m + $n) {
-                                    "" !== $s && ($row[] = h($s));
-                                    $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [5]];
-                                    // Check for attribute syntax after link
-                                    if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
-                                        $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
-                                        $i += $a[1];
-                                    }
-                                    $s = "";
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                    // <https://spec.commonmark.org/0.31.2#email-autolink>
-                    if (false !== \strpos($value, '@', $i + 2) && ($m = \strspn($value, c11 . '!#$%&*+./=?^`{|}~' . "'", $n = $i + 1))) {
-                        if ('@' === ($value[$m + $n] ?? 0)) {
-                            $m += \strspn($value, c11 . '.', $m + $n + 1) + 1;
+            if ('<' === $c && false !== ($end = \strpos($value, '>', $i + 2))) {
+                // <https://spec.commonmark.org/0.31.2#uri-autolink>
+                if (false !== \strpos($value, ':', $i + 3) && ($m = \strspn($value, c10, $n = $i + 1))) {
+                    $m += \strspn($value, c11 . '+.', $m + $n);
+                    if ($m >= 2 && $m <= 32) { // <https://spec.commonmark.org/0.31.2#scheme>
+                        if (':' === ($value[$m + $n] ?? 0)) {
+                            $m += \strcspn($value, c17 . ' <>', $m + $n + 1) + 1;
                             if ($end === $m + $n) {
                                 "" !== $s && ($row[] = h($s));
-                                $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [6]];
+                                $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [5]];
                                 // Check for attribute syntax after link
                                 if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
                                     $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
@@ -598,97 +650,38 @@ namespace x\markdown\from {
                             }
                         }
                     }
-                    // <https://spec.commonmark.org/0.31.2#html-tag>
-                    if ($i + 2 >= $limit) {
-                        $s .= $c;
-                        ++$i;
-                        continue;
-                    }
-                    // <https://spec.commonmark.org/0.31.2#closing-tag>
-                    if ($end = '/' === $value[$n = $i + 1]) {
-                        ++$n;
-                    }
-                    // <https://spec.commonmark.org/0.31.2#tag-name>
-                    if ($m = \strspn($value, c10, $n)) {
-                        $n += \strspn($value, c11, $m + $n) + $m;
-                        // <https://spec.commonmark.org/0.31.2#closing-tag>
-                        if ($end) {
-                            $n += \strspn($value, c3, $n);
-                        // <https://spec.commonmark.org/0.31.2#open-tag>
-                        } else {
-                            if ($n < $limit && '>' !== $value[$n]) {
-                                // <https://spec.commonmark.org/0.31.2#attribute>
-                                while ($n < $limit) {
-                                    if (!$m = \strspn($value, c3, $n)) {
-                                        break;
-                                    }
-                                    // <https://spec.commonmark.org/0.31.2#attribute-name>
-                                    if (!$m = \strspn($value, c12, $n += $m)) {
-                                        break;
-                                    }
-                                    $n += \strspn($value, c13, $n + $m) + $m;
-                                    // <https://spec.commonmark.org/0.31.2#attribute-value-specification>
-                                    $n += \strspn($value, c3, $n);
-                                    if ('=' === ($value[$n] ?? 0)) {
-                                        $q = $value[$n += \strspn($value, c3, ++$n)] ?? 0;
-                                        // <https://spec.commonmark.org/0.31.2#double-quoted-attribute-value>
-                                        // <https://spec.commonmark.org/0.31.2#single-quoted-attribute-value>
-                                        if ('"' === $q || "'" === $q) {
-                                            if (false === ($m = \strpos($value, $q, ++$n))) {
-                                                break;
-                                            }
-                                            $n = $m + 1;
-                                            continue;
-                                        }
-                                        // <https://spec.commonmark.org/0.31.2#unquoted-attribute-value>
-                                        $n += \strcspn($value, c3 . '"<=>`' . "'", $n);
-                                        continue;
-                                    }
-                                }
-                                if ('/' === ($value[$n] ?? 0)) {
-                                    ++$n;
-                                }
-                            }
-                        }
-                        if ('>' === ($value[$n] ?? 0)) {
+                }
+                // <https://spec.commonmark.org/0.31.2#email-autolink>
+                if (false !== \strpos($value, '@', $i + 2) && ($m = \strspn($value, c11 . '!#$%&*+./=?^`{|}~' . "'", $n = $i + 1))) {
+                    if ('@' === ($value[$m + $n] ?? 0)) {
+                        $m += \strspn($value, c11 . '.', $m + $n + 1) + 1;
+                        if ($end === $m + $n) {
                             "" !== $s && ($row[] = h($s));
-                            $row[] = [false, \substr($value, $i, ($n += 1) - $i), [], [7]];
-                            $i = $n;
+                            $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [6]];
+                            // Check for attribute syntax after link
+                            if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
+                                $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
+                                $i += $a[1];
+                            }
                             $s = "";
                             continue;
                         }
                     }
                 }
-                $s .= $c;
-                ++$i;
-                continue;
-            }
-            // <https://spec.commonmark.org/0.31.2#code-span>
-            if ('`' === $c) {
-                $eat = $i + ($n = \strspn($value, $c, $i));
-                while (false !== ($eat = \strpos($value, $c, $eat))) {
-                    if ($n === \strspn($value, $c, $eat) && $c !== ($value[$eat + $n] ?? 0)) {
-                        $text = \substr($value, $i + $n, $eat - ($i + $n));
-                        // Line break(s) are converted to space(s)
-                        $text = \strtr($text, ["\n" => ' ', "\r\n" => ' ', "\r" => ' ']);
-                        // If the resulting string both begins and ends with a space character, but does not consist
-                        // entirely of space character(s), a single space character is removed from the front and back.
-                        if (\strlen($text) > 1 && ' ' === $text[0] && ' ' === \substr($text, -1) && "" !== \trim($text, ' ')) {
-                            $text = \substr($text, 1, -1);
-                        }
-                        "" !== $s && ($row[] = h($s));
-                        $row[] = ['code', h($text), []];
-                        $i = $eat + $n;
-                        $s = "";
-                        break;
-                    }
-                    $eat += \strspn($value, $c, $eat);
-                }
-                if (false === $eat) {
-                    $s .= $c;
-                    ++$i;
+                if ($m = node($value, $i, $limit)) {
+                    "" !== $s && ($row[] = h($s));
+                    $row[] = [false, $m[0], [], [$m[2]]];
+                    $i += $m[1];
+                    $s = "";
                     continue;
                 }
+            }
+            // <https://spec.commonmark.org/0.31.2#code-span>
+            if ('`' === $c && ($m = code($value, $i, $limit))) {
+                "" !== $s && ($row[] = h($s));
+                $row[] = ['code', h($m[0]), []];
+                $i += $m[1];
+                $s = "";
                 // Check for attribute syntax after code
                 if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
                     $row[\array_key_last($row)][2] = $a[0];
