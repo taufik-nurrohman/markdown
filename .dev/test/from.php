@@ -763,7 +763,7 @@ foreach ($files as $file) {
     $s .= '</div>';
     $s .= '<div>';
     $s .= '<p style="color:#' . ($size > 1024 * 10 ? '900' : '090') . ';">Input size ' . $size . ' bytes.</p>';
-    $s .= '<p style="color:#' . ($end > 10 ? '900' : '090') . ';">Parsed in ' . $end . ' ms.</p>';
+    $s .= '<p style="color:#' . ($end > 10 ? '900' : '090') . ';">Parsed in ' . round($end, 2) . ' ms.</p>';
     $s .= '</div>';
 }
 
