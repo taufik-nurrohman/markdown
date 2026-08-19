@@ -91,7 +91,8 @@ function view(string $text) {
 }
 
 function view_result(string $text) {
-    $blocks = 'blockquote, dd, div, dl, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, ol, p, pre, table, ul';
+    $b1 = 'blockquote, dd, div, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, p, pre, table';
+    $b2 = $b1 . ', dl, ol, ul';
     $s = '<!DOCTYPE html>';
     $s .= '<html dir="ltr">';
     $s .= '<head>';
@@ -193,13 +194,13 @@ textarea {
   font: normal normal 13px/1.5 Verdana, sans-serif;
   padding: 1em;
 }
-:where({$blocks}) + :where({$blocks}) {
+:where({$b2}) + :where({$b2}) {
   margin-top: 1rem;
 }
 :where(small, sub, sup) {
   font-size: 0.8em;
 }
-li:where(:not(:first-child)) > :where({$blocks}):where(:first-child) {
+li:where(:not(:first-child)) > :where({$b1}):where(:first-child) {
   margin-top: 1rem;
 }
 p img {
@@ -448,8 +449,6 @@ usort($files, function ($a, $b) {
     $b = strtr(substr($b, 0, -3), ['/' => '-', "\\" => '-']);
     return strnatcmp($a, $b);
 });
-
-$where = 'blockquote, dd, div, dl, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, ol, p, pre, table, ul';
 
 $s  = '<!DOCTYPE html>';
 $s .= '<html dir="ltr">';
