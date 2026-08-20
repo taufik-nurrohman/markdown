@@ -70,7 +70,9 @@ function view(string $text) {
                 // Space at the end of the line
                 (0 === $i || "\n" === $text[$i - 1] || "\r" === $text[$i - 1]) ||
                 // Space after a tab character
-                ($i > 0 && "\t" === $text[$i - 1])
+                ($i > 0 && "\t" === $text[$i - 1]) ||
+                // Space before a tab character
+                ($w < $limit && "\t" === $text[$w])
             ) {
                 $s .= str_repeat('<mark class="c c-s"> </mark>', $w - $i);
             } else {
@@ -147,7 +149,9 @@ fieldset {
   border: 1px solid #000;
   padding: 1em;
 }
+caption,
 figcaption {
+  caption-side: bottom;
   color: #666;
   font-style: italic;
   margin-top: 0.5em;
@@ -322,29 +326,9 @@ function view_source(string $text) {
             $i += 1;
             continue;
         }
-        if (' ' === $c) {
-            for ($w = $i; $w < $limit && ' ' === $text[$w]; ++$w);
-            if (
-                // More than one space in a row
-                ($w - $i) > 1 ||
-                // Space at the start of the line
-                ($w === $limit || "\n" === $text[$w] || "\r" === $text[$w]) ||
-                // Space at the end of the line
-                (0 === $i || "\n" === $text[$i - 1] || "\r" === $text[$i - 1]) ||
-                // Space after a tab character
-                ($i > 0 && "\t" === $text[$i - 1])
-            ) {
-                $s .= str_repeat('<mark class="c c-s"> </mark>', $w - $i);
-            } else {
-                $s .= ' ';
-            }
-            $i = $w;
-            continue;
-        }
-        $s .= substr($text, $i, $n = strcspn($text, " &<\\\t", $i));
+        $s .= substr($text, $i, $n = strcspn($text, "&<\\\t", $i));
         $i += $n;
     }
-    // return strtr($s, ["\x1" => "\\x1", "\x2" => "\\x2", "\x3" => "\\x3"]);
     return $s;
 }
 
@@ -374,17 +358,11 @@ function view_tree(string $text) {
             }
             $s .= '<span style="color:#' . $color . ';">' . strtr(htmlspecialchars($t[1]), [
                 "\t" => "<span class=\"c c-t\">\t</span>",
-                "\x1e" => "<span class=\"c\">\x1e</span>",
-                "\x2" => "<span class=\"c\">\x2</span>",
-                "\x3" => "<span class=\"c\">\x3</span>"
             ]) . '</span>';
             continue;
         }
         $s .= '<span style="color:#070;">' . strtr(htmlspecialchars($t), [
             "\t" => "<span class=\"c c-t\">\t</span>",
-            "\x1e" => "<span class=\"c\">\x1e</span>",
-            "\x2" => "<span class=\"c\">\x2</span>",
-            "\x3" => "<span class=\"c\">\x3</span>"
         ]) . '</span>';
     }
     return $s;

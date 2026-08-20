@@ -225,7 +225,7 @@ namespace x\markdown\from {
     // <https://spec.commonmark.org/0.31.2#code-span>
     function code(string $value, int $i, int $limit) {
         $c = '`';
-        if ($i + 2 >= $limit || "" === $value || $c !== ($value[$i] ?? 0)) {
+        if ($i + 1 >= $limit || "" === $value || $c !== ($value[$i] ?? 0)) {
             return [];
         }
         $n = \strspn($value, $c, $i, $limit - $i);
@@ -242,8 +242,8 @@ namespace x\markdown\from {
                 $text = \substr($value, $i + $n, $eat - ($i + $n));
                 // Line break(s) are converted to space(s)
                 $text = \strtr($text, ["\n" => ' ', "\r\n" => ' ', "\r" => ' ']);
-                // If the resulting string both begins and ends with a space character, but does not consist
-                // entirely of space character(s), a single space character is removed from the front and back.
+                // If the resulting string both begins and ends with a space character, but does not consist entirely of
+                // space character(s), a single space character is removed from the front and back.
                 if (\strlen($text) > 1 && ' ' === $text[0] && ' ' === \substr($text, -1) && "" !== \trim($text, ' ')) {
                     $text = \substr($text, 1, -1);
                 }
@@ -506,6 +506,32 @@ namespace x\markdown\from {
             return [\substr($value, $i, $n -= $i), $n, 7];
         }
         return [];
+    }
+    function p(string $value, int $i, int $limit) {
+        $n = $x = 0;
+        while ($i < $limit) {
+            $c = $value[$i];
+            if ("\\" === $c) {
+                ++$n;
+                ++$x;
+                continue;
+            }
+            $esc = 1 & $x;
+            $x = 0;
+            if (!$esc && '`' === $c && ($m = code($value, $i, $limit))) {
+                $i += $m[1];
+                continue;
+            }
+            if (!$esc && '<' === $c && ($m = node($value, $i, $limit))) {
+                $i += $m[1];
+                continue;
+            }
+            if (!$esc && '|' === $c) {
+                ++$n;
+            }
+            ++$i;
+        }
+        return $n;
     }
     function r(string $value, int $i, int $limit) {
         if ($i >= $limit) {
@@ -1838,9 +1864,9 @@ namespace x\markdown\from {
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#atx-heading>
-            if (($level = \strspn($value, '#', $d + $i)) && $level < 7 && false !== \strpos(c3, $value[$n = $d + $i + $level] ?? c3[0])) {
+            if (($l = \strspn($value, '#', $d + $i)) && $l < 7 && false !== \strpos(c3, $value[$n = $d + $i + $l] ?? c3[0])) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]);
-                $s = \trim(s($value, $n + \strspn($value, c1, $n), $m[0] - $level));
+                $s = \trim(s($value, $n + \strspn($value, c1, $n), $m[0] - $l));
                 if ($max = \strlen($s)) {
                     $a = [];
                     if (false !== ($start = \strrpos($s, '{'))) {
@@ -1868,40 +1894,64 @@ namespace x\markdown\from {
                         }
                     }
                 }
-                $rows[] = ['h' . $level, \trim($s), $a[0] ?? [], [$level, '#']];
+                $rows[] = ['h' . $l, \trim($s), $a[0] ?? [], [$l, '#']];
                 $i += $m[0] + $m[1];
                 $s = "";
                 continue;
             }
             // TODO: Table
-            if (false !== ($p = \strpos($value, '|', $n = $d + $i)) && $p < $i + $m[0] && $m[0] === \strspn($value, c1 . '-:|', $i) && ("" === $s || (\strpos($s, "\n") + 1 === \strlen($s) && false !== \strpos($s, '|')))) {
+            if (false !== ($l = \strpos($value, '|', $n = $d + $i)) && $l < $i + $m[0]) {
+                if ($m[0] !== \strspn($value, c1 . '-:|', $i) || "" !== $s && (\strlen($s) !== \strpos($s, "\n") + 1 || 0 === p($s, 0, \strlen($s)))) {
+                    $s .= s($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
+                    continue;
+                }
                 $s = \trim(\trim(\trim($s), '|')) . x1 . \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
                 $i += $m[0] + $m[1];
+                $min = $d + 1;
                 while ($i < $limit) {
-                    $d = d($value, $i, $limit);
                     $m = m($value, $i, $limit);
-                    // A blank line ends the current block
+                    // A blank line starts the table caption
                     if ($m[0] === \strspn($value, c1, $i, $m[0])) {
-                        break;
-                    }
-                    $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
-                    // Current line is not a paragraph continuation text
-                    if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                        break;
-                    }
-                    if (false === \strpos($text = s($value, $i, $m[0]), '|')) {
-                        $s .= x2 . $text;
+                        $s .= x2 . "\n";
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    $s .= "\n" . \trim(\trim(\trim($text), '|'));
-                    $i += $m[0] + $m[1];
-                    // End of the stream
-                    if (0 === $m[1]) {
-                        break;
+                    // Found a line that is not blank and is more indented than the table block
+                    if (d($value, $i, $limit)[0] > $d) {
+                        // If a table block is immediately followed by a non-paragraph continuation text, append a blank
+                        // line to mark the table caption as a container block.
+                        if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                            $s .= x2;
+                            if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                                $s .= "\n";
+                            }
+                        }
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
                     }
+                    // At this point, the table caption must be a leaf block
+                    if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                        if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
+                            if (0 === p($text = s($value, $i, $m[0]), 0, \strlen($text))) {
+                                if (false !== \strpos($s, x2)) {
+                                    break;
+                                }
+                                $s .= x2 . $text;
+                            } else {
+                                $s .= "\n" . \trim(\trim(\trim($text), '|'));
+                            }
+                            $i += $m[0] + $m[1];
+                            continue;
+                        }
+                    }
+                    if ("\n" === $s[-1]) {
+                        ++$void;
+                    }
+                    break;
                 }
-                $rows[] = ['table', $s, []];
+                $rows[] = ['table', \rtrim($s, "\n"), []];
                 $s = "";
                 continue;
             }
@@ -1975,8 +2025,15 @@ namespace x\markdown\from {
                         }
                         $row[1][$at][1][] = $r;
                     }
-                    if ("" !== $cap) {
-                        \array_unshift($row[1], ['caption', row($cap, $lot, $deep - 1, 0, \strlen($cap))[0] ?: "", []]);
+                    if ("" !== \trim($cap)) {
+                        // Table caption as a container block
+                        if (false !== \strpos($cap, "\n\n")) {
+                            $cap = rows($cap = \trim($cap), $lot, $deep - 1, 0, \strlen($cap))[0] ?: "";
+                        // Table caption as a leaf block
+                        } else {
+                            $cap = row($cap = \trim($cap), $lot, $deep - 1, 0, \strlen($cap))[0] ?: "";
+                        }
+                        \array_unshift($row[1], ['caption', $cap, []]);
                     }
                     continue;
                 }
@@ -2093,6 +2150,7 @@ namespace x\markdown\from {
         }
         static $blocks = [
             'blockquote' => 1,
+            'caption' => 2,
             'dd' => 2,
             'dl' => 1,
             'figcaption' => 2,
@@ -2139,7 +2197,7 @@ namespace x\markdown\from {
         if (false === $row[1]) {
             return $s .= ' />';
         }
-        $s .= ($tag ? '>' : "") . ($block ? "\n" : "");
+        $s .= ($tag ? '>' : "") . ($block && !empty($row[1]) ? "\n" : "");
         if (\is_array($row[1])) {
             foreach ($row[1] as $r) {
                 $s .= (\is_string($r) ? $r : tag($r, $state, $block ? $deep + 1 : 0)) . ($block ? "\n" : "");
@@ -2147,7 +2205,7 @@ namespace x\markdown\from {
         } else {
             $s .= $row[1];
         }
-        return $s . ($block ? $tab : "") . ($tag ? '</' . $row[0] . '>' : "");
+        return $s . ($block && !empty($row[1]) ? $tab : "") . ($tag ? '</' . $row[0] . '>' : "");
     }
     function tags($rows, array $state) {
         if (!$rows) {
