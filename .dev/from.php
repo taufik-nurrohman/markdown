@@ -548,6 +548,27 @@ namespace x\markdown\from {
         }
         return 0;
     }
+    function roman(string $text) {
+        $n = $now = 0;
+        for ($i = \strlen($text) - 1; $i >= 0; --$i) {
+            $w = match (\strtolower($text[$i])) {
+                'i' => 1,
+                'v' => 5,
+                'x' => 10,
+                'l' => 50,
+                'c' => 100,
+                'd' => 500,
+                'm' => 1000,
+                default => 0
+            };
+            if (!$w) {
+                return 0;
+            }
+            $n += $w < $now ? -$w : $w;
+            $now = $w;
+        }
+        return $n;
+    }
     function row(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         $lot = \array_replace([[], [], []], $lot);
         // In case the entire text is an abbreviation, parse it right away!
