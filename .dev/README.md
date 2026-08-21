@@ -40,7 +40,7 @@ the future. Previously, I wanted to develop this converter directly into the ext
 create this project separately as it might have potential to be used by other developers beyond the
 [Mecha CMS](https://github.com/mecha-cms) developers.
 
-### Tab Preservation
+### Tabs
 
 Unlike CommonMark, this converter does not preserve tabs. It is possible initially, but turn out this only works for
 top-level blocks. Once I enter the container blocks to parse their contents, I then lose track of the column position
@@ -63,21 +63,23 @@ asdf asdf asdf asdf
 
 CommonMark would parse the input as follows:
 
- 1. On line 1, got paragraph block
- 2. On line 2, got blank line, paragraph block closed.
- 3. On line 3, got quote block
-    1. On line 3, got paragraph block
-    2. On line 4, got blank line, paragraph block closed.
-       1. On line 5, got list block
-          1. On line 5, got paragraph block
-          2. On line 6, got blank line, paragraph block closed.
-          3. On line 7, got paragraph block
-          4. End of line, closes paragraph, closes list block, closes quote block
+ 1. At line 1, got a paragraph block.
+ 2. At line 2, got a blank line which marks the end of the paragraph.
+ 3. At line 3, got a quote block.
+    1. At line 3, got a paragraph block.
+    2. At line 4, got a blank line which marks the end of the paragraph block.
+       1. At line 5, got a list block.
+          1. At line 5, got a paragraph block.
+          2. At line 6, got a blank line which marks the end of the paragraph block.
+          3. At line 7, got a paragraph block.
+          4. At the end of the line, all open blocks will be closed.
 
 Mine does not work that way. Instead, it extracts the inner blocks as plain Markdown text without the container block
 marker. Then, it parses the inner blocks after all top-level blocks have been taken apart.
 
 It is hard to keep track of the current column position due to the way I parse, though it can be done with more effort.
-But that would make the parser more complex. The fastest way to correctly store white-space column positions is to
+But that would make the parser more complex. The easiest way to correctly store white-space column positions is to
 replace all tab sequences with spaces, so removing container block markers will correctly shift the white-space column
 positions of the child blocks.
+
+My method complies with the CommonMark column rules, except that it will not preserve tab characters.

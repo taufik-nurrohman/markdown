@@ -1140,9 +1140,9 @@ namespace x\markdown\from {
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
             // Perform an early check for the first character after the optional white-space(s) that could mark a
-            // special block. If the minimum required block marker is not present, treat the current line as a
-            // paragraph block immediately.
-            if (false === \strpos('!#*+-=1:<>AI[_`ai|~', $value[$d + $i])) {
+            // special block. If the minimum required block marker is not present, treat the current line as a paragraph
+            // block immediately.
+            if (false === \strpos(c4 . '!#*+-=:<>AI[_`ai|~', $value[$d + $i])) {
                 $s .= s($value, $i, $m[0]) . "\n";
                 $i += $m[0] + $m[1];
                 continue;
@@ -1766,7 +1766,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     $d = d($value, $i, $limit);
-                    if ($d[0] < 4 && ($w = \strspn($value, c4, $n = $d[1] + $i)) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+                    if ($d[0] < \min($min, 4) && ($w = \strspn($value, c4, $n = $d[1] + $i)) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
                         $min = $d[0] + $w + 2;
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                             $min += $w;
@@ -1795,9 +1795,15 @@ namespace x\markdown\from {
                     }
                     break;
                 }
-                $rows[] = ['ol', \trim($s, "\n"), 1 !== $start ? ['start' => $start] : [], [$c, false]];
+                $rows[] = ['ol', \rtrim($s, "\n"), 1 !== $start ? ['start' => $start] : [], [$c, false]];
                 $s = "";
                 continue;
+            }
+            // TODO: Custom ordered list
+            if (false !== \strpos('AIai', $t = $value[$n = $d + $i]) && false !== \strpos(').', $c = $value[$n + 1] ?? x1) && false !== \strpos(c3, $value[$n + 2] ?? c3[0])) {
+                $start = \ord($t);
+                echo json_encode([$start,substr($value,$i)]);
+                echo '<br>';
             }
             // <https://spec.commonmark.org/0.31.2#bullet-list>
             if (false !== \strpos('*+-', $c = $value[$n = $d + $i]) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
@@ -1830,10 +1836,15 @@ namespace x\markdown\from {
                         continue;
                     }
                     $d = d($value, $i, $limit);
-                    if ($d[0] < 4 && $c === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+                    if ($d[0] < \min($min, 4) && $c === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
                         $min = $d[0] + 2;
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                             $min += $w;
+                        }
+                        $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                        // Current line is not a list continuation item and not a paragraph continuation text
+                        if (!($b = \reset($b)) || !('p' === $b[0] || 'ul' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            break;
                         }
                         $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
@@ -1859,14 +1870,14 @@ namespace x\markdown\from {
                     }
                     break;
                 }
-                $rows[] = ['ul', \trim($s, "\n"), [], [$c, false]];
+                $rows[] = ['ul', \rtrim($s, "\n"), [], [$c, false]];
                 $s = "";
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#atx-heading>
-            if (($l = \strspn($value, '#', $d + $i)) && $l < 7 && false !== \strpos(c3, $value[$n = $d + $i + $l] ?? c3[0])) {
+            if (($w = \strspn($value, '#', $d + $i)) && $w < 7 && false !== \strpos(c3, $value[$n = $d + $i + $w] ?? c3[0])) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]);
-                $s = \trim(s($value, $n + \strspn($value, c1, $n), $m[0] - $l));
+                $s = \trim(s($value, $n + \strspn($value, c1, $n), $m[0] - $w));
                 if ($max = \strlen($s)) {
                     $a = [];
                     if (false !== ($start = \strrpos($s, '{'))) {
@@ -1894,13 +1905,13 @@ namespace x\markdown\from {
                         }
                     }
                 }
-                $rows[] = ['h' . $l, \trim($s), $a[0] ?? [], [$l, '#']];
+                $rows[] = ['h' . $w, \trim($s), $a[0] ?? [], [$w, '#']];
                 $i += $m[0] + $m[1];
                 $s = "";
                 continue;
             }
             // TODO: Table
-            if (false !== ($l = \strpos($value, '|', $n = $d + $i)) && $l < $i + $m[0]) {
+            if (false !== ($w = \strpos($value, '|', $n = $d + $i)) && $w < $i + $m[0]) {
                 if ($m[0] !== \strspn($value, c1 . '-:|', $i) || "" !== $s && (\strlen($s) !== \strpos($s, "\n") + 1 || 0 === p($s, 0, \strlen($s)))) {
                     $s .= s($value, $i, $m[0]) . "\n";
                     $i += $m[0] + $m[1];
