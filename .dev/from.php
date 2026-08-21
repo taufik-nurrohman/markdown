@@ -1800,8 +1800,8 @@ namespace x\markdown\from {
                 continue;
             }
             // TODO: Custom ordered list
-            if (false !== \strpos('AIai', $t = $value[$n = $d + $i]) && false !== \strpos(').', $c = $value[$n + 1] ?? x1) && false !== \strpos(c3, $value[$n + 2] ?? c3[0])) {
-                $start = \ord($t);
+            if (false !== \strpos('AIai', $type = $value[$n = $d + $i]) && false !== \strpos(').', $c = $value[$n + 1] ?? x1) && false !== \strpos(c3, $value[$n + 2] ?? c3[0])) {
+                $start = \ord($type);
                 echo json_encode([$start,substr($value,$i)]);
                 echo '<br>';
             }
