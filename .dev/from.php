@@ -980,7 +980,7 @@ namespace x\markdown\from {
                     if ('^' === $key[0] && isset($lot[2][$key])) {
                         $eat = $i + 1;
                         $lot['^'][$key] = ($lot['^'][$key] ?? -1) + 1;
-                        $v = [$n = \array_search($key, \array_keys($lot[2]), true) + 1, $n . (0 === $lot['^'][$key] ? "" : '.' . $lot['^'][$key])];
+                        $v = [(string) ($n = \array_search($key, \array_keys($lot[2]), true) + 1), $n . (0 === $lot['^'][$key] ? "" : '.' . $lot['^'][$key])];
                     } else if ($f = $lot[0][f($key)] ?? 0) {
                         $eat = $i + 1;
                         $v = $f;
