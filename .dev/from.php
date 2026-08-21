@@ -977,7 +977,11 @@ namespace x\markdown\from {
                     }
                 // <https://spec.commonmark.org/0.31.2#shortcut-reference-link>
                 } else if ($key = n(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' ')) {
-                    if ($f = ($lot[0][f($key)] ?? 0)) {
+                    if ('^' === $key[0] && isset($lot[2][$key])) {
+                        $eat = $i + 1;
+                        $lot['^'][$key] = ($lot['^'][$key] ?? -1) + 1;
+                        $v = [$n = \array_search($key, \array_keys($lot[2]), true) + 1, $n . (0 === $lot['^'][$key] ? "" : '.' . $lot['^'][$key])];
+                    } else if ($f = $lot[0][f($key)] ?? 0) {
                         $eat = $i + 1;
                         $v = $f;
                         $v[3] = 3;
@@ -1053,10 +1057,20 @@ namespace x\markdown\from {
                 $chunk = y($chunk);
                 // <https://spec.commonmark.org/0.31.2#links>
                 if ('[' === $stack[$at][0]) {
-                    $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
-                        'href' => $v[0],
-                        'title' => $v[1]
-                    ], [$v[3]]];
+                    if (\is_string($chunk) && '^' === $chunk[0] && !isset($v[3])) {
+                        $row[$current] = ['sup', [['a', $v[0], [
+                            'href' => '#to:' . $v[0],
+                            'role' => 'doc-noteref'
+                        ]]], ['id' => 'from:' . $v[1]]];
+                        // TODO
+                        echo json_encode($key);
+                        echo '<br>';
+                    } else {
+                        $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
+                            'href' => $v[0],
+                            'title' => $v[1]
+                        ], [$v[3]]];
+                    }
                     if ('[' === $stack[$at][0]) {
                         for ($k = $stack[$at][2][1]; null !== $k; $k = $stack[$k][2][1]) {
                             if ('[' === $stack[$k][0]) {
@@ -1173,7 +1187,7 @@ namespace x\markdown\from {
             // description detail(s) cannot stand alone without their term(s). To identify a valid description list,
             // locate the description detail syntax then check the previous line. If it is a paragraph block, then the
             // entire list is valid.
-            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? x3)) {
+            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
                 // In case the paragraph block has been put in the queue, pop it out!
                 if ("" === $s && $rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
                     $s = x1 . \trim($row[1]) . x2 . "\n";
@@ -1201,10 +1215,13 @@ namespace x\markdown\from {
                     if ($m[0] === \strspn($value, c1, $i, $m[0])) {
                         $s .= "\n";
                         $i += $m[0] + $m[1];
+                        if (\strlen($s) > 1 && "\n" === $s[-1] && x3 === $s[-2]) {
+                            break;
+                        }
                         continue;
                     }
                     $d = d($value, $i, $limit);
-                    if ($d[0] < 4 && ':' === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? x3)) {
+                    if ($d[0] < \min($min, 4) && ':' === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
                         $min = $d[0] + 2;
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                             $min += $w;
@@ -1218,7 +1235,7 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    if ("\n" !== $s[-1]) {
+                    if ("" !== $s && "\n" !== $s[-1] && x3 !== $s[-1]) {
                         $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                         // Current line is not a paragraph continuation text
                         if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
@@ -1228,17 +1245,17 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    if ("\n" === $s[-1]) {
+                    if ("\n" === ($s[-1] ?? 0)) {
                         ++$void;
                     }
                     break;
                 }
                 if ($rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'dl' === $row[0]) {
-                    $rows[$last][1] .= "\n" . x3 . \trim($s, "\n");
+                    $rows[$last][1] .= "\n\n" . x3 . \trim($s, "\n");
                     $s = "";
                     continue;
                 }
-                $rows[] = ['dl', \trim($s, "\n"), [], [':', false]];
+                $rows[] = ['dl', \rtrim($s, "\n"), [], [':', false]];
                 $s = "";
                 continue;
             }
@@ -1756,7 +1773,7 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.31.2#ordered-list>
             if (($w = \strspn($value, c4, $n = $d + $i)) && $w < 10 && false !== \strpos(').', $c = $value[$n + $w] ?? x1) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
-                $start = (int) \substr($value, $n, $min = $d + $w + 2);
+                $current = $start = (int) \substr($value, $n, $min = $d + $w + 2);
                 if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                     $min += $w;
                 }
@@ -1788,6 +1805,15 @@ namespace x\markdown\from {
                     }
                     $d = d($value, $i, $limit);
                     if ($d[0] < \min($min, 4) && ($w = \strspn($value, c4, $n = $d[1] + $i)) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+                        // The CommonMark specification does not care about the order of the number value(s). My parser
+                        // keeps track of the number value(s) and does a strict comparison with the previous number
+                        // value. A valid continuation list item number must be the same as the previous number or +1
+                        // greater than the previous number value.
+                        $next = (int) \substr($value, $i, $w);
+                        if ($next - $current > 1 || $next < $current) {
+                            break;
+                        }
+                        $current = $next;
                         $min = $d[0] + $w + 2;
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                             $min += $w;
@@ -1863,8 +1889,8 @@ namespace x\markdown\from {
                             $min += $w;
                         }
                         $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
-                        // Current line is not a list continuation item and not a paragraph continuation text
-                        if (!($b = \reset($b)) || !('p' === $b[0] || 'ul' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                        // Current line is a thematic break
+                        if (($b = \reset($b)) && 'hr' === $b[0]) {
                             break;
                         }
                         $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
@@ -1999,6 +2025,8 @@ namespace x\markdown\from {
             $lot[1] && \uksort($lot[1], function ($a, $b) {
                 return \strlen($b) <=> \strlen($a);
             });
+            // Sort the note key(s)
+            $lot[2] && \ksort($lot[2]);
             foreach ($rows as &$row) {
                 // Container block(s)
                 if ('blockquote' === $row[0]) {
@@ -2082,7 +2110,7 @@ namespace x\markdown\from {
                     $row[1] = [];
                     foreach ($raws as $r) {
                         $r = \trim($r, "\n");
-                        if (x1 === $r[0] && x2 === $r[-1]) {
+                        if ("" !== $r && x1 === $r[0] && x2 === $r[-1]) {
                             foreach (\explode("\n", \trim(\substr($r, 1, -1), "\n")) as $v) {
                                 $row[1][] = ['dt', row($v, $lot, $deep - 1, 0, \strlen($v))[0] ?: "", []];
                             }
