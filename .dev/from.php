@@ -1087,9 +1087,9 @@ namespace x\markdown\from {
                     ], [$v[3]]];
                 }
                 $i = $eat;
-                // We don’t store the active state of the stack data on the delimiter stack to save space. Instead,
-                // we use the delimiter length to determine if a stack is active. For example, to turn off a stack,
-                // we simply set the delimiter length to `0`.
+                // We don’t store the active state of the stack data on the delimiter stack to save space. Instead, we
+                // use the delimiter length to determine if a stack is active. For example, to turn off a stack, we
+                // simply set the delimiter length to `0`.
                 $stack[$at][1][0] = 0;
                 // Check for attribute syntax after link or image
                 if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
@@ -1183,7 +1183,7 @@ namespace x\markdown\from {
                 continue;
             }
             // The description list block uses Michel Fortin’s syntax. Unfortunately, this block cannot be processed in
-            // one direction because the colon only indicates the start of a description detail. Semantically,
+            // one direction because the `:` character only indicates the start of a description detail. Semantically,
             // description detail(s) cannot stand alone without their term(s). To identify a valid description list,
             // locate the description detail syntax then check the previous line. If it is a paragraph block, then the
             // entire list is valid.
@@ -1332,28 +1332,25 @@ namespace x\markdown\from {
                 if ("" === $s && $d + $i + 2 < $limit) {
                     for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                     // HTML block of type 7 must be “complete”
-                    if ($n > $i && '>' === $value[$n - 1]) {
-                        $row = row($value, $lot, 1, $d + $i, $n)[0];
-                        if (\is_array($row) && 1 === \count($row) && \is_array($row = \reset($row)) && false === $row[0] && 7 === $row[3][0]) {
-                            $s = \substr($value, $i, $m[0]);
-                            $i += $m[0] + $m[1];
-                            while ($i < $limit) {
-                                $m = m($value, $i, $limit);
-                                // A blank line ends the current block
-                                if ($m[0] === \strspn($value, c1, $i, $m[0])) {
-                                    break;
-                                }
-                                $s .= "\n" . \substr($value, $i, $m[0]);
-                                $i += $m[0] + $m[1];
-                                // End of the stream
-                                if (0 === $m[1]) {
-                                    break;
-                                }
+                    if ($n > $i && '>' === $value[$n - 1] && ($b = node($value, $d + $i, $n)) && $n - ($d + $i) === $b[1]) {
+                        $s = \substr($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        while ($i < $limit) {
+                            $m = m($value, $i, $limit);
+                            // A blank line ends the current block
+                            if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                                break;
                             }
-                            $rows[] = [false, $s, [], [7]];
-                            $s = "";
-                            continue;
+                            $s .= "\n" . \substr($value, $i, $m[0]);
+                            $i += $m[0] + $m[1];
+                            // End of the stream
+                            if (0 === $m[1]) {
+                                break;
+                            }
                         }
+                        $rows[] = [false, $s, [], [7]];
+                        $s = "";
+                        continue;
                     }
                 }
                 $s .= s($value, $i, $m[0]) . "\n";
