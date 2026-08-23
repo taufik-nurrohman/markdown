@@ -40,11 +40,253 @@ the future. Previously, I wanted to develop this converter directly into the ext
 create this project separately as it might have potential to be used by other developers beyond the
 [Mecha CMS](https://github.com/mecha-cms) developers.
 
+### Ordered List
+
+My parser supports list items numbered with Latin letters and Roman numerals. This satisfies the HTML5 specification for
+the [`type` attribute of the `<ol>` element](https://html.spec.whatwg.org/multipage/grouping-content.html#attr-ol-type)
+but does not satisfy the CommonMark specifications. Instead, it “extends” them.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>1) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>1. asdf asdf asdf asdf&#10;2. asdf asdf asdf asdf&#10;3. asdf asdf asdf asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>A. asdf asdf asdf asdf&#10;B. asdf asdf asdf asdf&#10;C. asdf asdf asdf asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>a) asdf asdf asdf asdf&#10;b) asdf asdf asdf asdf&#10;c) asdf asdf asdf asdf</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;ol type="a"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>a. asdf asdf asdf asdf&#10;b. asdf asdf asdf asdf&#10;c. asdf asdf asdf asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>I. asdf asdf asdf asdf&#10;II. asdf asdf asdf asdf&#10;III. asdf asdf asdf asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>i) asdf asdf asdf asdf&#10;ii) asdf asdf asdf asdf&#10;iii) asdf asdf asdf asdf</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;ol type="i"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>i. asdf asdf asdf asdf&#10;ii. asdf asdf asdf asdf&#10;iii. asdf asdf asdf asdf</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Since the list block marker can now be any lower-case or upper-case letter and will also treat “I” and “i” as the start
+of a list block with Roman numerals, the rules for this type of list block have been strictly enforced:
+
+ 1. A **type “A”** list block can only start with the prefix `A) ` or `A. `.
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><pre><code>asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;p&gt;asdf asdf asdf asdf B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+        </tr>
+      </tbody>
+    </table>
+
+ 1. A **type “a”** list block can only start with the prefix `a) ` or `a. `.
+ 1. A **type “I”** list block can only start with the prefix `I) ` or `I. `.
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><pre><code>asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;p&gt;asdf asdf asdf asdf II) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+        </tr>
+      </tbody>
+    </table>
+
+ 1. A **type “i”** list block can only start with the prefix `i) ` or `i. `.
+ 1. Those types of list won’t support the custom `start` attribute (they will always start from 1), and like the `1) `
+    and `1. ` prefixes, they can interrupt the paragraph.
+ 1. A list item continuation of **type “A”** list block can only use the previous character or the next character after
+    it. After the character “Z”, the list continues with “AA”, “AB”, “AC”, and so on.
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;p&gt;B) asdf asdf asdf asdf B) asdf asdf asdf asdf B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>A) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf&#10;D) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf C) asdf asdf asdf asdf D) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+      </tbody>
+    </table>
+
+ 1. A list item continuation of **type “a”** list block can only use the previous character or the next character after
+    it. After the character “z”, the list continues with “aa”, “ab”, “ac”, and so on.
+ 1. A list Item continuation of **type “I”** list block can only use the previous Roman numeral or the next Roman
+    numeral after it.
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;p&gt;II) asdf asdf asdf asdf II) asdf asdf asdf asdf II) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+        <tr>
+          <td><pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;IV) asdf asdf asdf asdf</code></pre>
+          <td><pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf IV) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+        </tr>
+      </tbody>
+    </table>
+
+ 1. A list Item continuation of **type “i”** list block can only use the previous Roman numeral or the next Roman
+    numeral after it.
+
+Those rules must be effective to avoid results that most people likely don’t want. This typically occurs when a
+paragraph continuation text contains a sequence of letters that end with a `) ` or a `. `.
+
+Consider the following examples:
+
+~~~
+a) asdf asdf (asdf asdf asdf
+asdf) asdf asdf asdf asdf.
+b) asdf asdf asdf asdf asdf.
+c) asdf asdf asdf asdf asdf.
+~~~
+
+~~~
+a) asdf asdf (asdf asdf asdf
+   asdf) asdf asdf asdf asdf.
+b) asdf asdf asdf asdf asdf.
+c) asdf asdf asdf asdf asdf.
+~~~
+
+~~~
+a. asdf asdf asdf asdf asdf
+asdf. asdf asdf asdf asdf.
+b. asdf asdf asdf asdf asdf.
+c. asdf asdf asdf asdf asdf.
+~~~
+
+~~~
+a. asdf asdf asdf asdf asdf
+   asdf. asdf asdf asdf.
+b. asdf asdf asdf asdf asdf.
+c. asdf asdf asdf asdf asdf.
+~~~
+
+Without stricter rules for the list block, my parser would mistakenly treat `asdf) ` and `asdf. ` as the start of
+another list item block.
+
 ### Tabs
 
-Unlike CommonMark, this converter does not preserve tabs. It is possible initially, but turn out this only works for
-top-level blocks. Once I enter the container blocks to parse their contents, I then lose track of the column position
-because the container block marker has been removed.
+Unlike CommonMark, this converter does not preserve tabs. This is probably the hardest part. Once it’s solved, the
+parser will be 100% compliant with the CommonMark specifications. However, I am not currently an expert in this area.
+Initially, it does seem possible. I was able to preserve the tab characters, but it turns out that this only works for
+top-level blocks. Once I enter a container block to parse its content, I then lose track of the correct column position
+because the container block’s markers have been removed.
 
 The recommended CommonMark parsing strategy is to parse the inner blocks of the current container block immediately,
 producing nested blocks instantly.
@@ -74,12 +316,23 @@ CommonMark would parse the input as follows:
           3. At line 7, got a paragraph block.
           4. At the end of the line, all open blocks will be closed.
 
-Mine does not work that way. Instead, it extracts the inner blocks as plain Markdown text without the container block
-marker. Then, it parses the inner blocks after all top-level blocks have been taken apart.
+My parser doesn’t work that way. Instead, it extracts the inner blocks as plain Markdown text. Once all top-level blocks
+have been processed, it moves on to parse the inner blocks:
 
-It is hard to keep track of the current column position due to the way I parse, though it can be done with more effort.
-But that would make the parser more complex. The easiest way to correctly store white-space column positions is to
-replace all tab sequences with spaces, so removing container block markers will correctly shift the white-space column
-positions of the child blocks.
+ 1. At line 1, got a paragraph block.
+ 2. At line 2, got a blank line which marks the end of the paragraph; push it to the array.
+ 3. At line 3, got a quote block.
+ 4. At line 4 up to line 7, got a quote block continuation.
+ 5. At the end of the line, push the last block (the quote block) to the array.
+ 6. Iterate over the array to find the container blocks. Then, repeat this process within those blocks.
 
-My method complies with the CommonMark column rules, except that it will not preserve tab characters.
+Due to the way I parse, it is hard to keep track of the current column position, though it can be done with more effort.
+However, doing so would make the parser overly complex. The least complex way to correctly store white space column
+positions is to convert all tab sequences to spaces. This ensures that, when the container block markers are omitted,
+the white space column positions of the child blocks will be shifted correctly.
+
+All CommonMark white space column rules are passed. The only limitation is that it is currently not possible to preserve
+tab characters.
+
+For tab characters in code blocks, you can preserve them [this way](). Though, it would be more accurate to call it “tab
+normalization” than “tab preservation”.

@@ -210,9 +210,6 @@ textarea {
 li:where(:not(:first-child)) > :where({$b1}):where(:first-child) {
   margin-top: 1rem;
 }
-ol li::marker {
-  font-weight: bold;
-}
 p img {
   display: inline-block;
   position: relative;
@@ -226,6 +223,7 @@ pre code {
   background: #000;
   color: #fff;
   display: block;
+  overflow: auto;
   padding: 0.5em;
 }
 table {
