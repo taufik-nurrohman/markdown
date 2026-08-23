@@ -223,7 +223,7 @@ namespace x\markdown\from {
         return \htmlspecialchars_decode($s);
     }
     // <https://spec.commonmark.org/0.31.2#code-span>
-    function code(string $value, int $i, int $limit) {
+    function c2e(string $value, int $i, int $limit) {
         $c = '`';
         if ($i + 1 >= $limit || "" === $value || $c !== ($value[$i] ?? 0)) {
             return [];
@@ -442,7 +442,7 @@ namespace x\markdown\from {
         }
         return false !== $join ? \implode($join, $r) : $r;
     }
-    function node(string $value, int $i, int $limit) {
+    function n2e(string $value, int $i, int $limit) {
         if ($i + 2 >= $limit || "" === $value || '<' !== ($value[$i] ?? 0)) {
             return [];
         }
@@ -530,11 +530,11 @@ namespace x\markdown\from {
             }
             $esc = 1 & $x;
             $x = 0;
-            if (!$esc && '`' === $c && ($m = code($value, $i, $limit))) {
+            if (!$esc && '`' === $c && ($m = c2e($value, $i, $limit))) {
                 $i += $m[1];
                 continue;
             }
-            if (!$esc && '<' === $c && ($m = node($value, $i, $limit))) {
+            if (!$esc && '<' === $c && ($m = n2e($value, $i, $limit))) {
                 $i += $m[1];
                 continue;
             }
@@ -720,7 +720,7 @@ namespace x\markdown\from {
                         }
                     }
                 }
-                if ($m = node($value, $i, $limit)) {
+                if ($m = n2e($value, $i, $limit)) {
                     "" !== $s && ($row[] = h($s));
                     $row[] = [false, $m[0], [], [$m[2]]];
                     $i += $m[1];
@@ -729,7 +729,7 @@ namespace x\markdown\from {
                 }
             }
             // <https://spec.commonmark.org/0.31.2#code-span>
-            if ('`' === $c && ($m = code($value, $i, $limit))) {
+            if ('`' === $c && ($m = c2e($value, $i, $limit))) {
                 "" !== $s && ($row[] = h($s));
                 $row[] = ['code', h($m[0]), []];
                 $i += $m[1];
@@ -1062,7 +1062,7 @@ namespace x\markdown\from {
                 $chunk = y($chunk);
                 // <https://spec.commonmark.org/0.31.2#links>
                 if ('[' === $stack[$at][0]) {
-                    if (\is_string($chunk) && '^' === $chunk[0] && !isset($v[3])) {
+                    if (\is_string($chunk) && '^' === ($chunk[0] ?? 0) && !isset($v[3])) {
                         $row[$current] = ['sup', [['a', $v[0], [
                             'href' => '#to:' . $v[0],
                             'role' => 'doc-noteref'
@@ -1336,7 +1336,7 @@ namespace x\markdown\from {
                 if ("" === $s && $d + $i + 2 < $limit) {
                     for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                     // HTML block of type 7 must be “complete”
-                    if ($n > $i && '>' === $value[$n - 1] && ($b = node($value, $d + $i, $n)) && $n - ($d + $i) === $b[1]) {
+                    if ($n > $i && '>' === $value[$n - 1] && ($b = n2e($value, $d + $i, $n)) && $n - ($d + $i) === $b[1]) {
                         $s = \substr($value, $i, $m[0]);
                         $i += $m[0] + $m[1];
                         while ($i < $limit) {
@@ -1820,8 +1820,8 @@ namespace x\markdown\from {
                     $n = $d[1] + $i;
                     if ($d[0] < \min($min, 4) && (
                         'A' === $type && ($w = \strspn($value, c8, $n)) ||
-                        'a' === $type && ($w = \strspn($value, c9, $n)) ||
                         'I' === $type && ($w = \strspn($value, 'CDILMVX', $n)) ||
+                        'a' === $type && ($w = \strspn($value, c9, $n)) ||
                         'i' === $type && ($w = \strspn($value, 'cdilmvx', $n)) ||
                         ($w = \strspn($value, c4, $n = $d[1] + $i)) && $w < 10
                     ) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
