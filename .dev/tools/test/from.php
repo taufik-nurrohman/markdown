@@ -14,7 +14,7 @@ define('D', DIRECTORY_SEPARATOR);
 define('P', "\u{001A}");
 define('PATH', __DIR__);
 
-require PATH . D . '..' . D . 'from.php';
+require PATH . D . '..' . D . '..' . D . 'from.php';
 
 $batch = basename($_GET['batch'] ?? '1');
 $block = !!basename($_GET['block'] ?? '1');
@@ -122,7 +122,7 @@ abbr {
   border-bottom: 1px dotted #000;
   cursor: help;
 }
-b, h1, h2, h3, h4, h5, h6, legend, strong, th {
+b, legend, strong, th {
   font-weight: bold;
 }
 blockquote {
@@ -201,11 +201,17 @@ textarea {
 :where({$b2}) + :where({$b2}) {
   margin-top: 1rem;
 }
+:where(dt, h1, h2, h3, h4, h5, h6), li::marker {
+  color: #900;
+}
 :where(small, sub, sup) {
   font-size: 0.8em;
 }
 li:where(:not(:first-child)) > :where({$b1}):where(:first-child) {
   margin-top: 1rem;
+}
+ol li::marker {
+  font-weight: bold;
 }
 p img {
   display: inline-block;
@@ -415,9 +421,9 @@ function export($value, $dent = "", $r = "\n", $key_as_string = false, $is_objec
 }
 
 if ('LICENSE' === $test) {
-    $files = [PATH . D . '..' . D . 'LICENSE'];
+    $files = [PATH . D . '..' . D . '..' . D . 'LICENSE'];
 } else if ('README' === $test) {
-    $files = [PATH . D . '..' . D . 'README.md'];
+    $files = [PATH . D . '..' . D . '..' . D . 'README.md'];
 } else {
     $files = glob(PATH . D . 'from' . D . $test . D . $batch . D . '*.md', GLOB_NOSORT);
 }

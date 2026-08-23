@@ -413,6 +413,18 @@ namespace x\markdown\from {
         }
         return [];
     }
+    function l2n(string $s, $u = false) {
+        $a = $u ? 65 : 97;
+        $n = 0;
+        for ($i = 0, $j = \strlen($s); $i < $j; ++$i) {
+            $c = \ord($s[$i]);
+            if ($c < $a || $c > $a + 25) {
+                return -1;
+            }
+            $n = $n * 26 + $c - $a + 1;
+        }
+        return $n;
+    }
     function m(string $value, int $i, int $limit) {
         return [$n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit)];
     }
@@ -429,6 +441,36 @@ namespace x\markdown\from {
             $i += $w;
         }
         return false !== $join ? \implode($join, $r) : $r;
+    }
+    function n2l(int $n, $u = false) {
+        if ($n < 1) {
+            return "";
+        }
+        $a = $u ? 65 : 97;
+        if ($n <= 26) {
+            return \chr($a + $n - 1);
+        }
+        $s = "";
+        while ($n > 26) {
+            --$n;
+            $s = \chr($a + ($n % 26)) . $s;
+            $n = \intdiv($n, 26);
+        }
+        return \chr($a + $n - 1) . $s;
+    }
+    function n2r(int $n, $u = false) {
+        $w = [
+            1 => 'i', 10 => 'x', 100 => 'c', 1000 => 'm', 4 => 'iv', 40 => 'xl', 400 => 'cd', 5 => 'v', 50 => 'l',
+            500 => 'd', 9 => 'ix', 90 => 'xc', 900 => 'cm'
+        ];
+        $s = "";
+        foreach ($w as $k => $v) {
+            while ($n >= $k) {
+                $n -= $k;
+                $s .= $v;
+            }
+        }
+        return $u ? \strtoupper($s) : $s;
     }
     function node(string $value, int $i, int $limit) {
         if ($i + 2 >= $limit || "" === $value || '<' !== ($value[$i] ?? 0)) {
@@ -548,18 +590,11 @@ namespace x\markdown\from {
         }
         return 0;
     }
-    function roman(string $text) {
+    function r2n(string $text) {
         $n = $now = 0;
         for ($i = \strlen($text) - 1; $i >= 0; --$i) {
             $w = match (\strtolower($text[$i])) {
-                'i' => 1,
-                'v' => 5,
-                'x' => 10,
-                'l' => 50,
-                'c' => 100,
-                'd' => 500,
-                'm' => 1000,
-                default => 0
+                default => 0, 'i' => 1, 'v' => 5, 'x' => 10, 'l' => 50, 'c' => 100, 'd' => 500, 'm' => 1000
             };
             if (!$w) {
                 return 0;
@@ -1174,14 +1209,6 @@ namespace x\markdown\from {
             // than 4 character(s) must be made up of space(s) only. This variable can then be used to jump past the
             // first few space(s) that precede the actual block marker.
             $d = $d[1];
-            // Perform an early check for the first character after the optional white-space(s) that could mark a
-            // special block. If the minimum required block marker is not present, treat the current line as a paragraph
-            // block immediately.
-            if (false === \strpos(c4 . '!#*+-=:<>AI[_`ai|~', $value[$d + $i])) {
-                $s .= s($value, $i, $m[0]) . "\n";
-                $i += $m[0] + $m[1];
-                continue;
-            }
             // The description list block uses Michel Fortin’s syntax. Unfortunately, this block cannot be processed in
             // one direction because the `:` character only indicates the start of a description detail. Semantically,
             // description detail(s) cannot stand alone without their term(s). To identify a valid description list,
@@ -1770,7 +1797,8 @@ namespace x\markdown\from {
             }
             // <https://spec.commonmark.org/0.31.2#ordered-list>
             if (($w = \strspn($value, c4, $n = $d + $i)) && $w < 10 && false !== \strpos(').', $c = $value[$n + $w] ?? x1) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
-                $current = $start = (int) \substr($value, $n, $min = $d + $w + 2);
+                $current = $start = (int) \substr($value, $n, $min = $d + $w);
+                $min += 2;
                 if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                     $min += $w;
                 }
@@ -1844,10 +1872,151 @@ namespace x\markdown\from {
                 continue;
             }
             // TODO: Custom ordered list
-            if (false !== \strpos('AIai', $type = $value[$n = $d + $i]) && false !== \strpos(').', $c = $value[$n + 1] ?? x1) && false !== \strpos(c3, $value[$n + 2] ?? c3[0])) {
-                $start = \ord($type);
-                echo json_encode([$start,substr($value,$i)]);
-                echo '<br>';
+            if (false !== \strpos(c8, $value[$n = $d + $i]) && false !== \strpos(').', $c = $value[$n + 1] ?? x1) && false !== \strpos(c3, $value[$n + 2] ?? c3[0])) {
+                $current = $start = l2n(\substr($value, $n, $min = $d + 1), true);
+                $min += 2;
+                if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
+                    $min += $w;
+                }
+                if ("" !== $s) {
+                    // <https://spec.commonmark.org/0.31.2#example-285>
+                    // <https://spec.commonmark.org/0.31.2#example-304>
+                    // <https://spec.commonmark.org/0.31.2#example-305>
+                    if (1 !== $start || "" === \trim(s($value, $i, $m[0], 0, $min))) {
+                        $s .= s($value, $i, $m[0]) . "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    $rows[] = ['p', \trim($s), []];
+                    $s = "";
+                }
+                $s .= s($value, $i, $m[0], 0, $min);
+                $i += $m[0] + $m[1];
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
+                    // A blank line continues the current block
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        $s .= "\n";
+                        $i += $m[0] + $m[1];
+                        // <https://spec.commonmark.org/0.31.2#example-280>
+                        if ("\n" === $s) {
+                            break;
+                        }
+                        continue;
+                    }
+                    $d = d($value, $i, $limit);
+                    if ($d[0] < \min($min, 4) && ($w = \strspn($value, c8, $n = $d[1] + $i)) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+                        $next = l2n(\substr($value, $i, $w), true);
+                        if ($next - $current > 1 || $next < $current) {
+                            break;
+                        }
+                        $current = $next;
+                        $min = $d[0] + $w + 2;
+                        if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
+                            $min += $w;
+                        }
+                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ($d[0] >= $min) {
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("" !== $s && "\n" !== $s[-1]) {
+                        $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                        // Current line is not a paragraph continuation text
+                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            break;
+                        }
+                        $s .= "\n" . s($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" === ($s[-1] ?? 0)) {
+                        ++$void;
+                    }
+                    break;
+                }
+                $a = 1 !== $start ? ['start' => $start] : [];
+                $a['type'] = 'A';
+                $rows[] = ['ol', \rtrim($s, "\n"), $a, [$c, false]];
+                $s = "";
+                continue;
+            }
+            if (($w = \strspn($value, c9, $n = $d + $i)) && $w < 10 && false !== \strpos(').', $c = $value[$n + $w] ?? x1) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+                $current = $start = l2n(\substr($value, $n, $min = $d + $w));
+                $min += 2;
+                if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
+                    $min += $w;
+                }
+                if ("" !== $s) {
+                    // <https://spec.commonmark.org/0.31.2#example-285>
+                    // <https://spec.commonmark.org/0.31.2#example-304>
+                    // <https://spec.commonmark.org/0.31.2#example-305>
+                    if (1 !== $start || "" === \trim(s($value, $i, $m[0], 0, $min))) {
+                        $s .= s($value, $i, $m[0]) . "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    $rows[] = ['p', \trim($s), []];
+                    $s = "";
+                }
+                $s .= s($value, $i, $m[0], 0, $min);
+                $i += $m[0] + $m[1];
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
+                    // A blank line continues the current block
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        $s .= "\n";
+                        $i += $m[0] + $m[1];
+                        // <https://spec.commonmark.org/0.31.2#example-280>
+                        if ("\n" === $s) {
+                            break;
+                        }
+                        continue;
+                    }
+                    $d = d($value, $i, $limit);
+                    if ($d[0] < \min($min, 4) && ($w = \strspn($value, c9, $n = $d[1] + $i)) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+                        $next = l2n(\substr($value, $i, $w));
+                        if ($next - $current > 1 || $next < $current) {
+                            break;
+                        }
+                        $current = $next;
+                        $min = $d[0] + $w + 2;
+                        if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
+                            $min += $w;
+                        }
+                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ($d[0] >= $min) {
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("" !== $s && "\n" !== $s[-1]) {
+                        $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
+                        // Current line is not a paragraph continuation text
+                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            break;
+                        }
+                        $s .= "\n" . s($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    if ("\n" === ($s[-1] ?? 0)) {
+                        ++$void;
+                    }
+                    break;
+                }
+                $a = 1 !== $start ? ['start' => $start] : [];
+                $a['type'] = 'a';
+                $rows[] = ['ol', \rtrim($s, "\n"), $a, [$c, false]];
+                $s = "";
+                continue;
             }
             // <https://spec.commonmark.org/0.31.2#bullet-list>
             if (false !== \strpos('*+-', $c = $value[$n = $d + $i]) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
