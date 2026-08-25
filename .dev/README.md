@@ -333,10 +333,26 @@ prefixes, they can interrupt the paragraph.
         </tr>
         <tr>
           <td>
-            <pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;IV) asdf asdf asdf asdf</code></pre>
+            <pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;IV) asdf asdf asdf asdf&#10;V) asdf asdf asdf asdf</code></pre>
           </td>
           <td>
-            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf IV) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf IV) asdf asdf asdf asdf V) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
           </td>
         </tr>
       </tbody>
@@ -345,8 +361,8 @@ prefixes, they can interrupt the paragraph.
  1. A list Item continuation of **type “i”** list block can only use the previous Roman numeral or the next Roman
     numeral after it.
 
-Those rules should be effective to avoid results that most people likely don’t want. This typically occurs when a
-paragraph continuation text contains a sequence of letters that end with a `) ` or a `. `.
+Those rules should be effective to avoid results that most people don’t want. This typically occurs when a paragraph
+continuation text contains a sequence of letters that end with a `) ` or a `. `.
 
 Consider the following examples:
 

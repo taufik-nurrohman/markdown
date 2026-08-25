@@ -984,8 +984,8 @@ namespace x\markdown\from {
                 } else if ($key = n(\substr($value, $stack[$at][2][3], $i - $stack[$at][2][3]), ' ')) {
                     if ('^' === $key[0] && isset($lot[2][$key])) {
                         $eat = $i + 1;
-                        $lot['^'][$key] = ($lot['^'][$key] ?? -1) + 1;
-                        $v = [(string) ($n = \array_search($key, \array_keys($lot[2]), true) + 1), $n . (0 === $lot['^'][$key] ? "" : '.' . $lot['^'][$key])];
+                        $suffix = $lot[x1][$key] = ($lot[x1][$key] ?? -1) + 1;
+                        $v = [(string) ($n = \array_search($key, \array_keys($lot[2]), true) + 1), $n . (0 !== $suffix ? '.' . $suffix : ""), [], x1];
                     } else if ($f = $lot[0][f($key)] ?? 0) {
                         $eat = $i + 1;
                         $v = $f;
@@ -1062,14 +1062,11 @@ namespace x\markdown\from {
                 $chunk = y($chunk);
                 // <https://spec.commonmark.org/0.31.2#links>
                 if ('[' === $stack[$at][0]) {
-                    if (\is_string($chunk) && '^' === ($chunk[0] ?? 0) && !isset($v[3])) {
+                    if (x1 === $v[3]) {
                         $row[$current] = ['sup', [['a', $v[0], [
                             'href' => '#to:' . $v[0],
                             'role' => 'doc-noteref'
                         ]]], ['id' => 'from:' . $v[1]]];
-                        // TODO
-                        echo json_encode($key);
-                        echo '<br>';
                     } else {
                         $row[$current] = ['a', $chunk, ($v[2] ?? []) + [
                             'href' => $v[0],
@@ -2198,6 +2195,40 @@ namespace x\markdown\from {
                 }
             }
             unset($row);
+        }
+        if (25 === $deep && $lot[2]) {
+            $keys = \array_flip(\array_keys($lot[2]));
+            $notes = ['div', [
+                ['hr', false, []],
+                ['ol', [], []]
+            ], ['role' => 'doc-endnotes']];
+            foreach ($lot[2] as $k => $v) {
+                $r = rows($v, $lot, $deep - 1, 0, \strlen($v))[0] ?: "";
+                if (\is_array($r)) {
+                    if (\is_array($r[$last = \array_key_last($r)]) && 'p' === $r[$last][0]) {} else {
+                        $r[++$last] = ['p', [], []];
+                    }
+                    $r[$last][1] = (array) $r[$last][1];
+                    if (false !== ($max = $lot[x1][$k] ?? false)) {
+                        for ($i = 0; $i <= $max; ++$i) {
+                            if ($r[$last][1]) {
+                                $r[$last][1][] = [false, $y = '&#160;', [], [2, \html_entity_decode($y, \ENT_HTML5 | \ENT_QUOTES)]];
+                            }
+                            $r[$last][1][] = ['a', [[false, $y = '&#8617;', [], [2, \html_entity_decode($y, \ENT_HTML5 | \ENT_QUOTES)]]], [
+                                'href' => '#from:' . ($keys[$k] + 1) . (0 !== $i ? '.' . $i : ""),
+                                'role' => 'doc-backlink'
+                            ]];
+                        }
+                    }
+                }
+                $r && ($notes[1][1][1][] = ['li', $r, [
+                    'id' => 'to:' . ($keys[$k] + 1),
+                    'role' => 'doc-endnote'
+                ], []]);
+            }
+            if (!empty($notes[1][1][1])) {
+                $rows[] = $notes;
+            }
         }
         return [$rows, $lot, $void];
     }

@@ -131,7 +131,14 @@ blockquote {
   padding: 0 0 0 0.75em;
 }
 code, textarea {
-  font: normal normal 12px/1.25 'Courier New', monospace;
+  font: normal normal 0.95em/1.25 'Courier New', monospace;
+}
+code {
+  background: #eee;
+  display: inline-block;
+  padding: 0 0.15em;
+  vertical-align: middle;
+  white-space: pre;
 }
 del {
   text-decoration: line-through;
@@ -198,6 +205,9 @@ textarea {
   font: normal normal 13px/1.5 Verdana, sans-serif;
   padding: 1em;
 }
+:target {
+  background: #0f0;
+}
 :where({$b2}) + :where({$b2}) {
   margin-top: 1rem;
 }
@@ -205,7 +215,7 @@ textarea {
   color: #900;
 }
 :where(small, sub, sup) {
-  font-size: 0.8em;
+  font-size: 0.75em;
 }
 li:where(:not(:first-child)) > :where({$b1}):where(:first-child) {
   margin-top: 1rem;
@@ -237,11 +247,29 @@ td, th {
   text-align: left;
   vertical-align: top;
 }
+[role='doc-endnotes'] {
+  font-size: 0.85em;
+}
 CSS;
     $s .= '</style>';
     $s .= '</head>';
     $s .= '<body>';
     $s .= $text;
+    $s .= '<script>';
+    $s .= <<<JS
+const links = document.querySelectorAll('[href^="#"]');
+links && links.length && links.forEach(link => {
+    link.addEventListener('click', function (e) {
+        let target = document.getElementById(this.hash.slice(1));
+        if (target) {
+            location.hash = this.hash;
+            target.scrollIntoView();
+        }
+        e.preventDefault();
+    });
+});
+JS;
+    $s .= '</script>';
     $s .= '</body>';
     $s .= '</html>';
     return $s;
