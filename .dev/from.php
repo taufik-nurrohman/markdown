@@ -2269,6 +2269,7 @@ namespace x\markdown\from {
             'blockquote' => 1,
             'caption' => 2,
             'dd' => 2,
+            'div' => 1, // for `<div role="doc-endnotes">`
             'dl' => 1,
             'figcaption' => 2,
             'figure' => 1,
