@@ -1834,6 +1834,9 @@ namespace x\markdown\from {
                             'A' => l3n($t, 1), 'I' => r3n($t, 1), 'a' => l3n($t), 'i' => r3n($t), default => (int) $t
                         };
                         if ($next - $current > 1 || $next < $current) {
+                            if (1 === $next) {
+                                break;
+                            }
                             $s .= "\n" . s($value, $i, $m[0]);
                             $i += $m[0] + $m[1];
                             continue;

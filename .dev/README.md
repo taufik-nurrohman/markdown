@@ -122,8 +122,8 @@ but does not satisfy the CommonMark specifications. Instead, it “extends” th
   </tbody>
 </table>
 
-Since the list block marker can now be any lower-case or upper-case letter and will also treat “I” and “i” as the start
-of a list block with Roman numerals, the rules for this type of list block have been strictly enforced:
+Since the list block marker can now be any lower-case or upper-case characters and will also treat “I” and “i” character
+as the start of a list block with Roman numerals, the rules for this type of list block have been strictly enforced:
 
  1. A **type “A”** list block can only start with the prefix `A) ` or `A. `.
 
@@ -136,12 +136,20 @@ of a list block with Roman numerals, the rules for this type of list block have 
       </thead>
       <tbody>
         <tr>
-          <td><pre><code>asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>A) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;p&gt;asdf asdf asdf asdf B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+          <td>
+            <pre><code>B) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;p&gt;B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -158,19 +166,56 @@ of a list block with Roman numerals, the rules for this type of list block have 
       </thead>
       <tbody>
         <tr>
-          <td><pre><code>asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>I) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;p&gt;asdf asdf asdf asdf II) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+          <td>
+            <pre><code>II) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;p&gt;II) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+          </td>
         </tr>
       </tbody>
     </table>
 
  1. A **type “i”** list block can only start with the prefix `i) ` or `i. `.
- 1. Those types of list won’t support the custom `start` attribute (they will always start from 1), and like the `1) `
-    and `1. ` prefixes, they can interrupt the paragraph.
+
+Those list types don’t support custom `start` attribute (they will always start from 1), and like the `1) ` and `1. `
+prefixes, they can interrupt the paragraph.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    <tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
  1. A list item continuation of **type “A”** list block can only use the previous character or the next character after
     it. After the character “Z”, the list continues with “AA”, “AB”, “AC”, and so on.
 
@@ -183,24 +228,60 @@ of a list block with Roman numerals, the rules for this type of list block have 
       </thead>
       <tbody>
         <tr>
-          <td><pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;p&gt;B) asdf asdf asdf asdf B) asdf asdf asdf asdf B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+          <td>
+            <pre><code>B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;p&gt;B) asdf asdf asdf asdf B) asdf asdf asdf asdf B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>A) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf&#10;D) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf C) asdf asdf asdf asdf D) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>A) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf&#10;D) asdf asdf asdf asdf&#10;E) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf C) asdf asdf asdf asdf D) asdf asdf asdf asdf E) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>A) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf C) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>A) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf C) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -219,24 +300,44 @@ of a list block with Roman numerals, the rules for this type of list block have 
       </thead>
       <tbody>
         <tr>
-          <td><pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;p&gt;II) asdf asdf asdf asdf II) asdf asdf asdf asdf II) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+          <td>
+            <pre><code>II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;p&gt;II) asdf asdf asdf asdf II) asdf asdf asdf asdf II) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
         <tr>
-          <td><pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;IV) asdf asdf asdf asdf</code></pre>
-          <td><pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf IV) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          <td>
+            <pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;IV) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf IV) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -244,41 +345,75 @@ of a list block with Roman numerals, the rules for this type of list block have 
  1. A list Item continuation of **type “i”** list block can only use the previous Roman numeral or the next Roman
     numeral after it.
 
-Those rules must be effective to avoid results that most people likely don’t want. This typically occurs when a
+Those rules should be effective to avoid results that most people likely don’t want. This typically occurs when a
 paragraph continuation text contains a sequence of letters that end with a `) ` or a `. `.
 
 Consider the following examples:
 
 ~~~
-a) asdf asdf (asdf asdf asdf
-asdf) asdf asdf asdf asdf.
-b) asdf asdf asdf asdf asdf.
-c) asdf asdf asdf asdf asdf.
+a) asdf (asdf
+asdf) asdf
+b) asdf asdf
+c) asdf asdf
 ~~~
 
 ~~~
-a) asdf asdf (asdf asdf asdf
-   asdf) asdf asdf asdf asdf.
-b) asdf asdf asdf asdf asdf.
-c) asdf asdf asdf asdf asdf.
+a) asdf (asdf
+   asdf) asdf
+b) asdf asdf
+c) asdf asdf
 ~~~
 
 ~~~
-a. asdf asdf asdf asdf asdf
-asdf. asdf asdf asdf asdf.
-b. asdf asdf asdf asdf asdf.
-c. asdf asdf asdf asdf asdf.
+a. asdf asdf
+asdf. asdf
+b. asdf asdf
+c. asdf asdf
 ~~~
 
 ~~~
-a. asdf asdf asdf asdf asdf
-   asdf. asdf asdf asdf.
-b. asdf asdf asdf asdf asdf.
-c. asdf asdf asdf asdf asdf.
+a. asdf asdf
+   asdf. asdf
+b. asdf asdf
+c. asdf asdf
 ~~~
 
 Without stricter rules for the list block, my parser would mistakenly treat `asdf) ` and `asdf. ` as the start of
 another list item block.
+
+Also consider the following example, which is taken from [this discussion](https://talk.commonmark.org/t/bad-interaction-between-laziness-rule-and-ordered-lists/9085?u=taufik-nurrohman):
+
+~~~
+1. Before the end of the paragraph, I invite you to
+consider a very large number. For example,
+45000000. Are you thinking about it?
+~~~
+
+With my stricter rules, the result will be more desirable:
+
+<table>
+  <thead>
+    <tr>
+      <th>CommonMark</th>
+      <th>Mine</th>
+    <tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>&lt;ol&gt;&#10;&lt;li&gt;Before the end of the paragraph, I invite you to&#10;consider a very large number. For example,&lt;/li&gt;&#10;&lt;li&gt;Are you thinking about it?&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;Before the end of the paragraph, I invite you to consider a very large number. For example, 45000000. Are you thinking about it?&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Please note that this is just my suggestion for how CommonMark could improve its implementation. I would still recommend
+you to write the list item numbers in order for best compatibility with other Markdown parsers in case you want to
+switch in the future. Or, if you’re too lazy or the list tends to grow over time, just reuse number from the previous
+list item.
 
 ### Tabs
 
