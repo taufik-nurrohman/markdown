@@ -160,7 +160,7 @@ caption,
 figcaption {
   caption-side: bottom;
   color: #666;
-  font-style: italic;
+  font-size: 0.85em;
   margin-top: 0.5em;
 }
 figure {

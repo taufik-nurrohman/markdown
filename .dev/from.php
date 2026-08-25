@@ -520,12 +520,13 @@ namespace x\markdown\from {
         return [];
     }
     function p(string $value, int $i, int $limit) {
-        $n = $x = 0;
+        $r = [];
+        $x = 0;
         while ($i < $limit) {
             $c = $value[$i];
             if ("\\" === $c) {
-                ++$n;
                 ++$x;
+                ++$i;
                 continue;
             }
             $esc = 1 & $x;
@@ -539,11 +540,11 @@ namespace x\markdown\from {
                 continue;
             }
             if (!$esc && '|' === $c) {
-                ++$n;
+                $r[] = $i;
             }
             ++$i;
         }
-        return $n;
+        return $r;
     }
     function r(string $value, int $i, int $limit) {
         if ($i >= $limit) {
@@ -1721,6 +1722,76 @@ namespace x\markdown\from {
                 $s = "";
                 continue;
             }
+            // TODO: Table
+            if (false !== ($w = \strpos($value, '|', $n = $d + $i)) && $w < $i + $m[0]) {
+                // Maybe a table row
+                if ($m[0] !== \strspn($value, c1 . '-:|', $i, $limit)) {
+                    // A potential table block can interrupt a paragraph if its pipe marker is present at the start of
+                    // the table row.
+                    if (0 === $w - $d - $i && ($o = m($value, $n = $i + $m[0] + $m[1], $limit))[0] > 0 && $o[0] === \strspn($value, c1 . '-:|', $n, $limit)) {
+                        "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                        $s .= s($value, $i, $m[0]) . "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    $s .= s($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
+                    continue;
+                }
+                if ("" !== $s && (\strlen($s) !== \strpos($s, "\n") + 1 || !p($s, 0, \strlen($s)))) {
+                    $s .= s($value, $i, $m[0]) . "\n";
+                    $i += $m[0] + $m[1];
+                    continue;
+                }
+                $s = \trim(\trim(\trim($s), '|')) . x1 . \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
+                $i += $m[0] + $m[1];
+                $min = $d + 1;
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
+                    // A blank line starts the table caption
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        $s .= x2 . "\n";
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    // Found a line that is not blank and is more indented than the table block
+                    if (d($value, $i, $limit)[0] > $d) {
+                        // If a table block is immediately followed by a non-paragraph continuation text, append a blank
+                        // line to mark the table caption as a container block.
+                        if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                            $s .= x2;
+                            if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                                $s .= "\n";
+                            }
+                        }
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
+                    // At this point, the table caption must be a leaf block
+                    if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
+                        if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
+                            if (!p($text = s($value, $i, $m[0]), 0, \strlen($text))) {
+                                if (false !== \strpos($s, x2)) {
+                                    break;
+                                }
+                                $s .= x2 . $text;
+                            } else {
+                                $s .= "\n" . \trim(\trim(\trim($text), '|'));
+                            }
+                            $i += $m[0] + $m[1];
+                            continue;
+                        }
+                    }
+                    if ("\n" === $s[-1]) {
+                        ++$void;
+                    }
+                    break;
+                }
+                $rows[] = ['table', \rtrim($s, "\n"), []];
+                $s = "";
+                continue;
+            }
             // <https://spec.commonmark.org/0.31.2#setext-heading>
             // This must come before the list and the thematic break parser because it uses `-` for heading level 2.
             // Since `-` can also be used as a list or thematic break marker, it is necessary to verify that the
@@ -1743,7 +1814,7 @@ namespace x\markdown\from {
                 if (!$a && ($start = \strrpos($s, '{'))) {
                     for ($x = 0; $start - 1 - $x >= 0 && "\\" === $s[$start - 1 - $x]; ++$x);
                     $n = $start - 1 - $x;
-                    if ($n >= 0 && 0 === $x % 2 && false !== \strpos(c1, $s[$n])) {
+                    if ($n >= 0 && (1 & $x) && false !== \strpos(c1, $s[$n])) {
                         if ($a = a($s, $start, $max = \strlen($s))) {
                             if ($max === $start + $a[1]) {
                                 $s = \substr($s, 0, $start - 1);
@@ -1952,11 +2023,11 @@ namespace x\markdown\from {
                     $a = [];
                     if (false !== ($start = \strrpos($s, '{'))) {
                         for ($n = $start - 1, $o = 0; $n >= 0 && "\\" === $s[$n]; --$n, ++$o);
-                        if ($n >= 0 && 0 === $o % 2 && false !== \strpos(c1 . '#', $s[$n])) {
+                        if ($n >= 0 && (1 & $o) && false !== \strpos(c1 . '#', $s[$n])) {
                             if ('#' === $s[$n]) {
                                 for ($h = 0; $n >= 0 && '#' === $s[$n]; ++$h, --$n);
                                 for ($x = 0; $n >= 0 && "\\" === $s[$n]; --$n, ++$x);
-                                if (0 !== $x % 2 || ($n >= 0 && false === \strpos(c1, $s[$n]))) {
+                                if ((1 & $x) || ($n >= 0 && false === \strpos(c1, $s[$n]))) {
                                     $n = -1; // Invalid trailing hash(es)
                                 }
                             }
@@ -1970,69 +2041,13 @@ namespace x\markdown\from {
                     if ('#' === $s[$max - 1]) {
                         for ($n = $max - 1; $n >= 0 && '#' === $s[$n]; --$n);
                         for ($x = 0; $n >= 0 && "\\" === $s[$n]; --$n, ++$x);
-                        if (0 === $x % 2 && ($n < 0 || false !== \strpos(c1, $s[$n]))) {
+                        if (!(1 & $x) && ($n < 0 || false !== \strpos(c1, $s[$n]))) {
                             $s = \trim(\substr($s, 0, $n + 1));
                         }
                     }
                 }
                 $rows[] = ['h' . $w, \trim($s), $a[0] ?? [], [$w, '#']];
                 $i += $m[0] + $m[1];
-                $s = "";
-                continue;
-            }
-            // TODO: Table
-            if (false !== ($w = \strpos($value, '|', $n = $d + $i)) && $w < $i + $m[0]) {
-                if ($m[0] !== \strspn($value, c1 . '-:|', $i) || "" !== $s && (\strlen($s) !== \strpos($s, "\n") + 1 || 0 === p($s, 0, \strlen($s)))) {
-                    $s .= s($value, $i, $m[0]) . "\n";
-                    $i += $m[0] + $m[1];
-                    continue;
-                }
-                $s = \trim(\trim(\trim($s), '|')) . x1 . \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
-                $i += $m[0] + $m[1];
-                $min = $d + 1;
-                while ($i < $limit) {
-                    $m = m($value, $i, $limit);
-                    // A blank line starts the table caption
-                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
-                        $s .= x2 . "\n";
-                        $i += $m[0] + $m[1];
-                        continue;
-                    }
-                    // Found a line that is not blank and is more indented than the table block
-                    if (d($value, $i, $limit)[0] > $d) {
-                        // If a table block is immediately followed by a non-paragraph continuation text, append a blank
-                        // line to mark the table caption as a container block.
-                        if ("\n" !== $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                            $s .= x2;
-                            if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                                $s .= "\n";
-                            }
-                        }
-                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
-                        $i += $m[0] + $m[1];
-                        continue;
-                    }
-                    // At this point, the table caption must be a leaf block
-                    if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                        if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
-                            if (0 === p($text = s($value, $i, $m[0]), 0, \strlen($text))) {
-                                if (false !== \strpos($s, x2)) {
-                                    break;
-                                }
-                                $s .= x2 . $text;
-                            } else {
-                                $s .= "\n" . \trim(\trim(\trim($text), '|'));
-                            }
-                            $i += $m[0] + $m[1];
-                            continue;
-                        }
-                    }
-                    if ("\n" === $s[-1]) {
-                        ++$void;
-                    }
-                    break;
-                }
-                $rows[] = ['table', \rtrim($s, "\n"), []];
                 $s = "";
                 continue;
             }
@@ -2093,8 +2108,7 @@ namespace x\markdown\from {
                     unset($s);
                     if ("" !== ($head = $part[0])) {
                         $r = ['tr', [], []];
-                        // TODO
-                        foreach (\explode('|', $head) as $k => $v) {
+                        foreach (s3t($head) as $k => $v) {
                             $r[1][] = ['th', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
                         }
                         \array_unshift($row[1], ['thead', [$r], []]);
@@ -2102,8 +2116,7 @@ namespace x\markdown\from {
                     $at = "" === $head ? 0 : 1;
                     foreach ($body as $b) {
                         $r = ['tr', [], []];
-                        // TODO
-                        foreach (\explode('|', $b) as $k => $v) {
+                        foreach (s3t($b) as $k => $v) {
                             $r[1][] = ['td', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
                         }
                         $row[1][$at][1][] = $r;
@@ -2255,6 +2268,17 @@ namespace x\markdown\from {
         }
         return $eat ? \substr($s, $eat) : $s;
     }
+    function s3t(string $text) {
+        $i = 0;
+        $p = p($text, 0, \strlen($text));
+        $r = [];
+        foreach ($p as $n) {
+            $r[] = \substr($text, $i, $n - $i);
+            $i = $n + 1;
+        }
+        $r[] = \substr($text, $i);
+        return $r;
+    }
     function tag($row, array $state, int $deep = 0) {
         if (!$row) {
             return "";
@@ -2288,7 +2312,7 @@ namespace x\markdown\from {
         }
         $block = null !== $tab && isset($blocks[$row[0]]);
         $tag = null !== $row[0];
-        // The `dd`, `figcaption`, and `li` block(s) can behave as either a container or leaf block in the final result
+        // The `caption`, `dd`, `figcaption`, and `li` can behave as a container or leaf block in the final result
         if ($block && 2 === ($blocks[$row[0]] ?? 0)) {
             if (\is_array($row[1])) {
                 foreach ($row[1] as $r) {
