@@ -519,7 +519,7 @@ namespace x\markdown\from {
         }
         return [];
     }
-    function p(string $value, int $i, int $limit) {
+    function p(string $value, int $i, int $limit, ?int $max = null) {
         $r = [];
         $x = 0;
         while ($i < $limit) {
@@ -540,6 +540,9 @@ namespace x\markdown\from {
                 continue;
             }
             if (!$esc && '|' === $c) {
+                if (null !== $max && \count($r) >= $max) {
+                    break;
+                }
                 $r[] = $i;
             }
             ++$i;
@@ -1723,27 +1726,11 @@ namespace x\markdown\from {
                 continue;
             }
             // TODO: Table
-            if (false !== ($w = \strpos($value, '|', $n = $d + $i)) && $w < $i + $m[0]) {
-                // Maybe a table row
-                if ($m[0] !== \strspn($value, c1 . '-:|', $i, $limit)) {
-                    // A potential table block can interrupt a paragraph if its pipe marker is present at the start of
-                    // the table row.
-                    if (0 === $w - $d - $i && ($o = m($value, $n = $i + $m[0] + $m[1], $limit))[0] > 0 && $o[0] === \strspn($value, c1 . '-:|', $n, $limit)) {
-                        "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                        $s .= s($value, $i, $m[0]) . "\n";
-                        $i += $m[0] + $m[1];
-                        continue;
-                    }
-                    $s .= s($value, $i, $m[0]) . "\n";
-                    $i += $m[0] + $m[1];
-                    continue;
+            if (false !== ($w = \strpos($value, '|', $d + $i)) && $w < $i + $m[0] && p($value, $i, $i + $m[0]) && ("" === $s || (\strlen($s) === \strpos($s, "\n") + 1 && p($s, 0, \strlen($s))))) {
+                if ($m[0] === \strspn($value, c1 . '-:|', $i, $limit)) {
+                    $s .= x1;
                 }
-                if ("" !== $s && (\strlen($s) !== \strpos($s, "\n") + 1 || !p($s, 0, \strlen($s)))) {
-                    $s .= s($value, $i, $m[0]) . "\n";
-                    $i += $m[0] + $m[1];
-                    continue;
-                }
-                $s = \trim(\trim(\trim($s), '|')) . x1 . \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
+                $s .= \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
                 $i += $m[0] + $m[1];
                 $min = $d + 1;
                 while ($i < $limit) {
@@ -1768,16 +1755,17 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    // At this point, the table caption must be a leaf block
                     if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                        if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
-                            if (!p($text = s($value, $i, $m[0]), 0, \strlen($text))) {
+                        if ('p' === $b[0] || 'table' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
+                            // At this point, the table caption must be a leaf block
+                            if (!p($value, $i, $i + $m[0])) {
                                 if (false !== \strpos($s, x2)) {
                                     break;
                                 }
-                                $s .= x2 . $text;
+                                $s .= x2 . s($value, $i, $m[0]);
                             } else {
-                                $s .= "\n" . \trim(\trim(\trim($text), '|'));
+                                $s .= $m[0] === \strspn($value, c1 . '-:|', $i, $limit) ? x1 : "\n";
+                                $s .= \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
                             }
                             $i += $m[0] + $m[1];
                             continue;
@@ -2094,7 +2082,7 @@ namespace x\markdown\from {
                     $part[1] = \explode(x2, $part[1] ?? "", 2);
                     $body = \explode("\n", $part[1][0]);
                     $cap = $part[1][1] ?? "";
-                    $style = \explode('|', \array_shift($body));
+                    $max = \count($style = \explode('|', \array_shift($body)));
                     foreach ($style as &$s) {
                         $s = \trim($s);
                         $align = "";
@@ -2108,17 +2096,19 @@ namespace x\markdown\from {
                     unset($s);
                     if ("" !== ($head = $part[0])) {
                         $r = ['tr', [], []];
-                        foreach (s3t($head) as $k => $v) {
+                        foreach (s3t($head, $max - 1) as $k => $v) {
                             $r[1][] = ['th', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
                         }
+                        $r[1] = \array_pad($r[1], $max, ['th', "", []]);
                         \array_unshift($row[1], ['thead', [$r], []]);
                     }
                     $at = "" === $head ? 0 : 1;
                     foreach ($body as $b) {
                         $r = ['tr', [], []];
-                        foreach (s3t($b) as $k => $v) {
+                        foreach (s3t($b, $max - 1) as $k => $v) {
                             $r[1][] = ['td', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
                         }
+                        $r[1] = \array_pad($r[1], $max, ['td', "", []]);
                         $row[1][$at][1][] = $r;
                     }
                     if ("" !== \trim($cap)) {
@@ -2268,9 +2258,9 @@ namespace x\markdown\from {
         }
         return $eat ? \substr($s, $eat) : $s;
     }
-    function s3t(string $text) {
+    function s3t(string $text, ?int $max = null) {
         $i = 0;
-        $p = p($text, 0, \strlen($text));
+        $p = p($text, 0, \strlen($text), $max);
         $r = [];
         foreach ($p as $n) {
             $r[] = \substr($text, $i, $n - $i);
