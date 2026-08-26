@@ -648,7 +648,7 @@ pre:hover .c-t::before {
 CSS;
 $s .= '</style>';
 $s .= '</head>';
-$s .= '<body>';
+$s .= '<body spellcheck="false">';
 
 $s .= '<form action="#top" method="get">';
 $s .= '<fieldset>';
