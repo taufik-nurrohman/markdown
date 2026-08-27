@@ -40,7 +40,18 @@ the future. Previously, I wanted to develop this converter directly into the ext
 create this project separately as it might have potential to be used by other developers beyond the
 [Mecha CMS](https://github.com/mecha-cms) developers.
 
-### Ordered List
+### Image Block
+
+Markdown was initiated before the HTML5 era. When the `<figure>` element was introduced, people started using it as a
+feature to display an image with a caption. Most Markdown converters will convert image syntax that stands alone on a
+single line as an image element wrapped in a paragraph element in the output. My converter would instead wrap it in a
+figure element. Because for now, it seems like a figure element would be more desirable in this situation.
+
+Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces less than 4.
+
+_TODO_
+
+### List Block
 
 My parser supports list items numbered with Latin letters and Roman numerals. This satisfies the HTML5 specification for
 the [`type` attribute of the `<ol>` element](https://html.spec.whatwg.org/multipage/grouping-content.html#attr-ol-type)
@@ -430,6 +441,23 @@ Please note that this is just my suggestion for how CommonMark could improve its
 you to write the list item numbers in order for best compatibility with other Markdown parsers in case you want to
 switch in the future. Or, if you’re too lazy or the list tends to grow over time, just reuse number from the previous
 list item.
+
+### Table Block
+
+Table blocks follow the [Markdown Extra’s table block syntax](https://michelf.ca/projects/php-markdown/extra#table).
+However, there are a few additional features and rules:
+
+ - The actual number of columns follows the number of columns in the table header separator. If you have columns in
+   table header and/or table data with a number that exceeds the actual number of columns, the excess columns will be
+   discarded. If you have columns in table header and/or table data with a number that is less than the actual number of
+   columns, several empty columns will be added automatically to the right side.
+ - Literal pipe characters in table columns must be escaped. Exceptions are those that appear in code span and attribute
+   values of raw HTML tags.
+ - Header-less table is supported, but may not be compatible with other Markdown converters. Consider using this feature
+   as rarely as possible, unless you have no plans to switch to other Markdown converters in the future.
+ - Table caption is supported and can be created using the same syntax as the image block’s caption syntax.
+
+_TODO_
 
 ### Tabs
 

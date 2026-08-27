@@ -196,6 +196,9 @@ namespace x\markdown\from {
         }
         return [$r, $n];
     }
+    function a6k(string $value, int $i, int $limit) {
+        return []; // TODO
+    }
     // <https://spec.commonmark.org/0.31.2#image-description>
     function alt($row) {
         if (\is_string($row)) {
@@ -535,7 +538,7 @@ namespace x\markdown\from {
                 $i += $m[1];
                 continue;
             }
-            if (!$esc && '<' === $c && ($m = n2e($value, $i, $limit))) {
+            if (!$esc && '<' === $c && ($m = a6k($value, $i, $limit)) || ($m = n2e($value, $i, $limit))) {
                 $i += $m[1];
                 continue;
             }
@@ -1725,7 +1728,15 @@ namespace x\markdown\from {
                 $s = "";
                 continue;
             }
-            // TODO: Table
+            // The table syntax rule(s), which is as close as possible to the common CommonMark rule(s), are available
+            // on the GFM Specification page. However, I decided to give more consideration to the original Markdown
+            // Extra and Parsedown Extra behavior in the case where `|` character(s) exist within a code span or a raw
+            // HTML tag. In code span and raw HTML syntax, `|` character(s) do not need to be escaped when you want to
+            // display them literally. I favor the rule that code span, auto-link, and raw HTML construct bind more
+            // tightly than any other construct in the “inline” sense. I can understand why GitHub prefers the other
+            // favor. For GitHub, `|` character(s) in a table may be considered as nearly identical to the block
+            // construct, so that block(s) need to be parsed earlier than inline(s). Here, I consider `|` character(s)
+            // to be at the same level of tightness as the `[` and `]` character(s) in the link label construct.
             if (false !== ($w = \strpos($value, '|', $d + $i)) && $w < $i + $m[0] && p($value, $i, $i + $m[0]) && ("" === $s || (\strlen($s) === \strpos($s, "\n") + 1 && p($s, 0, \strlen($s))))) {
                 if ($m[0] === \strspn($value, c1 . '-:|', $i, $limit)) {
                     $s .= x1;
@@ -1759,10 +1770,7 @@ namespace x\markdown\from {
                         if ('p' === $b[0] || 'table' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
                             // At this point, the table caption must be a leaf block
                             if (!p($value, $i, $i + $m[0])) {
-                                if (false !== \strpos($s, x2)) {
-                                    break;
-                                }
-                                $s .= x2 . s($value, $i, $m[0]);
+                                $s .= (false !== \strpos($s, x2) ? "\n" : x2) . s($value, $i, $m[0]);
                             } else {
                                 $s .= $m[0] === \strspn($value, c1 . '-:|', $i, $limit) ? x1 : "\n";
                                 $s .= \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
@@ -2076,40 +2084,42 @@ namespace x\markdown\from {
                 }
                 if ('table' === $row[0]) {
                     $part = \explode(x1, $row[1], 2);
-                    $row[1] = [
-                        ['tbody', [], []]
-                    ];
                     $part[1] = \explode(x2, $part[1] ?? "", 2);
-                    $body = \explode("\n", $part[1][0]);
+                    $body = \explode("\n", \trim($part[1][0]));
                     $cap = $part[1][1] ?? "";
                     $max = \count($style = \explode('|', \array_shift($body)));
                     foreach ($style as &$s) {
                         $s = \trim($s);
-                        $align = "";
+                        $to = "";
                         if (':' === $s[0]) {
-                            $align = ':' === $s[-1] ? 'center' : 'left';
+                            $to = ':' === $s[-1] ? 'center' : 'left';
                         } else if (':' === $s[-1]) {
-                            $align = 'right';
+                            $to = 'right';
                         }
-                        $s = $align ? ['style' => 'text-align: ' . $align . ';'] : [];
+                        $s = $to ? ['style' => 'text-align: ' . $to . ';'] : [];
                     }
                     unset($s);
-                    if ("" !== ($head = $part[0])) {
+                    $row[1] = [];
+                    if ("" !== ($head = \trim($part[0]))) {
+                        $row[1][] = ['thead', [], []];
                         $r = ['tr', [], []];
-                        foreach (s3t($head, $max - 1) as $k => $v) {
+                        foreach (s3t($head, $max) as $k => $v) {
                             $r[1][] = ['th', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
                         }
                         $r[1] = \array_pad($r[1], $max, ['th', "", []]);
-                        \array_unshift($row[1], ['thead', [$r], []]);
+                        $row[1][0][1][] = $r;
                     }
-                    $at = "" === $head ? 0 : 1;
-                    foreach ($body as $b) {
-                        $r = ['tr', [], []];
-                        foreach (s3t($b, $max - 1) as $k => $v) {
-                            $r[1][] = ['td', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
+                    if ($body) {
+                        $at = "" !== $head ? 1 : 0;
+                        $row[1][] = ['tbody', [], []];
+                        foreach ($body as $b) {
+                            $r = ['tr', [], []];
+                            foreach (s3t($b, $max) as $k => $v) {
+                                $r[1][] = ['td', row($v = \trim($v), $lot, $deep - 1, 0, \strlen($v))[0] ?: "", $style[$k] ?? []];
+                            }
+                            $r[1] = \array_pad($r[1], $max, ['td', "", []]);
+                            $row[1][$at][1][] = $r;
                         }
-                        $r[1] = \array_pad($r[1], $max, ['td', "", []]);
-                        $row[1][$at][1][] = $r;
                     }
                     if ("" !== \trim($cap)) {
                         // Table caption as a container block
@@ -2260,7 +2270,7 @@ namespace x\markdown\from {
     }
     function s3t(string $text, ?int $max = null) {
         $i = 0;
-        $p = p($text, 0, \strlen($text), $max);
+        $p = p($text, 0, \strlen($text), null !== $max ? $max - 1 : $max);
         $r = [];
         foreach ($p as $n) {
             $r[] = \substr($text, $i, $n - $i);
