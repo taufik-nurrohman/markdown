@@ -11,7 +11,6 @@ ini_set('display_startup_errors', true);
 ini_set('html_errors', 1);
 
 define('D', DIRECTORY_SEPARATOR);
-define('P', "\u{001A}");
 define('PATH', __DIR__);
 
 require PATH . D . '..' . D . '..' . D . 'from.php';
@@ -487,13 +486,9 @@ a:focus {
   color: #f00;
 }
 body > form {
-  margin-bottom: 0.5em;
+  margin-bottom: 1em;
 }
-body > form:first-child {
-  margin-top: -0.5em;
-}
-body > form > fieldset > p + p,
-body > main {
+body > form > fieldset > p + p {
   margin-top: 1em;
 }
 body > main > div {
@@ -565,8 +560,9 @@ textarea {
   vertical-align: middle;
 }
 legend {
-  line-height: 1;
+  line-height: 0;
   padding: 0 0.25em;
+  white-space: nowrap;
 }
 pre {
   overflow: auto;

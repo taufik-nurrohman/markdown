@@ -1,4 +1,4 @@
-<?php
+<?php session_start();
 
 if (!in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1'])) {
     // exit;
@@ -11,16 +11,30 @@ ini_set('display_startup_errors', true);
 ini_set('html_errors', 1);
 
 define('D', DIRECTORY_SEPARATOR);
-define('P', "\u{001A}");
 define('PATH', __DIR__);
 
 require PATH . D . '..' . D . 'from.php';
+require PATH . D . 'try' . D . 'vendor' . D . 'autoload.php';
 
-$batch = basename($_GET['batch'] ?? '1');
-$block = !!basename($_GET['block'] ?? '1');
-$line = strtoupper(basename($_GET['line'] ?? 'LF'));
-$test = basename($_GET['test'] ?? 'p');
-$view = basename($_GET['view'] ?? 'source');
+if ('POST' === $_SERVER['REQUEST_METHOD']) {
+    $content = $_POST['content'];
+    $_SESSION['result'][0] = $content;
+    $_SESSION['time'][0] = 0;
+    $_SESSION['result'][1] = require PATH . D . 'try' . D . 'vs' . D . 'taufik-nurrohman' . D . 'markdown.php';
+    $_SESSION['time'][1] = $t;
+    if ("" !== ($vs = strip_tags($_POST['vs'] ?? ""))) {
+        $vs = trim(strtr($vs, ["\\" => D, '/' => D]), D);
+        // Prevent directory traversal attack
+        while (false !== strpos($vs, '..' . D)) {
+            $vs = strtr($vs, ['..' . D => ""]);
+        }
+        $_SESSION['result'][2] = require PATH . D . 'try' . D . 'vs' . D . $vs . '.php';
+        $_SESSION['time'][2] = $t;
+        $_SESSION['vs'] = [$vs, $label ?? $vs];
+    }
+    header('location: try.php');
+    exit;
+}
 
 function view_source(string $text) {
     $i = 0;
@@ -144,16 +158,18 @@ body > main > form {
   display: flex;
   flex-wrap: wrap;
   gap: 1em;
-  height: calc(100% + 0.5em);
-  margin-top: -0.5em;
+  height: 100%;
 }
 body > main > form > fieldset {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
+  min-width: 0;
 }
 body > main > form > fieldset > legend + p {
   flex: 1;
+  min-height: 0;
 }
 body > main > form > fieldset > legend + p + p {
   margin-top: 1em;
@@ -199,24 +215,27 @@ textarea {
   border: 1px solid #000;
   display: inline-block;
   height: 100%;
+  /* max-height: calc(100vh - 6em - 4px); */
   outline: 0;
   padding: 0.25em 0.35em;
   resize: vertical;
   width: 100%;
 }
 legend {
-  line-height: 1;
+  line-height: 0;
   padding: 0 0.25em;
+  white-space: nowrap;
 }
 pre {
   background: #ffc;
   border: 1px solid #000;
-  flex: 1;
   height: 100%;
+  max-height: calc(100vh - 6em - 4px);
   min-width: 0;
   overflow: auto;
   padding: 0.25em 0.35em;
   tab-size: 4;
+  white-space: pre-wrap;
   width: 100%;
   word-wrap: break-word;
 }
@@ -298,12 +317,14 @@ $s .= '<legend>';
 $s .= 'Input';
 $s .= '</legend>';
 $s .= '<p>';
-$s .= '<textarea name="content">';
+$s .= '<textarea name="content" placeholder="Markdown goes here&hellip;">';
+$s .= htmlspecialchars($_SESSION['result'][0] ?? "");
 $s .= '</textarea>';
 $s .= '</p>';
+$vs = $_SESSION['vs'][0] ?? "";
 $s .= '<p role="group">';
 $s .= '<select name="vs">';
-$s .= '<option disabled selected>';
+$s .= '<option disabled' . ("" === $vs ? ' selected' : "") . '>';
 $s .= 'Compare with&hellip;';
 $s .= '</option>';
 foreach ([
@@ -311,7 +332,7 @@ foreach ([
     'michelf/php-markdown' => 'Markdown Extra',
     'erusev/parsedown-extra' => 'Parsedown Extra',
 ] as $k => $v) {
-    $s .= '<option value="' . $k . '">';
+    $s .= '<option' . ($k === strtr($vs, [D => '/']) ? ' selected' : "") . ' value="' . $k . '">';
     $s .= $v;
     $s .= '</option>';
 }
@@ -322,31 +343,45 @@ $s .= 'Parse';
 $s .= '</button>';
 $s .= '</p>';
 $s .= '</fieldset>';
-$s .= '<fieldset>';
-$s .= '<legend>';
-$s .= 'Output';
-$s .= '</legend>';
-$s .= '<pre>';
-$s .= '<code>';
-$s .= '</code>';
-$s .= '</pre>';
-$s .= '<p style="color:#090;">Parsed in 0.05 ms.</p>';
-$s .= '</fieldset>';
-$s .= '<fieldset>';
-$s .= '<legend>';
-$s .= 'Output by <a href="#">Markdown Extra</a>';
-$s .= '</legend>';
-$s .= '<pre>';
-$s .= '<code>';
-$s .= '</code>';
-$s .= '</pre>';
-$s .= '<p style="color:#090;">Parsed in 0.05 ms.</p>';
-$s .= '</fieldset>';
+if ("" !== trim($_SESSION['result'][1] ?? "")) {
+    $s .= '<fieldset>';
+    $s .= '<legend>';
+    $s .= 'Output';
+    $s .= '</legend>';
+    $s .= '<pre>';
+    $s .= '<code>';
+    $s .= view_source($_SESSION['result'][1] ?? "");
+    $s .= '</code>';
+    $s .= '</pre>';
+    if ($time = $_SESSION['time'][1] ?? 0) {
+        $s .= '<p style="color:#' . ($time > ($_SESSION['time'][2] ?? PHP_INT_MAX) ? '900' : '090') . ';">Parsed in ' . round($time, 2) . ' ms.</p>';
+    }
+    $s .= '</fieldset>';
+    if ("" !== trim($_SESSION['result'][2] ?? "")) {
+        $label = $_SESSION['vs'][1] ?? $vs;
+        $s .= '<fieldset>';
+        $s .= '<legend>';
+        $s .= 'Output by <a href="https://packagist.org/packages/' . strtr($vs, [D => '/']) . '" rel="nofollow" target="_blank">' . $label . '</a>';
+        $s .= '</legend>';
+        $s .= '<pre>';
+        $s .= '<code>';
+        $s .= view_source($_SESSION['result'][2] ?? "");
+        $s .= '</code>';
+        $s .= '</pre>';
+        if ($time = $_SESSION['time'][2] ?? 0) {
+            $s .= '<p style="color:#' . ($time > ($_SESSION['time'][1] ?? 0) ? '900' : '090') . ';">Parsed in ' . round($time, 2) . ' ms.</p>';
+        }
+        $s .= '</fieldset>';
+    }
+}
+$s .= '<input name="token" type="hidden" value="' . ($_SESSION['token'] = bin2hex(random_bytes(16))) . '">';
 $s .= '</form>';
 
 $s .= '</main>';
 
 $s .= '</body>';
 $s .= '</html>';
+
+unset($_SESSION['result'], $_SESSION['time'], $_SESSION['vs']);
 
 echo $s;
