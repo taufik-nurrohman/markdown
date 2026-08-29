@@ -17,10 +17,18 @@ require PATH . D . '..' . D . 'from.php';
 require PATH . D . 'try' . D . 'vendor' . D . 'autoload.php';
 
 if ('POST' === $_SERVER['REQUEST_METHOD']) {
-    $content = $_POST['content'] ?? "";
-    $token = $_POST['token'] ?? 0;
-    if ($token !== ($_SESSION['token'] ?? 1)) {
+    if (($token = $_POST['token'] ?? 0) !== ($_SESSION['token'] ?? 1)) {
         $_SESSION['alert'] = 'Invalid token.';
+        header('location: try.php');
+        exit;
+    }
+    if (strlen($content = $_POST['content'] ?? "") > 102400) {
+        $_SESSION['alert'] = 'For security reasons, the maximum content size has been limited to 100 KiB.';
+        header('location: try.php');
+        exit;
+    }
+    if ("" === $content) {
+        $_SESSION['alert'] = 'Content is empty.';
         header('location: try.php');
         exit;
     }
@@ -497,7 +505,7 @@ $s .= 'Input';
 $s .= '</legend>';
 $s .= '<p>';
 $s .= '<textarea name="content" placeholder="Markdown goes here&hellip;">';
-$s .= htmlspecialchars($_SESSION['r'][0] ?? file_get_contents(PATH . D . '..' . D . 'README.md'));
+$s .= htmlspecialchars($_SESSION['r'][0] ?? (empty($_SESSION['alert']) ? file_get_contents(PATH . D . '..' . D . 'README.md') : ""));
 $s .= '</textarea>';
 $s .= '</p>';
 $w = $_SESSION['w'][0] ?? "";
