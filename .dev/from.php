@@ -10,7 +10,7 @@ namespace x\markdown {
         }
         $state = \array_replace_recursive([
             'block' => true,
-            'tab' => 2,
+            'tab' => false,
             'with' => []
         ], $state);
         $block = !empty($state['block']);
@@ -197,7 +197,31 @@ namespace x\markdown\from {
         return [$r, $n];
     }
     function a6k(string $value, int $i, int $limit) {
-        return []; // TODO
+        if ('<' !== ($value[$i] ?? 0) || false === ($end = \strpos($value, '>', $i + 2))) {
+            return [];
+        }
+        // <https://spec.commonmark.org/0.31.2#uri-autolink>
+        if (false !== \strpos($value, ':', $i + 3) && ($m = \strspn($value, c10, $n = $i + 1))) {
+            $m += \strspn($value, c11 . '+.', $m + $n);
+            if ($m >= 2 && $m <= 32) { // <https://spec.commonmark.org/0.31.2#scheme>
+                if (':' === ($value[$m + $n] ?? 0)) {
+                    $m += \strcspn($value, c17 . ' <>', $m + $n + 1) + 1;
+                    if ($end === $m + $n) {
+                        return [['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [5]], $m + 2];
+                    }
+                }
+            }
+        }
+        // <https://spec.commonmark.org/0.31.2#email-autolink>
+        if (false !== \strpos($value, '@', $i + 2) && ($m = \strspn($value, c11 . '!#$%&*+./=?^`{|}~' . "'", $n = $i + 1))) {
+            if ('@' === ($value[$m + $n] ?? 0)) {
+                $m += \strspn($value, c11 . '.', $m + $n + 1) + 1;
+                if ($end === $m + $n) {
+                    return [['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [6]], $m + 2];
+                }
+            }
+        }
+        return [];
     }
     // <https://spec.commonmark.org/0.31.2#image-description>
     function alt($row) {
@@ -689,51 +713,19 @@ namespace x\markdown\from {
                 ++$i;
                 continue;
             }
-            if ('<' === $c && false !== ($end = \strpos($value, '>', $i + 2))) {
-                // <https://spec.commonmark.org/0.31.2#uri-autolink>
-                if (false !== \strpos($value, ':', $i + 3) && ($m = \strspn($value, c10, $n = $i + 1))) {
-                    $m += \strspn($value, c11 . '+.', $m + $n);
-                    if ($m >= 2 && $m <= 32) { // <https://spec.commonmark.org/0.31.2#scheme>
-                        if (':' === ($value[$m + $n] ?? 0)) {
-                            $m += \strcspn($value, c17 . ' <>', $m + $n + 1) + 1;
-                            if ($end === $m + $n) {
-                                "" !== $s && ($row[] = h($s));
-                                $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u($u)], [5]];
-                                // Check for attribute syntax after link
-                                if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
-                                    $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
-                                    $i += $a[1];
-                                }
-                                $s = "";
-                                continue;
-                            }
-                        }
-                    }
-                }
-                // <https://spec.commonmark.org/0.31.2#email-autolink>
-                if (false !== \strpos($value, '@', $i + 2) && ($m = \strspn($value, c11 . '!#$%&*+./=?^`{|}~' . "'", $n = $i + 1))) {
-                    if ('@' === ($value[$m + $n] ?? 0)) {
-                        $m += \strspn($value, c11 . '.', $m + $n + 1) + 1;
-                        if ($end === $m + $n) {
-                            "" !== $s && ($row[] = h($s));
-                            $row[] = ['a', h($u = \substr($value, $n, $m)), ['href' => u('mailto:' . $u)], [6]];
-                            // Check for attribute syntax after link
-                            if ('{' === ($value[$i = $end + 1] ?? 0) && ($a = a($value, $i, $limit))) {
-                                $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
-                                $i += $a[1];
-                            }
-                            $s = "";
-                            continue;
-                        }
-                    }
-                }
-                if ($m = n2e($value, $i, $limit)) {
-                    "" !== $s && ($row[] = h($s));
-                    $row[] = [false, $m[0], [], [$m[2]]];
-                    $i += $m[1];
-                    $s = "";
-                    continue;
-                }
+            if ('<' === $c && ($m = a6k($value, $i, $limit))) {
+                "" !== $s && ($row[] = h($s));
+                $row[] = $m[0];
+                $i += $m[1];
+                $s = "";
+                continue;
+            }
+            if ('<' === $c && ($m = n2e($value, $i, $limit))) {
+                "" !== $s && ($row[] = h($s));
+                $row[] = [false, $m[0], [], [$m[2]]];
+                $i += $m[1];
+                $s = "";
+                continue;
             }
             // <https://spec.commonmark.org/0.31.2#code-span>
             if ('`' === $c && ($m = c2e($value, $i, $limit))) {
@@ -1234,7 +1226,7 @@ namespace x\markdown\from {
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                             $min += $w;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], $min - $w, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1909,7 +1901,7 @@ namespace x\markdown\from {
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                             $min += $w;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], $min - $w, $min);
                         $i += $m[0] + $m[1];
                         $current = $next;
                         continue;
@@ -1988,7 +1980,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $s .= "\n" . s($value, $i, $m[0], $min - $w, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }

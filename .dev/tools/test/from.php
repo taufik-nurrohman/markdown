@@ -194,6 +194,24 @@ dt, h6 {
 hr {
   border-top: 1px solid #000;
 }
+ol {
+  list-style-type: decimal;
+}
+ol[type='A' s] {
+  list-style-type: upper-alpha;
+}
+ol[type='I' s] {
+  list-style-type: upper-roman;
+}
+ol[type='a' s] {
+  list-style-type: lower-alpha;
+}
+ol[type='i' s] {
+  list-style-type: lower-roman;
+}
+ul {
+  list-style-type: disc;
+}
 textarea {
   border: 1px solid #000;
   padding: 0.25em 0.5em;
@@ -515,7 +533,7 @@ body > main > div > p {
 }
 body > main > div > pre {
   background: #ffc;
-  padding: 0.25em 0.35em;
+  padding: 0.25em 0.45em;
   white-space: pre-wrap;
 }
 body > main > div + div {
@@ -746,7 +764,10 @@ foreach ($files as $file) {
         $s .= '<pre tabindex="0">';
         $s .= '<code>';
         $start = hrtime(true);
-        $r = x\markdown\from($raws, ['block' => $block]) ?? "";
+        $r = x\markdown\from($raws, [
+            'block' => $block,
+            'tab' => 2
+        ]) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
         $s .= view_source($r);
         $s .= '</code>';
