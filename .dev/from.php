@@ -1797,29 +1797,26 @@ namespace x\markdown\from {
                     $eat += $a[1];
                 }
                 $eat += \strspn($value, c1, $eat);
-                if ($eat !== $i + $m[0]) {
-                    $s .= s($value, $i, $m[0]) . "\n";
-                    $i += $m[0] + $m[1];
-                    continue;
-                }
-                $s = \trim($s);
-                if (!$a && ($start = \strrpos($s, '{'))) {
-                    for ($x = 0; $start - 1 - $x >= 0 && "\\" === $s[$start - 1 - $x]; ++$x);
-                    $n = $start - 1 - $x;
-                    if ($n >= 0 && (1 & $x) && false !== \strpos(c1, $s[$n])) {
-                        if ($a = a($s, $start, $max = \strlen($s))) {
-                            if ($max === $start + $a[1]) {
-                                $s = \substr($s, 0, $start - 1);
-                            } else {
-                                $a = []; // Broken attribute syntax
+                if ($eat === $i + $m[0]) {
+                    $s = \trim($s);
+                    if (!$a && ($start = \strrpos($s, '{'))) {
+                        for ($x = 0; $start - 1 - $x >= 0 && "\\" === $s[$start - 1 - $x]; ++$x);
+                        $n = $start - 1 - $x;
+                        if ($n >= 0 && (1 & $x) && false !== \strpos(c1, $s[$n])) {
+                            if ($a = a($s, $start, $max = \strlen($s))) {
+                                if ($max === $start + $a[1]) {
+                                    $s = \substr($s, 0, $start - 1);
+                                } else {
+                                    $a = []; // Broken attribute syntax
+                                }
                             }
                         }
                     }
+                    $rows[] = ['h' . ('-' === $c ? 2 : 1), $s, $a[0] ?? [], ['-' === $c ? 2 : 1, $c]];
+                    $i += $m[0] + $m[1];
+                    $s = "";
+                    continue;
                 }
-                $rows[] = ['h' . ('-' === $c ? 2 : 1), $s, $a[0] ?? [], ['-' === $c ? 2 : 1, $c]];
-                $i += $m[0] + $m[1];
-                $s = "";
-                continue;
             }
             // <https://spec.commonmark.org/0.31.2#thematic-break>
             // This must come before the list parser. Since `-` can also be used as a thematic break marker where the
@@ -1979,12 +1976,12 @@ namespace x\markdown\from {
                         if (($b = \reset($b)) && 'hr' === $b[0]) {
                             break;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], $min - $w, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $s .= "\n" . s($value, $i, $m[0], $min - $w, $min);
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
