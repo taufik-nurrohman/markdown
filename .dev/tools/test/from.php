@@ -511,12 +511,12 @@ body > form > fieldset > p + p {
 }
 body > main > div {
   display: flex;
+  flex-direction: column;
   gap: 1em;
 }
 body > main > div > iframe,
 body > main > div > pre {
   border: 1px solid #000;
-  flex: 1;
   min-width: 0;
   padding: 0.75em;
   word-wrap: break-word;
@@ -526,7 +526,6 @@ body > main > div > iframe {
   padding: 0;
 }
 body > main > div > p {
-  flex: 1;
   font-size: 75%;
   margin-top: -0.5rem;
   min-width: 0;
@@ -571,12 +570,6 @@ select {
   background-size: 1rem;
   padding-right: 1.75em;
 }
-textarea {
-  border: 1px solid #000;
-  display: inline-block;
-  padding: 0 0.25em;
-  vertical-align: middle;
-}
 legend {
   line-height: 0;
   padding: 0 0.25em;
@@ -588,17 +581,6 @@ pre {
 }
 pre code {
   display: block;
-}
-table {
-  border-collapse: collapse;
-  table-layout: fixed;
-  width: 100%;
-}
-td, th {
-  border: 1px solid #000;
-  padding: 0.5em 0.75em;
-  text-align: left;
-  vertical-align: top;
 }
 .c {
   font-style: normal;
@@ -654,9 +636,12 @@ pre:hover .c-t::before {
   flex-wrap: wrap;
   gap: 0.25em;
 }
-@media (max-width: 600px) {
+@media (min-width: 1200px) {
   body > main > div {
-    flex-direction: column;
+    flex-direction: row;
+  }
+  body > main > div > * {
+    flex: 1;
   }
 }
 CSS;

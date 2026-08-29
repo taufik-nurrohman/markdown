@@ -10,14 +10,18 @@ namespace x\markdown {
         }
         $state = \array_replace_recursive([
             'block' => true,
+            'deep' => 25,
             'tab' => false,
             'with' => []
         ], $state);
         $block = !empty($state['block']);
+        if (!is_int($deep = $state['deep'] ?? 25) || $deep < 0) {
+            $deep = 25;
+        }
         $with = (array) ($state['with'] ?? []);
         if (!$block) {
             $lot = [];
-            $row = from\row($value, $lot, 25, \strspn($value, from\c3), \strlen($value));
+            $row = from\row($value, $lot, $deep, \strspn($value, from\c3), \strlen($value));
             $row[] = $state = ['tab' => false] + $state;
             if ($with) foreach ($with as $w) {
                 $row[0] = $w(...$row);
@@ -26,7 +30,7 @@ namespace x\markdown {
             return "" !== $s ? $s : null;
         }
         $lot = [];
-        $rows = from\rows($value, $lot, 25, 0, \strlen($value));
+        $rows = from\rows($value, $lot, $deep, 0, \strlen($value));
         $rows[] = $state;
         if ($with) foreach ($with as $w) {
             $rows[0] = $w(...$rows);

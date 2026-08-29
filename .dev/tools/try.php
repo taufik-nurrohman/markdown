@@ -558,10 +558,11 @@ if ("" !== trim($_SESSION['r'][1] ?? "")) {
     }
     $s .= '</fieldset>';
     if ("" !== trim($_SESSION['r'][2] ?? "")) {
+        $w = strtr($w, [D => '/']);
         $with = $_SESSION['w'][1] ?? $w;
         $s .= '<fieldset>';
         $s .= '<legend>';
-        $s .= 'Output by <a href="https://packagist.org/packages/' . strtr($w, [D => '/']) . '" rel="nofollow" target="_blank">' . $with . '</a>';
+        $s .= 'Output by <a href="https://packagist.org/packages/' . $w . '" rel="nofollow" target="_blank">' . $with . '</a>';
         $s .= '</legend>';
         if (!empty($_SESSION['v'])) {
             $s .= '<p>';
@@ -588,6 +589,6 @@ $s .= '</main>';
 $s .= '</body>';
 $s .= '</html>';
 
-unset($_SESSION['alert'], $_SESSION['r'], $_SESSION['t'], $_SESSION['w']);
+unset($_SESSION['alert'], $_SESSION['r'], $_SESSION['t'], $_SESSION['v'], $_SESSION['w']);
 
 echo $s;
