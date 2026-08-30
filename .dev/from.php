@@ -2225,6 +2225,13 @@ namespace x\markdown\from {
                 ['ol', [], []]
             ], ['role' => 'doc-endnotes']];
             foreach ($lot[2] as $k => $v) {
+                $v = \trim($v, c1);
+                if ("\n" === ($v[0] ?? 0)) {
+                    // TODO
+                    echo '<pre style="border:1px solid;font-family:monospace;">';
+                    echo htmlspecialchars($v);
+                    echo '</pre>';
+                }
                 $r = rows($v, $lot, $deep - 1, 0, \strlen($v))[0] ?: "";
                 if (\is_array($r)) {
                     if (\is_array($r[$last = \array_key_last($r)]) && 'p' === $r[$last][0]) {} else {
