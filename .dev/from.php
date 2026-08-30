@@ -400,7 +400,7 @@ namespace x\markdown\from {
         return \htmlspecialchars($text, \ENT_HTML5 | \ENT_NOQUOTES, 'UTF-8', false);
     }
     // <https://spec.commonmark.org/0.31.2#link-label>
-    function k(string $value, int $i, int $limit, int $deep = 0) {
+    function k(string $value, int $i, int $limit, int $deep = 0, $void = false) {
         if ($i >= $limit || '[' !== $value[$i]) {
             return [];
         }
@@ -431,11 +431,14 @@ namespace x\markdown\from {
                 continue;
             }
             if (']' === $c) {
-                // Link label can have at most 999 character(s) inside the `[` and `]` character(s). It originally
-                // considers line(s) to be composed of character(s) rather than byte(s), but this one counts byte(s) for
-                // simplicity.
-                if (\strspn($s, c3) === ($max = \strlen($s)) || $max > 999) {
-                    return [];
+                $max = \strlen($s);
+                if (!$void || $max > 0) {
+                    // Link label can have at most 999 character(s) inside the `[` and `]` character(s). It originally
+                    // considers line(s) to be composed of character(s) rather than byte(s), but this one counts byte(s)
+                    // for simplicity.
+                    if (\strspn($s, c3) === $max || $max > 999) {
+                        return [];
+                    }
                 }
                 return [$s = n($s, ' '), $n + 1];
             }
@@ -550,6 +553,15 @@ namespace x\markdown\from {
         }
         return [];
     }
+    // The table syntax rule(s), which is as close as possible to the common CommonMark rule(s), are available on the
+    // GitHub Flavored Markdown specification page. However, I decided to give more consideration to the original
+    // Markdown Extra and Parsedown Extra behavior in the case where `|` character(s) exist within auto-link, code span,
+    // and raw HTML syntax. In auto-link, code span, and raw HTML syntax, a `|` character doesn’t need to be escaped
+    // when you want to display it literally. I favor the rule that code span, auto-link, and raw HTML syntax bind more
+    // tightly than any other syntax in the “inline” sense. I can understand why GitHub prefers the other favor. For
+    // GitHub, `|` character(s) in a table syntax may be considered as nearly identical to the block syntax, so that
+    // block(s) need to be parsed earlier than inline(s). Here, I consider `|` character(s) to be at the same level of
+    // tightness as the `[` and `]` character(s) in a link label syntax.
     function p(string $value, int $i, int $limit, ?int $max = null) {
         $r = [];
         $x = 0;
@@ -1434,7 +1446,7 @@ namespace x\markdown\from {
             // an improvisation that I came up with. The CommonMark specification does not specify that it has to behave
             // this way. Since there is no special delimiter to mark the boundary of this block, it has been configured
             // so that it cannot interrupt a paragraph, similar to setext heading(s).
-            if ("" === $s && '!' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && ($k = k($value, $n, $limit)) && false !== \strpos(c3 . '([{', $value[$n + $k[1]] ?? x1)) {
+            if ("" === $s && '!' === $value[$n = $d + $i] && '[' === ($value[++$n] ?? 0) && ($k = k($value, $n, $limit, $deep - 1, 1)) && false !== \strpos(c3 . '([{', $value[$n + $k[1]] ?? x1)) {
                 for ($n = $i + $m[0]; $n > $i && false !== \strpos(c1, $value[$n - 1]); --$n);
                 // Image block must be “complete”
                 if ($n > $i && false !== \strpos(')]}', $value[$n - 1])) {
@@ -1724,16 +1736,9 @@ namespace x\markdown\from {
                 $s = "";
                 continue;
             }
-            // The table syntax rule(s), which is as close as possible to the common CommonMark rule(s), are available
-            // on the GFM Specification page. However, I decided to give more consideration to the original Markdown
-            // Extra and Parsedown Extra behavior in the case where `|` character(s) exist within a code span or a raw
-            // HTML tag. In code span and raw HTML syntax, `|` character(s) do not need to be escaped when you want to
-            // display them literally. I favor the rule that code span, auto-link, and raw HTML construct bind more
-            // tightly than any other construct in the “inline” sense. I can understand why GitHub prefers the other
-            // favor. For GitHub, `|` character(s) in a table may be considered as nearly identical to the block
-            // construct, so that block(s) need to be parsed earlier than inline(s). Here, I consider `|` character(s)
-            // to be at the same level of tightness as the `[` and `]` character(s) in the link label construct.
+            // <https://github.github.com/gfm#table>
             if (false !== ($w = \strpos($value, '|', $d + $i)) && $w < $i + $m[0] && p($value, $i, $i + $m[0]) && ("" === $s || (\strlen($s) === \strpos($s, "\n") + 1 && p($s, 0, \strlen($s))))) {
+                // <https://github.github.com/gfm#delimiter-row>
                 if ($m[0] === \strspn($value, c1 . '-:|', $i, $limit)) {
                     $s .= x1;
                 }
@@ -1764,7 +1769,11 @@ namespace x\markdown\from {
                     }
                     if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
                         if ('p' === $b[0] || 'table' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
-                            // At this point, the table caption must be a leaf block
+                            // At this point, the table caption must be a leaf block. A paragraph continuation text
+                            // without any `|` character(s) that sits next to the table syntax stream will be treated as
+                            // a table caption. This is different from the way paragraph continuation text is treated in
+                            // the GFM specification, where it will be treated as a “lazy table row” instead.
+                            // <https://github.github.com/gfm#example-202>
                             if (!p($value, $i, $i + $m[0])) {
                                 $s .= (false !== \strpos($s, x2) ? "\n" : x2) . s($value, $i, $m[0]);
                             } else {
@@ -1802,7 +1811,7 @@ namespace x\markdown\from {
                     if (!$a && ($start = \strrpos($s, '{'))) {
                         for ($x = 0; $start - 1 - $x >= 0 && "\\" === $s[$start - 1 - $x]; ++$x);
                         $n = $start - 1 - $x;
-                        if ($n >= 0 && (1 & $x) && false !== \strpos(c1, $s[$n])) {
+                        if ($n >= 0 && !(1 & $x) && false !== \strpos(c1, $s[$n])) {
                             if ($a = a($s, $start, $max = \strlen($s))) {
                                 if ($max === $start + $a[1]) {
                                     $s = \substr($s, 0, $start - 1);
@@ -1823,12 +1832,19 @@ namespace x\markdown\from {
             // next character is allowed to be a white-space, it is necessary to verify that the current line contains
             // more than 2 `-`, and consists solely of `-` and white-space(s). Any other combination is considered
             // invalid and will therefore fall through the list parser.
-            // TODO: Allow bare attribute(s) after thematic break syntax
-            if (false !== \strpos('*-_', $c = $value[$d + $i]) && \strspn($value, c1 . $c, $i, $limit - $i) === $m[0] && ($n = \substr_count($value, $c, $i, $m[0])) >= 3) {
-                "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
-                $rows[] = ['hr', false, [], [$n, $c]];
-                $i += $m[0] + $m[1];
-                continue;
+            if (false !== \strpos('*-_', $c = $value[$n = $d + $i])) {
+                $a = [];
+                $eat = $n + \strspn($value, c1 . $c, $n);
+                if (!r($value, $eat, $limit) && ($a = a($value, $eat, $eat + \strcspn($value, c2, $eat), '{' !== ($value[$eat] ?? 0)))) {
+                    $eat += $a[1];
+                }
+                $eat += \strspn($value, c1, $eat);
+                if ($eat === $i + $m[0] && ($w = \substr_count($value, $c, $i, \strcspn($value, '={', $i, $m[0])) >= 3)) {
+                    "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
+                    $rows[] = ['hr', false, $a[0] ?? [], [$w, $c]];
+                    $i += $m[0] + $m[1];
+                    continue;
+                }
             }
             // <https://spec.commonmark.org/0.31.2#ordered-list>
             if ((
@@ -2012,7 +2028,7 @@ namespace x\markdown\from {
                     $a = [];
                     if (false !== ($start = \strrpos($s, '{'))) {
                         for ($n = $start - 1, $o = 0; $n >= 0 && "\\" === $s[$n]; --$n, ++$o);
-                        if ($n >= 0 && (1 & $o) && false !== \strpos(c1 . '#', $s[$n])) {
+                        if ($n >= 0 && !(1 & $o) && false !== \strpos(c1 . '#', $s[$n])) {
                             if ('#' === $s[$n]) {
                                 for ($h = 0; $n >= 0 && '#' === $s[$n]; ++$h, --$n);
                                 for ($x = 0; $n >= 0 && "\\" === $s[$n]; --$n, ++$x);
