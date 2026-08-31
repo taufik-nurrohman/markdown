@@ -10,18 +10,14 @@ namespace x\markdown {
         }
         $state = \array_replace_recursive([
             'block' => true,
-            'deep' => 25,
             'tab' => false,
             'with' => []
         ], $state);
         $block = !empty($state['block']);
-        if (!is_int($deep = $state['deep'] ?? 25) || $deep < 0) {
-            $deep = 25;
-        }
         $with = (array) ($state['with'] ?? []);
         if (!$block) {
             $lot = [];
-            $row = from\row($value, $lot, $deep, \strspn($value, from\c3), \strlen($value));
+            $row = from\row($value, $lot, from\deep, \strspn($value, from\c3), \strlen($value));
             $row[] = $state = ['tab' => false] + $state;
             if ($with) foreach ($with as $w) {
                 $row[0] = $w(...$row);
@@ -30,7 +26,7 @@ namespace x\markdown {
             return "" !== $s ? $s : null;
         }
         $lot = [];
-        $rows = from\rows($value, $lot, $deep, 0, \strlen($value));
+        $rows = from\rows($value, $lot, from\deep, 0, \strlen($value));
         $rows[] = $state;
         if ($with) foreach ($with as $w) {
             $rows[0] = $w(...$rows);
@@ -79,6 +75,7 @@ namespace x\markdown\from {
     const c17 = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x7f";
     // <https://en.wikipedia.org/wiki/Latin_script_in_Unicode>
     const c18 = c4 . c10 . '_ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĹĺĻļĽľĿŀŁłŃńŅņŇňŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽž';
+    const deep = 25;
     const x1 = "\x1"; // SOH
     const x2 = "\x2"; // STX
     const x3 = "\x3"; // ETX
@@ -680,7 +677,7 @@ namespace x\markdown\from {
                             $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
                             if ("" !== ($e[$k] ?? "")) {
                                 "" !== $s && ($row[] = h($s));
-                                $row[] = [false, $k, [], [3, $e[$k]]];
+                                $row[] = [false, $k, [], [3]];
                                 $i = $end;
                                 $s = "";
                                 continue;
@@ -697,7 +694,7 @@ namespace x\markdown\from {
                         $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
                         if ("" !== ($e[$k] ?? "")) {
                             "" !== $s && ($row[] = h($s));
-                            $row[] = [false, $k, [], [2, $e[$k]]];
+                            $row[] = [false, $k, [], [2]];
                             $i = $end;
                             $s = "";
                             continue;
@@ -719,7 +716,7 @@ namespace x\markdown\from {
                     $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
                     if ("" !== ($e[$k] ?? "")) {
                         "" !== $s && ($row[] = h($s));
-                        $row[] = [false, $k, [], [1, $e[$k]]];
+                        $row[] = [false, $k, [], [1]];
                         $i = $end;
                         $s = "";
                         continue;
@@ -734,6 +731,11 @@ namespace x\markdown\from {
                 $row[] = $m[0];
                 $i += $m[1];
                 $s = "";
+                // Check for attribute syntax after code
+                if ('{' === ($value[$i] ?? 0) && ($a = a($value, $i, $limit))) {
+                    $row[$k = \array_key_last($row)][2] = $a[0] + $row[$k][2];
+                    $i += $a[1];
+                }
                 continue;
             }
             if ('<' === $c && ($m = n2e($value, $i, $limit))) {
@@ -2218,21 +2220,46 @@ namespace x\markdown\from {
             }
             unset($row);
         }
-        if (25 === $deep && $lot[2]) {
+        if (deep === $deep && $lot[2]) {
             $keys = \array_flip(\array_keys($lot[2]));
             $notes = ['div', [
                 ['hr', false, []],
                 ['ol', [], []]
             ], ['role' => 'doc-endnotes']];
             foreach ($lot[2] as $k => $v) {
-                $v = \trim($v, c1);
-                if ("\n" === ($v[0] ?? 0)) {
-                    // TODO
-                    echo '<pre style="border:1px solid;font-family:monospace;">';
-                    echo htmlspecialchars($v);
-                    echo '</pre>';
+                $i = 0;
+                $limit = \strlen($v = \trim($v, c1));
+                $min = \PHP_INT_MAX;
+                // Identify the shortest white-space(s) prefix and use it as the maximum indentation to remove
+                while ($i < $limit) {
+                    if (false === ($n = \strpos($v, "\n", $i))) {
+                        $n = $limit;
+                    }
+                    $d = \strspn($v, ' ', $i, $n - $i);
+                    if ($d < $n - $i) {
+                        if ($d && $d < $min) {
+                            $min = $d;
+                        }
+                    }
+                    $i = ++$n;
                 }
-                $r = rows($v, $lot, $deep - 1, 0, \strlen($v))[0] ?: "";
+                if ($min && \PHP_INT_MAX !== $min) {
+                    $i = 0;
+                    $r = "";
+                    // Iterate over each line of text to remove white-space(s) up to the shortest indentation
+                    while ($i < $limit) {
+                        if (false === ($n = \strpos($v, "\n", $i))) {
+                            $n = $limit;
+                        }
+                        $d = \strspn($v, ' ', $i, $n - $i);
+                        $max = \min($d, $min);
+                        $r .= \substr($v, $i + $max, $n - $i - $max) . "\n";
+                        $i = ++$n;
+                    }
+                    $v = $r;
+                }
+                $v = \trim($v, "\n");
+                $r = rows($lot[2][$k] = $v, $lot, $deep - 1, 0, \strlen($v))[0] ?: "";
                 if (\is_array($r)) {
                     if (\is_array($r[$last = \array_key_last($r)]) && 'p' === $r[$last][0]) {} else {
                         $r[++$last] = ['p', [], []];
@@ -2241,9 +2268,9 @@ namespace x\markdown\from {
                     if (false !== ($max = $lot[x1][$k] ?? false)) {
                         for ($i = 0; $i <= $max; ++$i) {
                             if ($r[$last][1]) {
-                                $r[$last][1][] = [false, $y = '&#160;', [], [2, \html_entity_decode($y, \ENT_HTML5 | \ENT_QUOTES)]];
+                                $r[$last][1][] = [false, $y = '&#xa0;', [], [3]];
                             }
-                            $r[$last][1][] = ['a', [[false, $y = '&#8617;', [], [2, \html_entity_decode($y, \ENT_HTML5 | \ENT_QUOTES)]]], [
+                            $r[$last][1][] = ['a', [[false, $y = '&#x21a9;', [], [3]]], [
                                 'href' => '#from:' . ($keys[$k] + 1) . (0 !== $i ? '.' . $i : ""),
                                 'role' => 'doc-backlink'
                             ]];
@@ -2258,6 +2285,7 @@ namespace x\markdown\from {
             if (!empty($notes[1][1][1])) {
                 $rows[] = $notes;
             }
+            unset($lot[x1]);
         }
         return [$rows, $lot, $void];
     }

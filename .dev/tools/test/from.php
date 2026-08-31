@@ -579,6 +579,9 @@ pre {
   overflow: auto;
   tab-size: 4;
 }
+pre[aria-errormessage] {
+  background: #fcc;
+}
 pre code {
   display: block;
 }
@@ -727,7 +730,7 @@ $s .= '</form>';
 
 $s .= '<main>';
 
-$error_count = 0;
+$error = 0;
 
 foreach ($files as $file) {
     $raws = file_get_contents($file);
@@ -746,26 +749,36 @@ foreach ($files as $file) {
         $end = (hrtime(true) - $start) / 1e6;
         $s .= '<iframe srcdoc="' . htmlspecialchars(view_result($r)) . '" tabindex="0"></iframe>';
     } else if ('source' === $view) {
-        $s .= '<pre tabindex="0">';
-        $s .= '<code>';
         $start = hrtime(true);
         $r = x\markdown\from($raws, [
             'block' => $block,
             'tab' => 2
         ]) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
+        if (is_file($result = substr($file, 0, -2) . 'html') && "" !== ($result = file_get_contents($result))) {
+            if ($r !== $result) {
+                $s .= '<pre aria-errormessage="" tabindex="0">';
+                ++$error;
+            } else {
+                $s .= '<pre tabindex="0">';
+            }
+        } else {
+            $s .= '<pre tabindex="0">';
+        }
+        $s .= '<code>';
         $s .= view_source($r);
         $s .= '</code>';
         $s .= '</pre>';
+        // file_put_contents(substr($file, 0, -2) . 'html', $r);
     } else {
         $s .= '<pre tabindex="0">';
         $s .= '<code>';
         $start = hrtime(true);
         $lot = [];
         if (!$block) {
-            $r = x\markdown\from\row($raws, $lot, 25, 0, strlen($raws));
+            $r = x\markdown\from\row($raws, $lot, x\markdown\from\deep, 0, strlen($raws));
         } else {
-            $r = x\markdown\from\rows($raws, $lot, 25, 0, strlen($raws));
+            $r = x\markdown\from\rows($raws, $lot, x\markdown\from\deep, 0, strlen($raws));
         }
         $end = (hrtime(true) - $start) / 1e6;
         $s .= view_tree("<?php\n\nreturn " . export($r) . ';');
@@ -783,5 +796,9 @@ $s .= '</main>';
 
 $s .= '</body>';
 $s .= '</html>';
+
+if ($error) {
+    $s = \strtr($s, ['</title>' => ' (' . $error . ')</title>']);
+}
 
 echo $s;
