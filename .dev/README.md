@@ -40,6 +40,100 @@ the future. Previously, I wanted to develop this converter directly into the ext
 create this project separately as it might have potential to be used by other developers beyond the
 [Mecha CMS](https://github.com/mecha-cms) developers.
 
+Usage
+-----
+
+This converter can be installed using [Composer](https://packagist.org/packages/taufik-nurrohman/markdown), but it
+doesn’t need any other dependencies and just uses Composer’s ability to automatically include files. Those of you who
+don’t use Composer should be able to include the `from.php` and `to.php` files directly into your application without
+any problems.
+
+### Using Composer
+
+From the command line interface, navigate to your project folder then run this command:
+
+~~~ sh
+composer require taufik-nurrohman/markdown
+~~~
+
+Require the generated auto-loader file in your application:
+
+~~~ php
+<?php
+
+use function x\markdown\from as from_markdown;
+use function x\markdown\to as to_markdown;
+
+require 'vendor/autoload.php';
+
+echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+~~~
+
+### Using File
+
+Require the `from.php` and `to.php` files in your application:
+
+~~~ php
+<?php
+
+use function x\markdown\from as from_markdown;
+use function x\markdown\to as to_markdown;
+
+require 'from.php';
+require 'to.php';
+
+echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+~~~
+
+The `to.php` file is optional and is used to convert HTML to Markdown. If you just want to convert Markdown to HTML, you
+don’t need to include this file. This feature is experimental and is provided as a complementary feature, as there is
+function `json_encode()` besides function `json_decode()`. The Markdown result may not satisfy everyone, but it can be
+discussed further.
+
+Options
+-------
+
+### `block`
+
+If this option is set to `false`, the input will be assumed to contain inline syntax only. Any syntax appearing to be
+block syntax will be rendered literally. Here’s an example of when this option will be useful:
+
+~~~ php
+<?php
+
+echo '<p>';
+echo from_markdown('# [asdf](asdf)', ['block' => false]); // Returns `'# <a href="asdf">asdf</a>'`
+echo '</p>';
+~~~
+
+### `tab`
+
+If this option is set to a number greater than or equal to `0`, it will determine the indent size for block elements,
+which will tidy up the HTML output. If it is set to a string, the string will be used as the indent. For example, you
+can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters.
+
+### `with`
+
+It’s a simple extension system.
+
+Dialect
+-------
+
+From time to time, the history of Mecha slowly forms my Markdown writing style. The Markdown extension used by Mecha
+[was first](https://github.com/mecha-cms/mecha/tree/v1.2.2) built with
+[Michel Fortin’s Markdown converter](https://michelf.ca/projects/php-markdown) (which I believe is the very first port
+of a PHP-based Markdown converter originally written in Perl by
+[John Gruber](https://daringfireball.net/projects/markdown)). Until the release of
+[Mecha version 1.2.3](https://github.com/mecha-cms/mecha/tree/v1.2.3), I decided to switch to
+[Parsedown](https://github.com/erusev/parsedown) because it was quite popular at the time. It can also do the conversion
+process much faster. Emanuil Rusev’s way of detecting the block type
+[by reading the first character](https://github.com/erusev/parsedown/tree/1.7.4#questions) is, in my opinion, very
+clever and efficient.
+
+### Attributes
+
+_TODO_
+
 ### Image Block
 
 Markdown was initiated before the HTML5 era. When the `<figure>` element was introduced, people started using it as a

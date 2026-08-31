@@ -510,22 +510,24 @@ $s .= '</textarea>';
 $s .= '</p>';
 $w = $_SESSION['w'][0] ?? "";
 $s .= '<p role="group">';
-$s .= '<select name="w">';
-$s .= '<option disabled' . ("" === $w ? ' selected' : "") . '>';
-$s .= 'Compare with&hellip;';
-$s .= '</option>';
-foreach ([
-    'cebe/markdown' => '“cebe” Markdown Extra',
-    'league/commonmark' => 'CommonMark PHP',
-    'michelf/php-markdown' => 'Markdown Extra',
-    'erusev/parsedown-extra' => 'Parsedown Extra',
-] as $k => $v) {
-    $s .= '<option' . ($k === strtr($w, [D => '/']) ? ' selected' : "") . ' value="' . $k . '">';
-    $s .= $v;
+if ("" !== trim($_SESSION['r'][1] ?? "")) {
+    $s .= '<select name="w">';
+    $s .= '<option disabled' . ("" === $w ? ' selected' : "") . '>';
+    $s .= 'Compare with&hellip;';
     $s .= '</option>';
+    foreach ([
+        'cebe/markdown' => '“cebe” Markdown Extra',
+        'league/commonmark' => 'CommonMark PHP',
+        'michelf/php-markdown' => 'Markdown Extra',
+        'erusev/parsedown-extra' => 'Parsedown Extra',
+    ] as $k => $v) {
+        $s .= '<option' . ($k === strtr($w, [D => '/']) ? ' selected' : "") . ' value="' . $k . '">';
+        $s .= $v;
+        $s .= '</option>';
+    }
+    $s .= '</select>';
+    $s .= ' ';
 }
-$s .= '</select>';
-$s .= ' ';
 $s .= '<button type="submit">';
 $s .= 'Parse';
 $s .= '</button>';
@@ -536,6 +538,7 @@ $s .= ' ';
 $s .= '<span>';
 $s .= 'Render HTML';
 $s .= '</span>';
+$s .= '</label>';
 $s .= '</p>';
 
 if ($alert = $_SESSION['alert'] ?? "") {
