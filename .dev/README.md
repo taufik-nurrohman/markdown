@@ -102,7 +102,11 @@ block syntax will be rendered literally. Here’s an example of when this option
 <?php
 
 echo '<p>';
-echo from_markdown('# [asdf](asdf)', ['block' => false]); // Returns `'# <a href="asdf">asdf</a>'`
+
+echo from_markdown('# [asdf](asdf)', [
+    'block' => false
+]); // Returns `'# <a href="asdf">asdf</a>'`
+
 echo '</p>';
 ~~~
 
@@ -112,9 +116,32 @@ If this option is set to a number greater than or equal to `0`, it will determin
 which will tidy up the HTML output. If it is set to a string, the string will be used as the indent. For example, you
 can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters.
 
+~~~ php
+echo from_markdown($value, ['tab' => 0]);
+~~~
+
+~~~ php
+echo from_markdown($value, ['tab' => 2]);
+~~~
+
+~~~ php
+echo from_markdown($value, ['tab' => "\t"]);
+~~~
+
 ### `with`
 
-It’s a simple extension system.
+It’s a simple extension system. Pass a list of callables there. It will modify the data structure before it becomes a
+HTML string:
+
+~~~ php
+function my_extension(array $data) { /* … */ }
+
+$my_extension = function (array $data) { /* … */ };
+
+echo from_markdown($value, [
+    'with' => ['my_extension', $my_extension, /* … */ ]
+]);
+~~~
 
 Dialect
 -------
