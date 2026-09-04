@@ -159,7 +159,56 @@ clever and efficient.
 
 ### Attributes
 
-_TODO_
+My Markdown converter supports a more extensive attribute syntax, including a mix of `.class` and `#id` attribute
+syntax, and a mix of `key=value` attribute syntax:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code># asdf {#asdf}</code></pre></td>
+      <td><pre><code>&lt;h1 id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code># asdf {#asdf.asdf}</code></pre></td>
+      <td><pre><code>&lt;h1 class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code># asdf {#asdf.asdf asdf=asdf}</code></pre></td>
+      <td><pre><code>&lt;h1 asdf="asdf" class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
+Inline attributes always win over native syntax attributes and pre-defined attributes:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>[asdf](asdf){href=x}</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;a href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>[asdf]&#10;&#10;[asdf]: asdf {href=x}</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;a href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>[asdf]{.x href=x}&#10;&#10;[asdf]: asdf {.asdf}</code></pre></td>
+      <td><pre><code>&lt;p&gt;&lt;a class="x" href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
 
 ### Image Block
 
