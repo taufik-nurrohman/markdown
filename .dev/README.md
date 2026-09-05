@@ -36,17 +36,17 @@ It was fulfilled by [Parsedown version 1.8](https://github.com/erusev/parsedown/
 is no longer being actively maintained.
 
 The goal of this project is to use it in my [Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown) in
-the future. Previously, I wanted to develop this converter directly into the extension, but my friend advised me to
-create this project separately as it might have potential to be used by other developers beyond the
+the future. Previously, I wanted to develop this parser directly into the extension, but my friend advised me to create
+this project separately as it might have potential to be used by other developers beyond the
 [Mecha CMS](https://github.com/mecha-cms) developers.
 
 Usage
 -----
 
-This converter can be installed using [Composer](https://packagist.org/packages/taufik-nurrohman/markdown), but it
-doesn’t need any other dependencies and just uses Composer’s ability to automatically include files. Those of you who
-don’t use Composer should be able to include the `from.php` and `to.php` files directly into your application without
-any problems.
+This parser can be installed using [Composer](https://packagist.org/packages/taufik-nurrohman/markdown), but it doesn’t
+need any other dependencies and just uses Composer’s ability to automatically include files. Those of you who don’t use
+Composer should be able to include the `from.php` and `to.php` files directly into your application without any
+problems.
 
 ### Using Composer
 
@@ -117,15 +117,15 @@ which will tidy up the HTML output. If it is set to a string, the string will be
 can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters.
 
 ~~~ php
-echo from_markdown($value, ['tab' => 0]);
+<?= from_markdown($value, ['tab' => 0]); ?>
 ~~~
 
 ~~~ php
-echo from_markdown($value, ['tab' => 2]);
+<?= from_markdown($value, ['tab' => 2]); ?>
 ~~~
 
 ~~~ php
-echo from_markdown($value, ['tab' => "\t"]);
+<?= from_markdown($value, ['tab' => "\t"]); ?>
 ~~~
 
 ### `with`
@@ -134,12 +134,18 @@ It’s a simple extension system. Pass a list of callables there. It will modify
 HTML string:
 
 ~~~ php
+<?php
+
+class MyExtension {
+    public function __invoke(array $data) { /* … */ }
+}
+
 function my_extension(array $data) { /* … */ }
 
 $my_extension = function (array $data) { /* … */ };
 
 echo from_markdown($value, [
-    'with' => ['my_extension', $my_extension, /* … */ ]
+    'with' => [new MyExtension, 'my_extension', $my_extension, /* … */ ]
 ]);
 ~~~
 
@@ -159,8 +165,8 @@ clever and efficient.
 
 ### Attributes
 
-My Markdown converter supports a more extensive attribute syntax, including a mix of `.class` and `#id` attribute
-syntax, and a mix of `key=value` attribute syntax:
+My Markdown parser supports an extensive attribute syntax that includes a combination of `.class` and `#id` attribute
+syntax, and `key=value` attribute syntax:
 
 <table>
   <thead>
@@ -171,21 +177,33 @@ syntax, and a mix of `key=value` attribute syntax:
   </thead>
   <tbody>
     <tr>
-      <td><pre><code># asdf {#asdf}</code></pre></td>
-      <td><pre><code>&lt;h1 id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+      <td>
+        <pre><code># asdf {#asdf}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;h1 id="asdf"&gt;asdf&lt;/h1&gt;</code></pre>
+      </td>
     </tr>
     <tr>
-      <td><pre><code># asdf {#asdf.asdf}</code></pre></td>
-      <td><pre><code>&lt;h1 class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+      <td>
+        <pre><code># asdf {#asdf.asdf}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;h1 class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre>
+      </td>
     </tr>
     <tr>
-      <td><pre><code># asdf {#asdf.asdf asdf=asdf}</code></pre></td>
-      <td><pre><code>&lt;h1 asdf="asdf" class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre></td>
+      <td>
+        <pre><code># asdf {#asdf.asdf asdf=asdf}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;h1 asdf="asdf" class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre>
+      </td>
     </tr>
   </tbody>
 </table>
 
-Inline attributes always win over native syntax attributes and pre-defined attributes:
+Inline attributes always win over native and pre-defined attribute syntax:
 
 <table>
   <thead>
@@ -196,25 +214,102 @@ Inline attributes always win over native syntax attributes and pre-defined attri
   </thead>
   <tbody>
     <tr>
-      <td><pre><code>[asdf](asdf){href=x}</code></pre></td>
-      <td><pre><code>&lt;p&gt;&lt;a href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
+      <td>
+        <pre><code>[asdf](asdf){href=1}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;&lt;a href="1"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
+      </td>
     </tr>
     <tr>
-      <td><pre><code>[asdf]&#10;&#10;[asdf]: asdf {href=x}</code></pre></td>
-      <td><pre><code>&lt;p&gt;&lt;a href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
+      <td>
+        <pre><code>[asdf]&#10;&#10;[asdf]: asdf {href=1}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;&lt;a href="1"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
+      </td>
     </tr>
     <tr>
-      <td><pre><code>[asdf]{.x href=x}&#10;&#10;[asdf]: asdf {.asdf}</code></pre></td>
-      <td><pre><code>&lt;p&gt;&lt;a class="x" href="x"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre></td>
+      <td>
+        <pre><code>[asdf]{href=2}&#10;&#10;[asdf]: asdf {href=1}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;&lt;a href="2"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
+      </td>
     </tr>
   </tbody>
 </table>
+
+The attribute syntax can be written after any Markdown inline syntax (and some block syntax), as long as there are no
+spaces present before it. This is different from the original Markdown Extra attribute syntax rules, which allow for
+optional spaces before the opening attribute syntax. I decided it would be better to not allow optional spaces between
+them for several reasons:
+
+ 1. The CommonMark rules does not allow optional spaces after the link label [^link:1] [^link:2] [^link:3] for
+    consistency with the link [shortcut](https://spec.commonmark.org/0.31.2#shortcut-reference-link) syntax. So, I
+    assume that people who are already familiar with CommonMark rules would expect me to treat the attribute syntax the
+    same way CommonMark treats the link parts syntax.
+
+ 1. It’s easier to determine the priority when this construct occurs:
+
+    ~~~ md
+    # asdf asdf asdf [asdf](asdf) {#asdf}
+    ~~~
+
+    If I allow optional spaces before the attribute syntax, it would be difficult to decide whether it is part of the
+    link or the header. With this restriction, the intent is clear:
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <pre><code># asdf [asdf](asdf){#asdf}</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;h1&gt;asdf &lt;a href="asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/h1&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code># asdf [asdf](asdf) {#asdf}</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;h1 id="asdf"&gt;asdf &lt;a href="asdf"&gt;asdf&lt;/a&gt;&lt;/h1&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code># asdf [asdf](asdf){#asdf} {#asdf}</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;h1 id="asdf"&gt;asdf &lt;a href="asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/h1&gt;</code></pre>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+ [^link:1]: <https://spec.commonmark.org/0.31.2#example-542>
+ [^link:2]: <https://spec.commonmark.org/0.31.2#example-556>
+ [^link:3]: <https://spec.commonmark.org/0.31.2#example-511>
+
+An attribute syntax without surrounding brackets is called a “naked attribute”. Naked attributes are currently supported
+with fenced code block (where my attribute parser treats the
+[info string](https://spec.commonmark.org/0.31.2#info-string)),
+[_Setext_](https://spec.commonmark.org/0.31.2#setext-heading) header, and thematic break syntax.
+
+_TODO_
 
 ### Image Block
 
 Markdown was initiated before the HTML5 era. When the `<figure>` element was introduced, people started using it as a
-feature to display an image with a caption. Most Markdown converters will convert image syntax that stands alone on a
-single line as an image element wrapped in a paragraph element in the output. My converter would instead wrap it in a
+feature to display an image with a caption. Most Markdown parsers will convert image syntax that stands alone on a
+single line as an image element wrapped in a paragraph element in the output. My parser would instead wrap it in a
 figure element. Because for now, it seems like a figure element would be more desirable in this situation.
 
 Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces less than 4.
@@ -225,7 +320,7 @@ _TODO_
 
 My parser supports list items numbered with Latin letters and Roman numerals. This satisfies the HTML5 specification for
 the [`type` attribute of the `<ol>` element](https://html.spec.whatwg.org/multipage/grouping-content.html#attr-ol-type)
-but does not satisfy the CommonMark specifications. Instead, it “extends” them.
+but does not satisfy the CommonMark rules. Instead, it “extends” them.
 
 <table>
   <thead>
@@ -623,19 +718,19 @@ However, there are a few additional features and rules:
    columns, several empty columns will be added automatically to the right side.
  - Literal pipe characters in table columns must be escaped. Exceptions are those that appear in code span and attribute
    values of raw HTML tags.
- - Header-less table is supported, but may not be compatible with other Markdown converters. Consider using this feature
-   as rarely as possible, unless you have no plans to switch to other Markdown converters in the future.
+ - Header-less table is supported, but may not be compatible with other Markdown parsers. Consider using this feature as
+   rarely as possible, unless you have no plans to switch to other Markdown parsers in the future.
  - Table caption is supported and can be created using the same syntax as the image block’s caption syntax.
 
 _TODO_
 
 ### Tabs
 
-Unlike CommonMark, this converter does not preserve tabs. This is probably the hardest part. Once it’s solved, the
-parser will be 100% compliant with the CommonMark specifications. However, I am not currently an expert in this area.
-Initially, it does seem possible. I was able to preserve the tab characters, but it turns out that this only works for
-top-level blocks. Once I enter a container block to parse its content, I then lose track of the correct column position
-because the container block’s markers have been removed.
+Unlike CommonMark, this parser does not preserve tabs. This is probably the hardest part. Once it’s solved, the parser
+will be 100% compliant with the CommonMark rules. However, I am not currently an expert in this area. Initially, it does
+seem possible. I was able to preserve the tab characters, but it turns out that this only works for top-level blocks.
+Once I enter a container block to parse its content, I then lose track of the correct column position because the
+container block’s markers have been removed.
 
 The recommended CommonMark parsing strategy is to parse the inner blocks of the current container block immediately,
 producing nested blocks instantly.

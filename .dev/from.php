@@ -1535,7 +1535,7 @@ namespace x\markdown\from {
                         break;
                     }
                     // Current line is an indented line
-                    if (d($value, $i, $limit)[0]) {
+                    if (d($value, $i, $limit)[0] > $d) {
                         $s .= "\n" . s($value, $i, $m[0]);
                         $i += $m[0] + $m[1];
                         continue;
@@ -1573,7 +1573,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     // Current line is an indented line
-                    if (d($value, $i, $limit)[0]) {
+                    if (d($value, $i, $limit)[0] > $d) {
                         $s .= "\n" . s($value, $i, $m[0]);
                         $i += $m[0] + $m[1];
                         continue;
