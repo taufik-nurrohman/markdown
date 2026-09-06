@@ -130,19 +130,19 @@ can set its value to `"\t"` to indent the HTML output with [Tab](https://www.com
 
 ### `with`
 
-It’s a simple extension system. Pass a list of callables there. It will modify the data structure before it becomes a
+A very simple extension system. Pass a list of callables there. It will modify the data structure before it becomes a
 HTML string:
 
 ~~~ php
 <?php
 
 class MyExtension {
-    public function __invoke(array $data) { /* … */ }
+    public function __invoke(array $rows) { /* … */ }
 }
 
-function my_extension(array $data) { /* … */ }
+function my_extension(array $rows) { /* … */ }
 
-$my_extension = function (array $data) { /* … */ };
+$my_extension = function (array $rows) { /* … */ };
 
 echo from_markdown($value, [
     'with' => [new MyExtension, 'my_extension', $my_extension, /* … */ ]
@@ -250,7 +250,7 @@ them for several reasons:
     assume that people who are already familiar with CommonMark rules would expect me to treat the attribute syntax the
     same way CommonMark treats the link parts syntax.
 
- 1. It’s easier to determine the priority when this construct occurs:
+ 1. It is easier to determine the priority when this construct occurs:
 
     ~~~ md
     # asdf asdf asdf [asdf](asdf) {#asdf}
