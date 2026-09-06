@@ -1,7 +1,7 @@
 <?php
 
 namespace x\markdown {
-    function from(?string $value, $state = []): ?string {
+    function f(?string $value, $state = []): ?string {
         if ("" === $value) {
             return null;
         }
@@ -17,26 +17,31 @@ namespace x\markdown {
         $with = (array) ($state['with'] ?? []);
         if (!$block) {
             $lot = [];
-            $row = from\row($value, $lot, from\deep, \strspn($value, from\c3), \strlen($value));
+            $row = f\row($value, $lot, f\deep, \strspn($value, f\c3), \strlen($value));
             $row[] = $state = ['tab' => false] + $state;
             if ($with) foreach ($with as $w) {
                 $row[0] = $w(...$row);
             }
-            $s = from\tags($row[0], $state);
+            $s = f\tags($row[0], $state);
             return "" !== $s ? $s : null;
         }
         $lot = [];
-        $rows = from\rows($value, $lot, from\deep, 0, \strlen($value));
+        $rows = f\rows($value, $lot, f\deep, 0, \strlen($value));
         $rows[] = $state;
         if ($with) foreach ($with as $w) {
+            if (\is_string($w)) {
+                if (false === \strpos($w = \strtr($w, '/', "\\"), "\\") && \is_callable($v = __NAMESPACE__ . "\\with\\" . $w)) {
+                    $w = $v;
+                }
+            }
             $rows[0] = $w(...$rows);
         }
-        $s = from\tags($rows[0], $state);
+        $s = f\tags($rows[0], $state);
         return "" !== $s ? $s : null;
     }
 }
 
-namespace x\markdown\from {
+namespace x\markdown\f {
     const b1 = ['pre' => 1, 'script' => 1, 'style' => 1, 'textarea' => 1];
     const b6 = [
         'address' => 1, 'article' => 1, 'aside' => 1, 'base' => 1, 'basefont' => 1, 'blockquote' => 1, 'body' => 1,

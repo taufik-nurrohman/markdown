@@ -1,6 +1,6 @@
 <?php
 
-require __DIR__ . '/../../from.php';
+require __DIR__ . '/../../f.php';
 
 function embed(array $rows) {
     if (empty($rows) || !is_array($rows)) {
@@ -10,7 +10,7 @@ function embed(array $rows) {
         // Current node is a link, possibly from a “tight” list item
         if ('a' === (($a = $row ?? [])[0] ?? 0)) {
             if ($a = embed_link($a)) {
-                $rows[$k] = $a;
+                $rows[$k] = $a[0];
             }
             continue;
         }
@@ -19,8 +19,12 @@ function embed(array $rows) {
             // Find a link that stands alone
             if (is_array($row[1]) && 1 === count($row[1]) && 'a' === (($a = $row[1][0] ?? [])[0] ?? 0)) {
                 if ($a = embed_link($a)) {
-                    $rows[$k][1] = [$a];
-                    $rows[$k][2]['style'] = 'display:flex;justify-content:center;margin-left:0;margin-right:0;padding:0;';
+                    $rows[$k][1] = [$a[0]];
+                    if (false === $a[1]) {
+                        $rows[$k][0] = null; // Remove paragraph
+                    } else {
+                        $rows[$k][2]['style'] = 'display:flex;justify-content:center;margin-left:0;margin-right:0;padding:0;';
+                    }
                 }
             }
             continue;
@@ -53,7 +57,7 @@ function embed_link(array $a) {
         $a[0] = 'script';
         $a[1] = "";
         $a[2] = ['src' => 'https://gist.github.com/taufik-nurrohman/' . $value . '.js'];
-        return $a;
+        return [$a, false]; // Remove paragraph
     }
     // Vimeo
     if (in_array($key, ['vimeo', 'vm'], true)) {
@@ -63,7 +67,7 @@ function embed_link(array $a) {
             'src' => 'https://player.vimeo.com/video/' . $value,
             'style' => 'aspect-ratio:16/9;border-radius:0;border:0;box-shadow:none;display:block;margin:0;outline:0;padding:0;width:100%;'
         ];
-        return $a;
+        return [$a, true];
     }
     // YouTube
     if (in_array($key, ['youtube', 'yt'], true)) {
@@ -73,7 +77,7 @@ function embed_link(array $a) {
             'src' => 'https://www.youtube.com/embed/' . $value,
             'style' => 'aspect-ratio:16/9;border-radius:0;border:0;box-shadow:none;display:block;margin:0;outline:0;padding:0;width:100%;'
         ];
-        return $a;
+        return [$a, true];
     }
     return false;
 }
@@ -85,13 +89,9 @@ echo '<meta content="width=device-width" name="viewport">' . "\n";
 echo '<meta charset="utf-8">' . "\n";
 echo '<title>Embed Extension</title>' . "\n";
 echo '</head>' . "\n";
-echo '<body style="
-margin:0 auto;
-max-width:48em;
-padding:1em;
-">' . "\n";
+echo '<body style="margin:0 auto;max-width:48em;padding:1em;">' . "\n";
 
-echo x\markdown\from(file_get_contents(__DIR__ . '/embed.md'), [
+echo x\markdown\f(file_get_contents(__DIR__ . '/embed.md'), [
     'tab' => 0,
     'with' => ['embed']
 ]) . "\n";

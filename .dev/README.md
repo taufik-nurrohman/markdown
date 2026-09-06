@@ -61,34 +61,26 @@ Require the generated auto-loader file in your application:
 ~~~ php
 <?php
 
-use function x\markdown\from as from_markdown;
-use function x\markdown\to as to_markdown;
+use function x\markdown\f;
 
 require 'vendor/autoload.php';
 
-echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo f('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 ### Using File
 
-Require the `from.php` and `to.php` files in your application:
+Require the `f.php` file in your application:
 
 ~~~ php
 <?php
 
-use function x\markdown\from as from_markdown;
-use function x\markdown\to as to_markdown;
+use function x\markdown\f;
 
-require 'from.php';
-require 'to.php';
+require 'f.php';
 
-echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo f('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
-
-The `to.php` file is optional and is used to convert HTML to Markdown. If you just want to convert Markdown to HTML, you
-don’t need to include this file. This feature is experimental and is provided as a complementary feature, as there is
-function `json_encode()` besides function `json_decode()`. The Markdown result may not satisfy everyone, but it can be
-discussed further.
 
 Options
 -------
@@ -103,7 +95,7 @@ block syntax will be rendered literally. Here’s an example of when this option
 
 echo '<p>';
 
-echo from_markdown('# [asdf](asdf)', [
+echo f('# [asdf](asdf)', [
     'block' => false
 ]); // Returns `'# <a href="asdf">asdf</a>'`
 
@@ -117,15 +109,15 @@ which will tidy up the HTML output. If it is set to a string, the string will be
 can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters.
 
 ~~~ php
-<?= from_markdown($value, ['tab' => 0]); ?>
+<?= f($value, ['tab' => 0]); ?>
 ~~~
 
 ~~~ php
-<?= from_markdown($value, ['tab' => 2]); ?>
+<?= f($value, ['tab' => 2]); ?>
 ~~~
 
 ~~~ php
-<?= from_markdown($value, ['tab' => "\t"]); ?>
+<?= f($value, ['tab' => "\t"]); ?>
 ~~~
 
 ### `with`
@@ -136,6 +128,8 @@ HTML string:
 ~~~ php
 <?php
 
+use function x\markdown\f;
+
 class MyExtension {
     public function __invoke(array $rows) { /* … */ }
 }
@@ -144,7 +138,7 @@ function my_extension(array $rows) { /* … */ }
 
 $my_extension = function (array $rows) { /* … */ };
 
-echo from_markdown($value, [
+echo f($value, [
     'with' => [new MyExtension, 'my_extension', $my_extension, /* … */ ]
 ]);
 ~~~

@@ -1,6 +1,6 @@
 <?php
 
-require __DIR__ . '/../../from.php';
+require __DIR__ . '/../../f.php';
 
 function external(array $rows) {
     if (empty($rows) || !is_array($rows)) {
@@ -40,7 +40,7 @@ function external_link(array $a) {
         return $a;
     }
     $a[2]['rel'] = 'nofollow';
-    // $a[2]['style'] = 'color:#f00;';
+    $a[2]['style'] = 'color:#f00;';
     $a[2]['target'] = '_blank';
     return $a;
 }
@@ -52,9 +52,9 @@ echo '<meta content="width=device-width" name="viewport">' . "\n";
 echo '<meta charset="utf-8">' . "\n";
 echo '<title>External Link Extension</title>' . "\n";
 echo '</head>' . "\n";
-echo '<body>' . "\n";
+echo '<body style="margin:0 auto;max-width:48em;padding:1em;">' . "\n";
 
-echo x\markdown\from(file_get_contents(__DIR__ . '/external.md'), [
+echo x\markdown\f(file_get_contents(__DIR__ . '/external.md'), [
     'tab' => 0,
     'with' => ['external']
 ]) . "\n";
