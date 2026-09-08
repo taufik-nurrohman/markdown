@@ -8,7 +8,7 @@
   ],
   "autoload": {
     "files": [
-      "f.php"
+      "from.php"
     ]
   },
   "description": "Obviously, a Markdown parser.",

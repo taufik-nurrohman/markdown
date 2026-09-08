@@ -13,7 +13,7 @@ ini_set('html_errors', 1);
 define('D', DIRECTORY_SEPARATOR);
 define('PATH', __DIR__);
 
-require PATH . D . '..' . D . 'f.php';
+require PATH . D . '..' . D . 'from.php';
 require PATH . D . 'try' . D . 'vendor' . D . 'autoload.php';
 
 if ('POST' === $_SERVER['REQUEST_METHOD']) {

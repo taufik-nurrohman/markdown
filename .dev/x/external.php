@@ -1,6 +1,6 @@
 <?php
 
-require __DIR__ . '/../../f.php';
+require __DIR__ . '/../from.php';
 
 function external(array $rows) {
     if (empty($rows) || !is_array($rows)) {
@@ -54,7 +54,7 @@ echo '<title>External Link Extension</title>' . "\n";
 echo '</head>' . "\n";
 echo '<body style="margin:0 auto;max-width:48em;padding:1em;">' . "\n";
 
-echo x\markdown\f(file_get_contents(__DIR__ . '/external.md'), [
+echo x\markdown\from(file_get_contents(__DIR__ . '/external.md'), [
     'tab' => 0,
     'with' => ['external']
 ]) . "\n";

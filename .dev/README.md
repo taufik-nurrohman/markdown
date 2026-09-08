@@ -61,25 +61,25 @@ Require the generated auto-loader file in your application:
 ~~~ php
 <?php
 
-use function x\markdown\f;
+use function x\markdown\from;
 
 require 'vendor/autoload.php';
 
-echo f('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo from('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 ### Using File
 
-Require the `f.php` file in your application:
+Require the `from.php` file in your application:
 
 ~~~ php
 <?php
 
-use function x\markdown\f;
+use function x\markdown\from;
 
-require 'f.php';
+require 'from.php';
 
-echo f('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo from('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 Options
@@ -95,7 +95,7 @@ block syntax will be rendered literally. Here’s an example of when this option
 
 echo '<p>';
 
-echo f('# [asdf](asdf)', [
+echo from('# [asdf](asdf)', [
     'block' => false
 ]); // Returns `'# <a href="asdf">asdf</a>'`
 
@@ -109,15 +109,15 @@ which will tidy up the HTML output. If it is set to a string, the string will be
 can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters.
 
 ~~~ php
-<?= f($value, ['tab' => 0]); ?>
+<?= from($value, ['tab' => 0]); ?>
 ~~~
 
 ~~~ php
-<?= f($value, ['tab' => 2]); ?>
+<?= from($value, ['tab' => 2]); ?>
 ~~~
 
 ~~~ php
-<?= f($value, ['tab' => "\t"]); ?>
+<?= from($value, ['tab' => "\t"]); ?>
 ~~~
 
 ### `with`
@@ -128,18 +128,26 @@ HTML string:
 ~~~ php
 <?php
 
-use function x\markdown\f;
+use function x\markdown\from;
 
+// Extension as a closure
+$my_extension = function (array $rows) { /* … */ };
+
+// Extension as a function
+function my_extension(array $rows) { /* … */ }
+
+// Extension as a class
 class MyExtension {
     public function __invoke(array $rows) { /* … */ }
 }
 
-function my_extension(array $rows) { /* … */ }
-
-$my_extension = function (array $rows) { /* … */ };
-
-echo f($value, [
-    'with' => [new MyExtension, 'my_extension', $my_extension, /* … */ ]
+echo from($value, [
+    'with' => [
+        $my_extension,
+        'my_extension',
+        new MyExtension,
+        // …
+    ]
 ]);
 ~~~
 
