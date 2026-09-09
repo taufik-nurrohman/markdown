@@ -61,11 +61,11 @@ Require the generated auto-loader file in your application:
 ~~~ php
 <?php
 
-use function x\markdown\from;
+use function x\markdown\from as from_markdown;
 
 require 'vendor/autoload.php';
 
-echo from('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 ### Using File
@@ -75,11 +75,11 @@ Require the `from.php` file in your application:
 ~~~ php
 <?php
 
-use function x\markdown\from;
+use function x\markdown\from as from_markdown;
 
 require 'from.php';
 
-echo from('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 Options
@@ -93,9 +93,11 @@ block syntax will be rendered literally. Here’s an example of when this option
 ~~~ php
 <?php
 
+use function x\markdown\from as from_markdown;
+
 echo '<p>';
 
-echo from('# [asdf](asdf)', [
+echo from_markdown('# [asdf](asdf)', [
     'block' => false
 ]); // Returns `'# <a href="asdf">asdf</a>'`
 
@@ -109,15 +111,15 @@ which will tidy up the HTML output. If it is set to a string, the string will be
 can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters.
 
 ~~~ php
-<?= from($value, ['tab' => 0]); ?>
+<?= from_markdown($value, ['tab' => 0]); ?>
 ~~~
 
 ~~~ php
-<?= from($value, ['tab' => 2]); ?>
+<?= from_markdown($value, ['tab' => 2]); ?>
 ~~~
 
 ~~~ php
-<?= from($value, ['tab' => "\t"]); ?>
+<?= from_markdown($value, ['tab' => "\t"]); ?>
 ~~~
 
 ### `with`
@@ -128,7 +130,7 @@ HTML string:
 ~~~ php
 <?php
 
-use function x\markdown\from;
+use function x\markdown\from as from_markdown;
 
 // Extension as a closure
 $my_extension = function (array $rows) { /* … */ };
@@ -141,7 +143,7 @@ class MyExtension {
     public function __invoke(array $rows) { /* … */ }
 }
 
-echo from($value, [
+echo from_markdown($value, [
     'with' => [
         $my_extension,
         'my_extension',
@@ -244,8 +246,125 @@ Inline attributes always win over native and pre-defined attribute syntax:
 
 The attribute syntax can be written after any Markdown inline syntax (and some block syntax), as long as there are no
 spaces present before it. This is different from the original Markdown Extra attribute syntax rules, which allow for
-optional spaces before the opening attribute syntax. I decided it would be better to not allow optional spaces between
-them for several reasons:
+optional spaces before the opening attribute syntax:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+  <!--
+  **asdf**
+  *asdf*
+  [asdf]
+  __asdf__
+  _asdf_
+  `asdf`
+  -->
+    <tr>
+      <td>
+        <pre><code>&lt;asdf:asdf&gt;{#asdf}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;&lt;a href="asdf:asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;asdf@asdf&gt;{#asdf}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;&lt;a href="mailto:asdf@asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>![asdf](asdf){#asdf}</code></pre>
+      </td>
+      <td rowspan="4">
+        <pre><code>&lt;figure&gt;&#10;  &lt;img alt="asdf" id="asdf" src="asdf" /&gt;&#10;&lt;/figure&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>![asdf]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>![asdf][]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>![asdf][asdf]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>*asdf*{#asdf}</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;p&gt;&lt;em id="asdf"&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>_asdf_{#asdf}</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>**asdf**{#asdf}</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;p&gt;&lt;strong id="asdf"&gt;asdf&lt;/strong&gt;&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>__asdf__{#asdf}</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>[asdf](asdf){#asdf}</code></pre>
+      </td>
+      <td rowspan="4">
+        <pre><code>&lt;p&gt;&lt;a href="asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>[asdf]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>[asdf][]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>[asdf][asdf]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>`asdf`{#asdf}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;&lt;code id="asdf"&gt;asdf&lt;/code&gt;&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+I decided it would be better to not allow optional spaces between them for several reasons:
 
  1. The CommonMark rules does not allow optional spaces after the link label [^link:1] [^link:2] [^link:3] for
     consistency with the link [shortcut](https://spec.commonmark.org/0.31.2#shortcut-reference-link) syntax. So, I
@@ -300,7 +419,7 @@ them for several reasons:
  [^link:2]: <https://spec.commonmark.org/0.31.2#example-556>
  [^link:3]: <https://spec.commonmark.org/0.31.2#example-511>
 
-An attribute syntax without surrounding brackets is called a “naked attribute”. Naked attributes are currently supported
+An attribute syntax without surrounding brackets is called a “raw attribute”. Raw attributes are currently supported
 with fenced code block (where my attribute parser treats the
 [info string](https://spec.commonmark.org/0.31.2#info-string)),
 [_Setext_](https://spec.commonmark.org/0.31.2#setext-heading) header, and thematic break syntax.
