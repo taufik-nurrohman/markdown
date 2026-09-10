@@ -44,9 +44,8 @@ Usage
 -----
 
 This parser can be installed using [Composer](https://packagist.org/packages/taufik-nurrohman/markdown), but it doesn’t
-need any other dependencies and just uses Composer’s ability to automatically include files. Those of you who don’t use
-Composer should be able to include the `from.php` and `to.php` files directly into your application without any
-problems.
+require any other dependencies. It simply uses Composer’s ability to automatically include files. Those of you who don’t
+use Composer should be able to include the `from.php` file directly into your application.
 
 ### Using Composer
 
@@ -363,13 +362,12 @@ optional spaces before the opening attribute syntax:
   </tbody>
 </table>
 
+I decided it would be better to not allow optional spaces between them. There are several reasons for this:
 
-I decided it would be better to not allow optional spaces between them for several reasons:
-
- 1. The CommonMark rules does not allow optional spaces after the link label [^link:1] [^link:2] [^link:3] for
-    consistency with the link [shortcut](https://spec.commonmark.org/0.31.2#shortcut-reference-link) syntax. So, I
-    assume that people who are already familiar with CommonMark rules would expect me to treat the attribute syntax the
-    same way CommonMark treats the link parts syntax.
+ 1. The CommonMark rules do not allow optional spaces after the link label [^link:1] [^link:2] [^link:3] for consistency
+    with the link [shortcut](https://spec.commonmark.org/0.31.2#shortcut-reference-link) syntax. I assume that people
+    who are already familiar with CommonMark rules would expect me to treat the attribute syntax the same way CommonMark
+    treats the link parts syntax.
 
  1. It is easier to determine the priority when this construct occurs:
 
@@ -377,8 +375,8 @@ I decided it would be better to not allow optional spaces between them for sever
     # asdf asdf asdf [asdf](asdf) {#asdf}
     ~~~
 
-    If I allow optional spaces before the attribute syntax, it would be difficult to decide whether it is part of the
-    link or the header. With this restriction, the intent is clear:
+    Allowing optional spaces before the attribute syntax would make it difficult to determine if the attribute syntax is
+    part of the link or the header. With this restriction, the intent is clear:
 
     <table>
       <thead>
@@ -419,12 +417,182 @@ I decided it would be better to not allow optional spaces between them for sever
  [^link:2]: <https://spec.commonmark.org/0.31.2#example-556>
  [^link:3]: <https://spec.commonmark.org/0.31.2#example-511>
 
-An attribute syntax without surrounding brackets is called a “raw attribute”. Raw attributes are currently supported
-with fenced code block (where my attribute parser treats the
-[info string](https://spec.commonmark.org/0.31.2#info-string)),
-[_Setext_](https://spec.commonmark.org/0.31.2#setext-heading) header, and thematic break syntax.
+Attribute syntax can be classified into two types:
 
-_TODO_
+#### Wrapped Attributes
+
+Wrapped attribute syntax contains an attribute list written between curly braces:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code># asdf asdf asdf asdf {#asdf}</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;h1 id="asdf"&gt;asdf asdf asdf asdf&lt;/h1&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code># asdf asdf asdf asdf # {#asdf}</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+#### Naked Attributes
+
+Naked attribute syntax contains an attribute list written with no curly braces. It usually appears after a block marker
+where generic textual content should not immediately follow. Naked attribute syntax is currently supported by fenced
+code block (where my attribute parser treats the [info string](https://spec.commonmark.org/0.31.2#info-string)),
+[_setext_](https://spec.commonmark.org/0.31.2#setext-heading) header, and thematic break syntax:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>``` #asdf asdf=asdf&#10;asdf asdf asdf asdf&#10;```</code></pre>
+      </td>
+      <td rowspan="2">
+        <pre><code>&lt;pre&gt;&lt;code asdf="asdf" id="asdf"&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ #asdf asdf=asdf&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;=== #asdf asdf=asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;h1 asdf="asdf" id="asdf"&gt;asdf asdf asdf asdf&lt;/h1&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;--- #asdf asdf=asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;h2 asdf="asdf" id="asdf"&gt;asdf asdf asdf asdf&lt;/h2&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;&#10;*** #asdf asdf=asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
+      </td>
+      <td rowspan="3">
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;hr asdf="asdf" id="asdf" /&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;&#10;--- #asdf asdf=asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;&#10;___ #asdf asdf=asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+There is one special case regarding how they treat value-less attributes (attributes without the `=` part). Wrapped
+attributes will treat value-less attributes as boolen attributes, whereas naked attributes will simply reject the entire
+attribute list:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;============== asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf ============== asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;============ {asdf}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;h1 asdf&gt;asdf asdf asdf asdf&lt;/h1&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+An exception to the fenced code block syntax is that value-less attributes in a naked attribute list will be treated as
+a class suffix instead. This feature is implemented for compatibility with other Markdown parsers, which will generally
+treat the info string as a code class with a `language-` prefix:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>~~~ asdf&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ .asdf asdf&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="asdf language-asdf"&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ {asdf}&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code asdf&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ {.asdf asdf}&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code asdf class="asdf"&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Most Markdown parsers that support attribute syntax do not explicitly state that they support attribute syntax in the
+form of a fenced code block’s info string (my parser called it “naked attributes”) in a _setext_ header or thematic
+break. This is just my own take on [this discussion](https://talk.commonmark.org/t/info-strings-elsewhere/2610).
 
 ### Image Block
 
