@@ -1,10 +1,9 @@
 PHP Markdown Parser
 ===================
 
-![from.php] ![to.php]
+![from.php]
 
 [from.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/from.php?branch=main&color=%234f5d95&label=from.php&labelColor=%231f2328&style=flat-square
-[to.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/to.php?branch=main&color=%234f5d95&label=to.php&labelColor=%231f2328&style=flat-square
 
 With 99% compliance to [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2) specifications.
 
@@ -17,28 +16,25 @@ Motivation
   <img alt="Why?" src="https://github.com/taufik-nurrohman/markdown/assets/1669261/164b592d-e8db-4e28-be5d-467522f65f0d">
 </picture>
 
-I appreciate the [Parsedown](https://github.com/erusev/parsedown) project for its simplicity and speed. It uses only a
-single class file to convert Markdown syntax to HTML. However, given the decrease in Parsedown project activity over
-time, I assume that it is now in the state of “feature complete”. It still has some bugs to fix, and with
-[the recent release of PHP version 8.1](https://www.php.net/releases/8.1/en.php), some of the PHP syntax there has
-become obsolete.
+I appreciate the [Parsedown](https://github.com/erusev/parsedown) project for its simplicity and speed. It only uses a
+single class file to convert Markdown syntax to HTML. However, given the decrease in the project’s activity over time, I
+assume it is already “feature complete”. There are still some bugs to fix, and some of the PHP syntax has become
+obsolete with [the recent release of PHP version 8.1](https://www.php.net/releases/8.1/en.php).
 
-There is actually [a draft for Parsedown version 2.0](https://github.com/erusev/parsedown/tree/2.0.x), but it is no
-longer made as a single class file. It’s broken down into components. The goal, I think, is to make it easy to add
-functionality without breaking what’s already in the core. For others, it may be of great use, but I see it as a form of
-similarity to the features provided by
-[CommonMark](https://github.com/thephpleague/commonmark/blob/2.4/docs/2.4/customization/extensions.md). Because of that,
-if I want to upgrade, it might be more optimal to just switch to CommonMark.
+There is actually a draft available for [Parsedown version 2.0](https://github.com/erusev/parsedown/tree/2.0.x), but it
+is no longer created as a single class file. It has been broken down into components. I think the goal is to make it
+easy to add functionality without messing with the core features. Others may find it useful, but I find it too similar
+to the features provided by [CommonMark](https://github.com/thephpleague/commonmark/blob/2.4/docs/2.4/customization/extensions.md).
+Therefore, if I want to upgrade, it would be better to simply switch to CommonMark.
 
-I’m not into things like that. As someone who needs a function to convert Markdown syntax to HTML, that kind of
-flexibility is completely unnecessary to me. I just want to convert Markdown syntax to HTML for once and then move on.
-It was fulfilled by [Parsedown version 1.8](https://github.com/erusev/parsedown/tree/1.8.x-beta), but it seems that it
-is no longer being actively maintained.
+I’m not into things like that. As someone who just needs a function to convert Markdown to HTML, that kind of
+flexibility is completely unnecessary. I just want to convert Markdown to HTML once and then move on. [Parsedown version
+1.8](https://github.com/erusev/parsedown/tree/1.8.x-beta) did the job, but it seems that it is no longer being actively
+maintained.
 
-The goal of this project is to use it in my [Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown) in
-the future. Previously, I wanted to develop this parser directly into the extension, but my friend advised me to create
-this project separately as it might have potential to be used by other developers beyond the
-[Mecha CMS](https://github.com/mecha-cms) developers.
+The goal of this project is to have it ready for use in my future [Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown).
+Initially, I wanted to develop the parser directly into the extension. However, my friend advised me to create this
+project separately, as it may be useful for developers who work with other applications besides the [Mecha CMS](https://github.com/mecha-cms).
 
 Usage
 -----
@@ -155,16 +151,13 @@ echo from_markdown($value, [
 Dialect
 -------
 
-From time to time, the history of Mecha slowly forms my Markdown writing style. The Markdown extension used by Mecha
-[was first](https://github.com/mecha-cms/mecha/tree/v1.2.2) built with
-[Michel Fortin’s Markdown converter](https://michelf.ca/projects/php-markdown) (which I believe is the very first port
-of a PHP-based Markdown converter originally written in Perl by
-[John Gruber](https://daringfireball.net/projects/markdown)). Until the release of
-[Mecha version 1.2.3](https://github.com/mecha-cms/mecha/tree/v1.2.3), I decided to switch to
-[Parsedown](https://github.com/erusev/parsedown) because it was quite popular at the time. It can also do the conversion
-process much faster. Emanuil Rusev’s way of detecting the block type
-[by reading the first character](https://github.com/erusev/parsedown/tree/1.7.4#questions) is, in my opinion, very
-clever and efficient.
+From time to time, the history of Mecha influences my Markdown writing style. Mecha’s Markdown extension
+[was initially](https://github.com/mecha-cms/mecha/tree/v1.2.2) developed using [Michel Fortin’s Markdown converter](https://michelf.ca/projects/php-markdown),
+which I believe was the first PHP-based Markdown converter, originally written in Perl by [John Gruber](https://daringfireball.net/projects/markdown).
+I decided to switch to [Parsedown](https://github.com/erusev/parsedown) at the release of [Mecha version 1.2.3](https://github.com/mecha-cms/mecha/tree/v1.2.3)
+because it was quite popular at the time. It can also do the conversion process much faster. Emanuil Rusev’s method of
+recognizing the block type by [looking at the first character](https://github.com/erusev/parsedown/tree/1.7.4#questions)
+is very clever and efficient, in my opinion.
 
 ### Attributes
 
@@ -255,14 +248,6 @@ optional spaces before the opening attribute syntax:
     </tr>
   </thead>
   <tbody>
-  <!--
-  **asdf**
-  *asdf*
-  [asdf]
-  __asdf__
-  _asdf_
-  `asdf`
-  -->
     <tr>
       <td>
         <pre><code>&lt;asdf:asdf&gt;{#asdf}</code></pre>
@@ -596,14 +581,89 @@ break. This is just my own take on [this discussion](https://talk.commonmark.org
 
 ### Image Block
 
-Markdown was initiated before the HTML5 era. When the `<figure>` element was introduced, people started using it as a
-feature to display an image with a caption. Most Markdown parsers will convert image syntax that stands alone on a
-single line as an image element wrapped in a paragraph element in the output. My parser would instead wrap it in a
-figure element. Because for now, it seems like a figure element would be more desirable in this situation.
+Markdown was introduced before the HTML5 era. When the `<figure>` element was introduced, people started to use it to
+display images with captions. Most Markdown parsers would convert an image syntax that stands alone on a single line
+into an image element wrapped in a paragraph element. However, my parser would instead wrap it in a figure element. For
+now, it seems that a figure element would be more desirable in this situation.
 
-Paragraphs that appear below it will be taken as the image caption if you prepend a number of spaces less than 4.
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10;&#10;asdf asdf asdf asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-_TODO_
+A paragraph that immediately follows the image syntax will be treated as the image caption:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10;asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;  &lt;figcaption&gt;asdf asdf asdf asdf&lt;/figcaption&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Block elements other than paragraph can also be used as the image caption. To make this work, you need to indent the
+portions you want to include in the caption with spaces:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10; # asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;  &lt;figcaption&gt;&#10;    &lt;h1&gt;asdf asdf asdf asdf&lt;/h1&gt;&#10;  &lt;/figcaption&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10;&#10;  asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;  &lt;figcaption&gt;&#10;    &lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;  &lt;/figcaption&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10;&#10;  asdf asdf asdf asdf&#10;  -------------------&#10;&#10;  asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;  &lt;figcaption&gt;&#10;    &lt;h2&gt;asdf asdf asdf asdf&lt;/h2&gt;&#10;    &lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;  &lt;/figcaption&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 
 ### List Block
 
@@ -687,8 +747,8 @@ but does not satisfy the CommonMark rules. Instead, it “extends” them.
   </tbody>
 </table>
 
-Since the list block marker can now be any lower-case or upper-case characters and will also treat “I” and “i” character
-as the start of a list block with Roman numerals, the rules for this type of list block have been strictly enforced:
+Since the list block marker can now be any lower-case or upper-case characters and will also treat the character “I” and
+“i” as the start of a list block with Roman numerals, the rules for this type of list block have been strictly enforced:
 
  1. A **type “A”** list block can only start with the prefix `A) ` or `A. `.
 
@@ -752,7 +812,7 @@ as the start of a list block with Roman numerals, the rules for this type of lis
  1. A **type “i”** list block can only start with the prefix `i) ` or `i. `.
 
 Those list types don’t support custom `start` attribute (they will always start from 1), and like the `1) ` and `1. `
-prefixes, they can interrupt the paragraph.
+prefixes, they can interrupt the paragraph:
 
 <table>
   <thead>
@@ -781,7 +841,9 @@ prefixes, they can interrupt the paragraph.
   </tbody>
 </table>
 
- 1. A list item continuation of **type “A”** list block can only use the previous character or the next character after
+The list item continuation “number” is enforced as follows:
+
+ 1. A list item continuation of **type “A”** list block can only use the current character or the next character after
     it. After the character “Z”, the list continues with “AA”, “AB”, “AC”, and so on.
 
     <table>
@@ -851,10 +913,10 @@ prefixes, they can interrupt the paragraph.
       </tbody>
     </table>
 
- 1. A list item continuation of **type “a”** list block can only use the previous character or the next character after
+ 1. A list item continuation of **type “a”** list block can only use the current character or the next character after
     it. After the character “z”, the list continues with “aa”, “ab”, “ac”, and so on.
- 1. A list Item continuation of **type “I”** list block can only use the previous Roman numeral or the next Roman
-    numeral after it.
+ 1. A list Item continuation of **type “I”** list block can only use the current Roman numeral or the next Roman numeral
+    after it.
 
     <table>
       <thead>
@@ -923,13 +985,14 @@ prefixes, they can interrupt the paragraph.
       </tbody>
     </table>
 
- 1. A list Item continuation of **type “i”** list block can only use the previous Roman numeral or the next Roman
-    numeral after it.
+ 1. A list Item continuation of **type “i”** list block can only use the current Roman numeral or the next Roman numeral
+    after it.
 
-Those rules should be effective to avoid results that most people don’t want. This typically occurs when a paragraph
-continuation text contains a sequence of letters that end with a `) ` or a `. `.
+Those rules should effectively prevent results that most people don’t expect. This usually happens when a paragraph
+continuation contains a sequence of letters followed by a `) ` or a `. `.
 
-Consider the following examples:
+Consider the following examples. Without stricter rules for the list block, my parser would mistakenly treat `asdf) `
+and `asdf. ` as the start of another list item:
 
 ~~~
 a) asdf (asdf
@@ -959,10 +1022,7 @@ b. asdf asdf
 c. asdf asdf
 ~~~
 
-Without stricter rules for the list block, my parser would mistakenly treat `asdf) ` and `asdf. ` as the start of
-another list item block.
-
-Also consider the following example, which is taken from [this discussion](https://talk.commonmark.org/t/bad-interaction-between-laziness-rule-and-ordered-lists/9085?u=taufik-nurrohman):
+Also, consider the following example which is taken from [this discussion](https://talk.commonmark.org/t/bad-interaction-between-laziness-rule-and-ordered-lists/9085?u=taufik-nurrohman):
 
 ~~~
 1. Before the end of the paragraph, I invite you to
@@ -991,27 +1051,129 @@ With my stricter rules, the result will be more desirable:
   </tbody>
 </table>
 
-Please note that this is just my suggestion for how CommonMark could improve its implementation. I would still recommend
-you to write the list item numbers in order for best compatibility with other Markdown parsers in case you want to
-switch in the future. Or, if you’re too lazy or the list tends to grow over time, just reuse number from the previous
-list item.
+Please note that this is just my idea of how CommonMark could improve its implementation. For best compatibility with
+other Markdown parsers, I would still recommend you to write the list item numbers in order, just in case you want to
+switch in the future. Alternatively, if you’re too lazy or expect that the list will grow over time, you can always
+reuse the number from the last list item.
 
 ### Table Block
 
-Table blocks follow the [Markdown Extra’s table block syntax](https://michelf.ca/projects/php-markdown/extra#table).
-However, there are a few additional features and rules:
+Table blocks follow [Markdown Extra’s syntax for table blocks](https://michelf.ca/projects/php-markdown/extra#table),
+but with a few additional features and rules:
 
- - The actual number of columns follows the number of columns in the table header separator. If you have columns in
-   table header and/or table data with a number that exceeds the actual number of columns, the excess columns will be
-   discarded. If you have columns in table header and/or table data with a number that is less than the actual number of
-   columns, several empty columns will be added automatically to the right side.
- - Literal pipe characters in table columns must be escaped. Exceptions are those that appear in code span and attribute
-   values of raw HTML tags.
- - Header-less table is supported, but may not be compatible with other Markdown parsers. Consider using this feature as
-   rarely as possible, unless you have no plans to switch to other Markdown parsers in the future.
- - Table caption is supported and can be created using the same syntax as the image block’s caption syntax.
+ 1. The actual number of columns for each row in a table is determined by the number of columns in the table header
+    separator.
 
-_TODO_
+ 1. If the number of columns in the table header and/or table data exceeds the actual number of columns, the excess
+    literal pipe characters will be treated as plain text so that they won’t create unnecessary columns. Conversely, if
+    the number of columns in the table header and/or table data is less than the actual number of columns, several empty
+    columns will be inserted to the right automatically.
+
+ 1. Literal pipe characters in table columns must be properly escaped. The only exceptions are those that appear in
+    [auto-link](https://spec.commonmark.org/0.31.2#autolink), [code span](https://spec.commonmark.org/0.31.2#code-span),
+    and the attribute values of [raw HTML](https://spec.commonmark.org/0.31.2#raw-html) tags:
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <pre><code>asdf         | asdf \| asdf&#10;------------ | ------------&#10;asdf \| asdf | asdf&#10;asdf         | asdf \| asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;asdf | asdf&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf | asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf | asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>asdf                    | &lt;asdf:asdf?asdf=|asdf|&gt;&#10;----------------------- | -----------------------&#10;&lt;asdf:asdf?asdf=|asdf|&gt; | asdf&#10;asdf                    | &lt;asdf:asdf?asdf=|asdf|&gt;</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;&lt;a href="asdf:asdf?asdf=%7Casdf%7C"&gt;asdf:asdf?asdf=|asdf|&lt;/a&gt;&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;&lt;a href="asdf:asdf?asdf=%7Casdf%7C"&gt;asdf:asdf?asdf=|asdf|&lt;/a&gt;&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;&lt;a href="asdf:asdf?asdf=%7Casdf%7C"&gt;asdf:asdf?asdf=|asdf|&lt;/a&gt;&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>asdf          | `asdf | asdf`&#10;------------- | -------------&#10;`asdf | asdf` | asdf&#10;asdf          | `asdf | asdf`</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;&lt;code&gt;asdf | asdf&lt;/code&gt;&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;&lt;code&gt;asdf | asdf&lt;/code&gt;&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;&lt;code&gt;asdf | asdf&lt;/code&gt;&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>asdf            | &lt;asdf asdf="|"&gt;&#10;--------------- | ---------------&#10;&lt;asdf asdf="|"&gt; | asdf&#10;asdf            | &lt;asdf asdf="|"&gt;</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;&lt;asdf asdf="|"&gt;&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;&lt;asdf asdf="|"&gt;&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;&lt;asdf asdf="|"&gt;&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+ 1. Header-less table is supported, but may not be compatible with other Markdown parsers. Consider using this feature
+    as rarely as possible, unless you have no plans to switch to other Markdown parsers in the future:
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <pre><code>asdf | asdf&#10;---- | ----</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;&lt;/table&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>---- | ----&#10;asdf | asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;table&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+ 1. Table captions are supported and can be written in the same way as image captions are written:
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <pre><code>| asdf | asdf |&#10;| ---- | ---- |&#10;| asdf | asdf |&#10;asdf&#10;&#10;asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;table&gt;&#10;  &lt;caption&gt;asdf&lt;/caption&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;&#10;&lt;p&gt;asdf&lt;/p&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>| asdf | asdf |&#10;| ---- | ---- |&#10;| asdf | asdf |&#10;&#10;  asdf&#10;  ----&#10;&#10;  asdf&#10;&#10;asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;table&gt;&#10;  &lt;caption&gt;&#10;    &lt;h2&gt;asdf&lt;/h2&gt;&#10;    &lt;p&gt;asdf&lt;/p&gt;&#10;  &lt;/caption&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;&#10;&lt;p&gt;asdf&lt;/p&gt;</code></pre>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
 ### Tabs
 

@@ -105,7 +105,10 @@ del {
 details:open > summary {
   margin-bottom: 1rem;
 }
-dl, ol, ul {
+dd, dl {
+  margin-left: 1em;
+}
+ol, ul {
   margin-left: 2em;
 }
 em, i {
@@ -351,45 +354,13 @@ $s .= 'Try';
 $s .= '</title>';
 $s .= '<style>';
 $s .= <<<CSS
-* {
-  background: 0 0;
-  border: 0;
-  box-sizing: border-box;
-  color: inherit;
-  font: inherit;
-  margin: 0;
-  padding: 0;
-  text-decoration: none;
-}
-a {
-  color: #00f;
-}
-a:focus {
-  color: #f00;
-}
-b, h1, h2, h3, h4, h5, h6, legend, strong, th {
-  font-weight: bold;
-}
-button, select {
-  appearance: none;
-  background: #eee none no-repeat 50% 50%;
-  border: 1px solid #000;
-  cursor: pointer;
-  display: inline-block;
-  height: calc(1.5em + (0.125em * 2) + 2px);
-  line-height: 1.5em;
-  padding: 0.125em 0.5em;
-}
-code, textarea {
-  font: normal normal 12px/1.25 'Courier New', monospace;
-}
-em, i {
-  font-style: italic;
-}
-fieldset {
-  border: 1px solid #000;
-  min-width: 0;
-  padding: 1em;
+@import url('index.css');
+textarea {
+  background: #ffc;
+  display: block;
+  min-height: 50vh;
+  outline: 0;
+  width: 100%;
 }
 fieldset > p:not([role="group"]):last-of-type {
   font-size: 75%;
@@ -398,38 +369,11 @@ fieldset > p:not([role="group"]):last-of-type {
 fieldset > p:not(:first-of-type) {
   margin-top: 1em;
 }
-fieldset + fieldset {
-  margin-top: 1em;
-}
-hr {
-  border-top: 1px solid #000;
-}
 iframe {
   display: block;
   min-height: 50vh;
   outline: 0;
   width: 100%;
-}
-select {
-  background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjAgMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTQgN0wxMCAxM0wxNiA3IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS1saW5lY2FwPSJidXR0IiBzdHJva2UtbGluZWpvaW49Im1pdGVyIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=');
-  background-position: right 0.4em center;
-  background-size: 1rem;
-  padding-right: 1.75em;
-}
-textarea {
-  background: #ffc;
-  border: 1px solid #000;
-  display: block;
-  min-height: 50vh;
-  outline: 0;
-  padding: 0.25em 0.45em;
-  resize: vertical;
-  width: 100%;
-}
-legend {
-  line-height: 0;
-  padding: 0 0.25em;
-  white-space: nowrap;
 }
 pre {
   background: #ffc;
@@ -441,27 +385,8 @@ pre {
   width: 100%;
   word-wrap: break-word;
 }
-pre code {
-  display: block;
-}
-:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-:root {
-  background: #fff;
-  color: #000;
-  font: normal normal 13px/1.5 Verdana, sans-serif;
-  padding: 1em;
-}
 [role='alert'] {
   color: #f00;
-}
-[role="group"] {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25em;
 }
 @media (min-width: 1200px) {
   :root,
