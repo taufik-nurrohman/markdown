@@ -145,7 +145,10 @@ del {
 details:open > summary {
   margin-bottom: 1rem;
 }
-dl, ol, ul {
+dd, dl {
+  margin-left: 1em;
+}
+ol, ul {
   margin-left: 2em;
 }
 em, i {
@@ -487,22 +490,7 @@ $s .= 'Markdown to HTML';
 $s .= '</title>';
 $s .= '<style>';
 $s .= <<<CSS
-* {
-  background: 0 0;
-  border: 0;
-  box-sizing: border-box;
-  color: inherit;
-  font: inherit;
-  margin: 0;
-  padding: 0;
-  text-decoration: none;
-}
-a {
-  color: #00f;
-}
-a:focus {
-  color: #f00;
-}
+@import url('../index.css');
 body > form {
   margin-bottom: 1em;
 }
@@ -537,107 +525,6 @@ body > main > div > pre {
 }
 body > main > div + div {
   margin-top: 1em;
-}
-b, h1, h2, h3, h4, h5, h6, legend, strong, th {
-  font-weight: bold;
-}
-button, select {
-  appearance: none;
-  background: #eee none no-repeat 50% 50%;
-  border: 1px solid #000;
-  cursor: pointer;
-  display: inline-block;
-  height: calc(1.5em + (0.125em * 2) + 2px);
-  line-height: 1.5em;
-  padding: 0.125em 0.5em;
-}
-code, textarea {
-  font: normal normal 12px/1.25 'Courier New', monospace;
-}
-em, i {
-  font-style: italic;
-}
-fieldset {
-  border: 1px solid #000;
-  padding: 1em;
-}
-hr {
-  border-top: 1px solid #000;
-}
-select {
-  background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjAgMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTQgN0wxMCAxM0wxNiA3IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS1saW5lY2FwPSJidXR0IiBzdHJva2UtbGluZWpvaW49Im1pdGVyIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=');
-  background-position: right 0.4em center;
-  background-size: 1rem;
-  padding-right: 1.75em;
-}
-legend {
-  line-height: 0;
-  padding: 0 0.25em;
-  white-space: nowrap;
-}
-pre {
-  overflow: auto;
-  tab-size: 4;
-}
-pre[aria-errormessage] {
-  background: #fcc;
-}
-pre code {
-  display: block;
-}
-.c {
-  font-style: normal;
-  font-weight: normal;
-  position: relative;
-}
-.c::before {
-  background: #dda;
-  bottom: 0;
-  color: #774;
-  content: "";
-  text-align: center;
-}
-.c-n::before {
-  content: '\\5c n';
-}
-.c-r::before {
-  content: '\\5c r';
-}
-.c-s::before {
-  bottom: 0;
-  content: '\\22c5';
-  left: 0;
-  position: absolute;
-  right: 0;
-  top: 0;
-}
-.c-t::before {
-  bottom: 0;
-  left: 0;
-  overflow: hidden;
-  position: absolute;
-  right: 0;
-  text-align: left;
-  top: 0;
-}
-pre:focus .c-t::before,
-pre:hover .c-t::before {
-  content: '1234';
-}
-:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-:root {
-  background: #fff;
-  color: #000;
-  font: normal normal 13px/1.5 Verdana, sans-serif;
-  padding: 1em;
-}
-[role="group"] {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25em;
 }
 @media (min-width: 1200px) {
   body > main > div {
