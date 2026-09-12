@@ -1740,7 +1740,7 @@ namespace x\markdown\from {
             }
             // <https://github.github.com/gfm#table>
             if (false !== ($w = \strpos($value, '|', $d + $i)) && $w < $i + $m[0] && p($value, $i, $i + $m[0]) && ("" === $s || (\strlen($s) === \strpos($s, "\n") + 1 && p($s, 0, \strlen($s))))) {
-                // <https://github.github.com/gfm#delimiter-row>
+                // Header-less table
                 if ($m[0] === \strspn($value, c1 . '-:|', $i, $limit)) {
                     $s .= x1;
                 }
@@ -1749,83 +1749,56 @@ namespace x\markdown\from {
                 $min = $d + 1;
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
+                    // A blank line ends the current block
+                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
+                        $s .= x2;
+                        break;
+                    }
+                    // A line with no delimiter column ends the current block
+                    if (!p($value, $i, $i + $m[0])) {
+                        $s .= x2;
+                        break;
+                    }
+                    $s .= ($m[0] === \strspn($value, c1 . '-:|', $i, $limit) ? x1 : "\n") . \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
+                    $i += $m[0] + $m[1];
+                    continue;
+                }
+                // Create the table caption
+                $w = 0;
+                while ($i < $limit) {
+                    $m = m($value, $i, $limit);
                     // A blank line continues the current block
                     if ($m[0] === \strspn($value, c1, $i, $m[0])) {
                         $s .= "\n";
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    if (p($value, $i, $i + $m[0])) {
-                        $s .= "\n" . s($value, $i, $m[0]);
-                        $i += $m[0] + $m[1];
-                        continue;
-                    }
-                    /*
-                    // A blank line starts the table caption
-                    if ($m[0] === \strspn($value, c1, $i, $m[0])) {
-                        $s .= false === \strpos($s, x2) ? x2 : "\n";
-                        $i += $m[0] + $m[1];
-                        continue;
-                    }
+                    $b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? [];
+                    $b = \reset($b);
                     // Found a line that is not blank and is more indented than the table block
                     if (d($value, $i, $limit)[0] > $d) {
+                        $w = 1;
                         // If a table block is immediately followed by a non-paragraph continuation text, append a blank
                         // line to mark the table caption as a container block.
-                        if (x2 === $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                            if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                                $s .= "\n";
-                            }
+                        if (x2 === $s[-1] && $b && !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                            $s .= "\n";
                         }
                         $s .= "\n" . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
-                    if (!p($value, $i, $i + $m[0])) {
-                        if ("\n" === $s[-1]) {
-                            break;
-                        }
-                        if (false === \strpos($s, x2)) {
-                            $s .= x2;
-                        } else {
-                            $s .= "\n";
-                        }
-                        $s .= s($value, $i, $m[0]);
-                        $i += $m[0] + $m[1];
-                        continue;
+                    if ($w && d($value, $i, $limit)[0] <= $d) {
+                        break;
                     }
-                    if ("\n" !== $s[-1]) {
-                        $s .= $m[0] === \strspn($value, c1 . '-:|', $i, $limit) ? x1 : "\n";
-                        $s .= \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
-                        $i += $m[0] + $m[1];
-                        continue;
-                    }
-                    //if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                    //    if ('p' === $b[0] || 'table' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
-                    //        // At this point, the table caption must be a leaf block. A paragraph continuation text
-                    //        // without any `|` character(s) that sits next to the table syntax stream will be treated as
-                    //        // a table caption. This is different from the way paragraph continuation text is treated in
-                    //        // the GFM specification, where it will be treated as a “lazy table row” instead.
-                    //        // <https://github.github.com/gfm#example-202>
-                    //        if (!p($value, $i, $i + $m[0])) {
-                    //            $s .= (false !== \strpos($s, x2) ? "\n" : x2) . s($value, $i, $m[0]);
-                    //        } else {
-                    //            $s .= $m[0] === \strspn($value, c1 . '-:|', $i, $limit) ? x1 : "\n";
-                    //            $s .= \trim(\trim(\trim(s($value, $i, $m[0])), '|'));
-                    //        }
-                    //        $i += $m[0] + $m[1];
-                    //        continue;
-                    //    }
-                    //}
                     if ("\n" === $s[-1]) {
                         ++$void;
+                    } else if ($b && ('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                        $s .= "\n" . s($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
                     }
-                    */
                     break;
                 }
-                echo '<pre style="border:1px solid">';
-                echo $value . "\n\n\n";
-                echo strtr($s,[x1=>"\\x1",x2=>"\\x2"]);
-                echo '</pre>';
                 $rows[] = ['table', \rtrim($s, "\n"), []];
                 $s = "";
                 continue;
