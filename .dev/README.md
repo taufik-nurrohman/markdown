@@ -579,6 +579,443 @@ Most Markdown parsers that support attribute syntax do not explicitly state that
 form of a fenced code block’s info string (my parser called it “naked attributes”) in a _setext_ header or thematic
 break. This is just my own take on [this discussion](https://talk.commonmark.org/t/info-strings-elsewhere/2610).
 
+### Code Block
+
+I try to avoid incompatibilities between different Markdown dialects and support whatever dialect you are using. For
+example, I am adapted to Markdown Extra’s fenced code block syntax, which employs an info string with a dot prefix.
+However, this is not supported by Parsedown. Parsedown simply appends a `language-` prefix to the info string without
+giving any special consideration to the pattern of the info string. CommonMark also does not specify any special rules
+for processing info strings in fenced code block syntax.
+
+Here’s how the code block results compare across each Markdown converter:
+
+#### Markdown Extra
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>~~~ asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ .asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ asdf asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <em>Invalid.</em>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ .asdf.asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <em>Invalid.</em>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ {#asdf.asdf}&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="asdf" id="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ {#asdf.asdf asdf=asdf}&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code asdf="asdf" class="asdf" id="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+#### Parsedown Extra
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>~~~ asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ .asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ asdf asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ .asdf.asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-.asdf.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ {#asdf.asdf}&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-{#asdf.asdf}"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ {#asdf.asdf asdf=asdf}&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-{#asdf.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+#### Mine
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>~~~ asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ .asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ asdf asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ .asdf.asdf&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ {#asdf.asdf}&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code class="asdf" id="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>~~~ {#asdf.asdf asdf=asdf}&#10;asdf&#10;~~~</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;pre&gt;&lt;code asdf="asdf" class="asdf" id="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
+      </tr>
+  </tbody>
+</table>
+
+### HTML Block
+
+CommonMark doesn’t care about the DOM and therefore also doesn’t care if a HTML element is perfectly balanced or not.
+Unlike the original Markdown syntax specification which doesn’t allow you to convert Markdown syntax inside a HTML
+block, the CommonMark specification doesn’t limit such a case. It cares about blank lines around the lines that look
+like a HTML block tag, as specified in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), type 6.
+
+Any text that comes after the opening and/or closing of a HTML block is treated as raw text and is not processed as
+Markdown syntax. A blank line is required to end the raw HTML block state:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>&lt;div&gt; asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;div&gt; asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;div&gt;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;div&gt;&#10;asdf asdf &#42;asdf&#42; asdf&lt;/div&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;div&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;div&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&#10;&lt;/div&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw HTML block state:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt; asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt; asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+The examples below will generate a predictable HTML code, but not because this converter cares about the existing HTML
+tag balance:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+You will understand why when you add a number of blank lines at any point in the HTML block:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;&#10;&#10;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;&#10;&lt;p&gt;asdf&lt;/a&gt;&lt;/p&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;&#10;&#10;      asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;&#10;&lt;pre&gt;&lt;code&gt;  asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&#10;&amp;lt;li&amp;gt;&#10;  &amp;lt;a&amp;gt;asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&amp;lt;li&amp;gt;&#10;  &amp;lt;a&amp;gt;asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&lt;/code&gt;&lt;/pre&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Markdown Extra features the `markdown` attribute on HTML to allow you to convert Markdown syntax to HTML in a HTML
+block. In this converter, the feature will not work. For now, I have no plans to add such feature to avoid DOM parsing
+tasks as much as possible. This also ensured me to avoid on using [PHP `dom`](https://www.php.net/book.dom).
+
+However, if you add a blank line, it’s as if the feature works (although the `markdown` attribute is still there, it
+doesn’t affect the HTML when rendered in the browser window). If you’re used to adding a blank line after the opening
+HTML block tag and before the closing HTML block tag, you should be okay.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>&lt;div markdown="1"&gt;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt;</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;div markdown="1"&gt;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;div markdown="1"&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt;</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;div markdown="1"&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&#10;&lt;/div&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Opening an inline HTML element will not trigger the raw HTML block state unless the opening and closing tags stand alone
+on a single line. This is explained in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), type 7:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>&lt;del&gt;asdf asdf &#42;asdf&#42;&lt;/del&gt; asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;&lt;del&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/del&gt; asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;del&gt;&#10;asdf asdf &#42;asdf&#42;&#10;&lt;/del&gt;&#10;asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;del&gt;&#10;asdf asdf &#42;asdf&#42;&#10;&lt;/del&gt;&#10;asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;del&gt;&#10;&#10;asdf asdf &#42;asdf&#42;&#10;&#10;&lt;/del&gt;&#10;&#10;asdf &#42;asdf&#42; asdf</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;del&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/p&gt;&#10;&lt;/del&gt;&#10;&lt;p&gt;asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Since CommonMark doesn’t care about HTML structure, the examples below will also conform to the specification, even if
+they result in broken HTML. However, these are very rarely intentionally written by hand, so such cases are very
+unlikely to occur:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>&lt;h1&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/h1&gt;</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;h1&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&#10;&lt;/h1&gt;</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <pre><code>&lt;p&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/p&gt;</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;p&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&#10;&lt;/p&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 ### Image Block
 
 Markdown was introduced before the HTML5 era. When the `<figure>` element was introduced, people started to use it to
@@ -667,9 +1104,9 @@ portions you want to include in the caption with spaces:
 
 ### List Block
 
-My parser supports list items numbered with Latin letters and Roman numerals. This satisfies the HTML5 specification for
-the [`type` attribute of the `<ol>` element](https://html.spec.whatwg.org/multipage/grouping-content.html#attr-ol-type)
-but does not satisfy the CommonMark rules. Instead, it “extends” them.
+My parser supports list items numbered with Latin letters and Roman numerals. While this satisfies the HTML5
+specification for [the `type` attribute of `<ol>` element](https://html.spec.whatwg.org/multipage/grouping-content.html#attr-ol-type),
+it does not satisfy the CommonMark rules. Instead, it “extends” them.
 
 <table>
   <thead>
@@ -842,6 +1279,75 @@ prefixes, they can interrupt the paragraph:
 </table>
 
 The list item continuation “number” is enforced as follows:
+
+ 1. A list item continuation can only use the current number or the next number after it.
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markdown</th>
+          <th>HTML</th>
+        <tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <pre><code>1) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>1) asdf asdf asdf asdf&#10;1) asdf asdf asdf asdf&#10;1) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>2) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol start="2"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>1) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>1) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf&#10;4) asdf asdf asdf asdf&#10;5) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf 3) asdf asdf asdf asdf 4) asdf asdf asdf asdf 5) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>1) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf 3) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <pre><code>1) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf&#10;1) asdf asdf asdf asdf&#10;1) asdf asdf asdf asdf</code></pre>
+          </td>
+          <td>
+            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf 3) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
  1. A list item continuation of **type “A”** list block can only use the current character or the next character after
     it. After the character “Z”, the list continues with “AA”, “AB”, “AC”, and so on.
@@ -1056,6 +1562,51 @@ other Markdown parsers, I would still recommend you to write the list item numbe
 switch in the future. Alternatively, if you’re too lazy or expect that the list will grow over time, you can always
 reuse the number from the last list item.
 
+### Notes
+
+Notes follow [Markdown Extra’s syntax for notes](https://michelf.ca/projects/php-markdown/extra#footnotes), but with
+slightly different HTML output to match [Mecha](https://github.com/mecha-cms)’s common naming style. Unlike Markdown
+Extra, multi-line notes don’t have to be indented by four spaces. A space or tab is suffice to continue the note.
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>asdf [^1]&#10;&#10;[^1]: asdf</code></pre></td>
+      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&#10;&lt;div role="doc-endnotes"&gt;&#10;  &lt;hr /&gt;&#10;  &lt;ol&gt;&#10;    &lt;li id="to:1" role="doc-endnote"&gt;&#10;      &lt;p&gt;asdf&amp;#xa0;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#x21a9;&lt;/a&gt;&lt;/p&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ol&gt;&#10;&lt;/div&gt;</code></pre></td>
+    </tr>
+    <tr>
+      <td><pre><code>asdf [^1]&#10;&#10;[^1]:&#10;&#10;  asdf&#10;  ----&#10;&#10;  asdf&#10;  asdf&#10;&#10;      asdf&#10;&#10;  asdf&#10;  asdf&#10;&#10;asdf</code></pre></td>
+      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&#10;&lt;p&gt;asdf&lt;/p&gt;&#10;&lt;div role="doc-endnotes"&gt;&#10;  &lt;hr /&gt;&#10;  &lt;ol&gt;&#10;    &lt;li id="to:1" role="doc-endnote"&gt;&#10;      &lt;h2&gt;asdf&lt;/h2&gt;&#10;      &lt;p&gt;asdf asdf&lt;/p&gt;&#10;      &lt;pre&gt;&lt;code&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;&#10;      &lt;p&gt;asdf asdf&amp;#xa0;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#x21a9;&lt;/a&gt;&lt;/p&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ol&gt;&#10;&lt;/div&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
+### Soft Break
+
+[Soft breaks](https://spec.commonmark.org/0.31.2#softbreak) are collapsed to a space in non-critical parts, such as
+within paragraphs and list items:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><pre><code>asdf asdf asdf asdf&#10;asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre></td>
+      <td><pre><code>&lt;p&gt;asdf asdf asdf asdf asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre></td>
+    </tr>
+  </tbody>
+</table>
+
 ### Table Block
 
 Table blocks follow [Markdown Extra’s syntax for table blocks](https://michelf.ca/projects/php-markdown/extra#table),
@@ -1231,3 +1782,47 @@ tab characters.
 
 For tab characters in code blocks, you can preserve them [this way](). Though, it would be more accurate to call it “tab
 normalization” than “tab preservation”.
+
+XSS
+---
+
+This converter is intended only to convert Markdown syntax to HTML based on the
+[CommonMark](https://spec.commonmark.org/0.31.2) specification. It doesn’t care about your user input. I have no
+intention of adding any special security features in the future, sorry. The attribute syntax feature may be a security
+risk for you if you want to use this converter on your comment entries, for example:
+
+<table>
+  <thead>
+    <tr>
+      <th>Markdown</th>
+      <th>HTML</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre><code>![asdf](asdf){onerror="alert('Yo!')"}</code></pre>
+      </td>
+      <td>
+        <pre><code>&lt;figure&gt;&#10;  &lt;img alt="asdf" onerror="alert('Yo!')" src="asdf" /&gt;&#10;&lt;/figure&gt;</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+There should be many specialized PHP applications already that have specific tasks to deal with XSS, so consider
+post-processing the generated HTML markup before putting it out to the web:
+
+ - [ezyang/htmlpurifier](https://github.com/ezyang/htmlpurifier)
+ - [voku/anti-xss](https://github.com/voku/anti-xss)
+
+Tools
+-----
+
+Clone this repository into the root of your web server that supports PHP and then you can open the `tools/test/from.php`
+and `tools/try.php` file with your browser to see the result and the performance of this converter in various cases.
+
+Tweaks
+------
+
+_TODO_

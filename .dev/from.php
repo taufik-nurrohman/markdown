@@ -1474,6 +1474,7 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         $min = $d + 1;
                         // Capture potential image caption
+                        $capt = 0;
                         while ($i < $limit) {
                             $m = m($value, $i, $limit);
                             // A blank line continues the current block
@@ -1482,29 +1483,30 @@ namespace x\markdown\from {
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
-                            // Found a line that is not blank and is more indented than the line with the image
-                            if (d($value, $i, $limit)[0] > $d) {
+                            $dent = d($value, $i, $limit)[0];
+                            if ($capt && $dent <= $d) {
+                                break;
+                            }
+                            $b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? [];
+                            $b = \reset($b);
+                            // Found a line that is not blank and is more indented than the image block
+                            if ($dent > $d) {
+                                $capt = 1;
                                 // If an image block is immediately followed by a non-paragraph continuation text,
                                 // append a blank line to mark the image caption as a container block.
-                                if (x2 === $s[-1] && ($b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                                    if (!('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
-                                        $s .= "\n";
-                                    }
+                                if (x2 === $s[-1] && $b && !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                                    $s .= "\n";
                                 }
                                 $s .= "\n" . s($value, $i, $m[0], 0, $min);
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
-                            // At this point, the image caption must be a leaf block
-                            if ("\n" !== $s[-1] && false === \strpos($s, "\n\n") && ($b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? []) && ($b = \reset($b))) {
-                                if ('p' === $b[0] || false === $b[0] && 7 === $b[3][0]) {
-                                    $s .= "\n" . s($value, $i, $m[0]);
-                                    $i += $m[0] + $m[1];
-                                    continue;
-                                }
-                            }
                             if ("\n" === $s[-1]) {
                                 ++$void;
+                            } else if ($b && ('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                                $s .= "\n" . s($value, $i, $m[0]);
+                                $i += $m[0] + $m[1];
+                                continue;
                             }
                             break;
                         }
@@ -1763,8 +1765,8 @@ namespace x\markdown\from {
                     $i += $m[0] + $m[1];
                     continue;
                 }
-                // Create the table caption
-                $w = 0;
+                // Capture potential table caption
+                $capt = 0;
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
                     // A blank line continues the current block
@@ -1773,11 +1775,15 @@ namespace x\markdown\from {
                         $i += $m[0] + $m[1];
                         continue;
                     }
+                    $dent = d($value, $i, $limit)[0];
+                    if ($capt && $dent <= $d) {
+                        break;
+                    }
                     $b = rows($value, $lot, 0, $d + $i, $i + $m[0])[0] ?? [];
                     $b = \reset($b);
                     // Found a line that is not blank and is more indented than the table block
-                    if (d($value, $i, $limit)[0] > $d) {
-                        $w = 1;
+                    if ($dent > $d) {
+                        $capt = 1;
                         // If a table block is immediately followed by a non-paragraph continuation text, append a blank
                         // line to mark the table caption as a container block.
                         if (x2 === $s[-1] && $b && !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
@@ -1786,9 +1792,6 @@ namespace x\markdown\from {
                         $s .= "\n" . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
-                    }
-                    if ($w && d($value, $i, $limit)[0] <= $d) {
-                        break;
                     }
                     if ("\n" === $s[-1]) {
                         ++$void;
@@ -2105,7 +2108,7 @@ namespace x\markdown\from {
                     $part = \explode(x1, $row[1], 2);
                     $part[1] = \explode(x2, $part[1] ?? "", 2);
                     $body = \explode("\n", \trim($part[1][0]));
-                    $cap = $part[1][1] ?? "";
+                    $capt = $part[1][1] ?? "";
                     $max = \count($style = \explode('|', \array_shift($body)));
                     foreach ($style as &$s) {
                         $s = \trim($s);
@@ -2140,15 +2143,15 @@ namespace x\markdown\from {
                             $row[1][$at][1][] = $r;
                         }
                     }
-                    if ("" !== \trim($cap)) {
+                    if ("" !== \trim($capt)) {
                         // Table caption as a container block
-                        if (false !== \strpos($cap, "\n\n")) {
-                            $cap = rows($cap = \trim($cap), $lot, $deep - 1, 0, \strlen($cap))[0] ?: "";
+                        if (false !== \strpos($capt, "\n\n")) {
+                            $capt = rows($capt = \trim($capt), $lot, $deep - 1, 0, \strlen($capt))[0] ?: "";
                         // Table caption as a leaf block
                         } else {
-                            $cap = row($cap = \trim($cap), $lot, $deep - 1, 0, \strlen($cap))[0] ?: "";
+                            $capt = row($capt = \trim($capt), $lot, $deep - 1, 0, \strlen($capt))[0] ?: "";
                         }
-                        \array_unshift($row[1], ['caption', $cap, []]);
+                        \array_unshift($row[1], ['caption', $capt, []]);
                     }
                     continue;
                 }

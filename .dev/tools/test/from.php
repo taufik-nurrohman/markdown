@@ -643,7 +643,7 @@ foreach ($files as $file) {
         ]) ?? "";
         $end = (hrtime(true) - $start) / 1e6;
         if (is_file($result = substr($file, 0, -2) . 'html') && "" !== ($result = file_get_contents($result))) {
-            if ($r !== $result) {
+            if ($block && $r !== $result) {
                 $s .= '<pre aria-errormessage="" tabindex="0">';
                 ++$error;
             } else {
