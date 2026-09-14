@@ -165,75 +165,127 @@ My Markdown parser supports an extensive attribute syntax that includes a combin
 syntax, and `key=value` attribute syntax:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code># asdf {#asdf}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;h1 id="asdf"&gt;asdf&lt;/h1&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code># asdf {#asdf.asdf}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;h1 class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code># asdf {#asdf.asdf asdf=asdf}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;h1 asdf="asdf" class="asdf" id="asdf"&gt;asdf&lt;/h1&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+# asdf {#asdf}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<h1 id="asdf">asdf</h1>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+# asdf {#asdf.asdf}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<h1 class="asdf" id="asdf">asdf</h1>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+# asdf {#asdf.asdf asdf=asdf}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<h1 asdf="asdf" class="asdf" id="asdf">asdf</h1>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Inline attributes always win over native and pre-defined attribute syntax:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>[asdf](asdf){href=1}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;&lt;a href="1"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>[asdf]&#10;&#10;[asdf]: asdf {href=1}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;&lt;a href="1"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>[asdf]{href=2}&#10;&#10;[asdf]: asdf {href=1}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;&lt;a href="2"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+[asdf](asdf){href=1}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p><a href="1">asdf</a></p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+[asdf]
+
+[asdf]: asdf {href=1}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p><a href="1">asdf</a></p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+[asdf]{href=2}
+
+[asdf]: asdf {href=1}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p><a href="2">asdf</a></p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 The attribute syntax can be written after any Markdown inline syntax (and some block syntax), as long as there are no
@@ -241,110 +293,212 @@ spaces present before it. This is different from the original Markdown Extra att
 optional spaces before the opening attribute syntax:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;asdf:asdf&gt;{#asdf}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;&lt;a href="asdf:asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;asdf@asdf&gt;{#asdf}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;&lt;a href="mailto:asdf@asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>![asdf](asdf){#asdf}</code></pre>
-      </td>
-      <td rowspan="4">
-        <pre><code>&lt;figure&gt;&#10;  &lt;img alt="asdf" id="asdf" src="asdf" /&gt;&#10;&lt;/figure&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>![asdf]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>![asdf][]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>![asdf][asdf]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>*asdf*{#asdf}</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;p&gt;&lt;em id="asdf"&gt;asdf&lt;/em&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>_asdf_{#asdf}</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>**asdf**{#asdf}</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;p&gt;&lt;strong id="asdf"&gt;asdf&lt;/strong&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>__asdf__{#asdf}</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>[asdf](asdf){#asdf}</code></pre>
-      </td>
-      <td rowspan="4">
-        <pre><code>&lt;p&gt;&lt;a href="asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>[asdf]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>[asdf][]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>[asdf][asdf]{#asdf}&#10;&#10;[asdf]: asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>`asdf`{#asdf}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;&lt;code id="asdf"&gt;asdf&lt;/code&gt;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+<asdf:asdf>{#asdf}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p><a href="asdf:asdf" id="asdf">asdf:asdf</a></p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<asdf@asdf>{#asdf}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p><a href="mailto:asdf@asdf" id="asdf">asdf@asdf</a></p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+![asdf](asdf){#asdf}
+~~~
+
+</td>
+<td rowspan="4">
+
+~~~ html
+<figure>
+  <img alt="asdf" id="asdf" src="asdf" />
+</figure>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+![asdf]{#asdf}
+
+[asdf]: asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+![asdf][]{#asdf}
+
+[asdf]: asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+![asdf][asdf]{#asdf}
+
+[asdf]: asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+*asdf*{#asdf}
+~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<p><em id="asdf">asdf</em></p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+_asdf_{#asdf}
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+**asdf**{#asdf}
+~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<p><strong id="asdf">asdf</strong></p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+__asdf__{#asdf}
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+[asdf](asdf){#asdf}
+~~~
+
+</td>
+<td rowspan="4">
+
+~~~ html
+<p><a href="asdf" id="asdf">asdf</a></p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+[asdf]{#asdf}
+
+[asdf]: asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+[asdf][]{#asdf}
+
+[asdf]: asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+[asdf][asdf]{#asdf}
+
+[asdf]: asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+`asdf`{#asdf}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p><code id="asdf">asdf</code></p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 I decided it would be better to not allow optional spaces between them. There are several reasons for this:
@@ -364,38 +518,62 @@ I decided it would be better to not allow optional spaces between them. There ar
     part of the link or the header. With this restriction, the intent is clear:
 
     <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <pre><code># asdf [asdf](asdf){#asdf}</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;h1&gt;asdf &lt;a href="asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/h1&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code># asdf [asdf](asdf) {#asdf}</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;h1 id="asdf"&gt;asdf &lt;a href="asdf"&gt;asdf&lt;/a&gt;&lt;/h1&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code># asdf [asdf](asdf){#asdf} {#asdf}</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;h1 id="asdf"&gt;asdf &lt;a href="asdf" id="asdf"&gt;asdf&lt;/a&gt;&lt;/h1&gt;</code></pre>
-          </td>
-        </tr>
-      </tbody>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    # asdf [asdf](asdf){#asdf}
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <h1>asdf <a href="asdf" id="asdf">asdf</a></h1>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    # asdf [asdf](asdf) {#asdf}
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <h1 id="asdf">asdf <a href="asdf">asdf</a></h1>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    # asdf [asdf](asdf){#asdf} {#asdf}
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <h1 id="asdf">asdf <a href="asdf" id="asdf">asdf</a></h1>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
  [^link:1]: <https://spec.commonmark.org/0.31.2#example-542>
@@ -409,27 +587,39 @@ Attribute syntax can be classified into two types:
 Wrapped attribute syntax contains an attribute list written between curly braces:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code># asdf asdf asdf asdf {#asdf}</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;h1 id="asdf"&gt;asdf asdf asdf asdf&lt;/h1&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code># asdf asdf asdf asdf # {#asdf}</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+# asdf asdf asdf asdf {#asdf}
+~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<h1 id="asdf">asdf asdf asdf asdf</h1>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+# asdf asdf asdf asdf # {#asdf}
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 #### Naked Attributes
@@ -440,61 +630,126 @@ code block (where my attribute parser treats the [info string](https://spec.comm
 [_setext_](https://spec.commonmark.org/0.31.2#setext-heading) header, and thematic break syntax:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>``` #asdf asdf=asdf&#10;asdf asdf asdf asdf&#10;```</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;pre&gt;&lt;code asdf="asdf" id="asdf"&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ #asdf asdf=asdf&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;=== #asdf asdf=asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;h1 asdf="asdf" id="asdf"&gt;asdf asdf asdf asdf&lt;/h1&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;--- #asdf asdf=asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;h2 asdf="asdf" id="asdf"&gt;asdf asdf asdf asdf&lt;/h2&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;&#10;*** #asdf asdf=asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
-      </td>
-      <td rowspan="3">
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;hr asdf="asdf" id="asdf" /&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;&#10;--- #asdf asdf=asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;&#10;___ #asdf asdf=asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~~ md
+``` #asdf asdf=asdf
+asdf asdf asdf asdf
+```
+~~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<pre><code asdf="asdf" id="asdf">asdf asdf asdf asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ #asdf asdf=asdf
+asdf asdf asdf asdf
+~~~
+~~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+=== #asdf asdf=asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<h1 asdf="asdf" id="asdf">asdf asdf asdf asdf</h1>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+--- #asdf asdf=asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<h2 asdf="asdf" id="asdf">asdf asdf asdf asdf</h2>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+
+*** #asdf asdf=asdf
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+<td rowspan="3">
+
+~~~ html
+<p>asdf asdf asdf asdf</p>
+<hr asdf="asdf" id="asdf" />
+<p>asdf asdf asdf asdf</p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+
+--- #asdf asdf=asdf
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+
+___ #asdf asdf=asdf
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 There is one special case regarding how they treat value-less attributes (attributes without the `=` part). Wrapped
@@ -502,30 +757,48 @@ attributes will treat value-less attributes as boolen attributes, whereas naked 
 attribute list:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;============== asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf ============== asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;============ {asdf}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;h1 asdf&gt;asdf asdf asdf asdf&lt;/h1&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+============== asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf ============== asdf</p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+============ {asdf}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<h1 asdf>asdf asdf asdf asdf</h1>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 An exception to the fenced code block syntax is that value-less attributes in a naked attribute list will be treated as
@@ -533,46 +806,90 @@ a class suffix instead. This feature is implemented for compatibility with other
 treat the info string as a code class with a `language-` prefix:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>~~~ asdf&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ .asdf asdf&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="asdf language-asdf"&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ {asdf}&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code asdf&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ {.asdf asdf}&#10;asdf asdf asdf asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code asdf class="asdf"&gt;asdf asdf asdf asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~~ md
+~~~ asdf
+asdf asdf asdf asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-asdf">asdf asdf asdf asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ .asdf asdf
+asdf asdf asdf asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="asdf language-asdf">asdf asdf asdf asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ {asdf}
+asdf asdf asdf asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code asdf>asdf asdf asdf asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ {.asdf asdf}
+asdf asdf asdf asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code asdf class="asdf">asdf asdf asdf asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Most Markdown parsers that support attribute syntax do not explicitly state that they support attribute syntax in the
@@ -592,183 +909,369 @@ Here’s how the code block results compare across each Markdown converter:
 #### Markdown Extra
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>~~~ asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ .asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ asdf asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <em>Invalid.</em>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ .asdf.asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <em>Invalid.</em>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ {#asdf.asdf}&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="asdf" id="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ {#asdf.asdf asdf=asdf}&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code asdf="asdf" class="asdf" id="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~~ md
+~~~ asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ .asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ asdf asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+_Invalid._
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ .asdf.asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+_Invalid._
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ {#asdf.asdf}
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="asdf" id="asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ {#asdf.asdf asdf=asdf}
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code asdf="asdf" class="asdf" id="asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 #### Parsedown Extra
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>~~~ asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ .asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ asdf asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ .asdf.asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-.asdf.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ {#asdf.asdf}&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-{#asdf.asdf}"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ {#asdf.asdf asdf=asdf}&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-{#asdf.asdf"&gt;asdf&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~~ md
+~~~ asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-asdf">asdf</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ .asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-.asdf">asdf</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ asdf asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-asdf">asdf</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ .asdf.asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-.asdf.asdf">asdf</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ {#asdf.asdf}
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-{#asdf.asdf}">asdf</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ {#asdf.asdf asdf=asdf}
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-{#asdf.asdf">asdf</code></pre>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 #### Mine
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>~~~ asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ .asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ asdf asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="language-asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ .asdf.asdf&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ {#asdf.asdf}&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code class="asdf" id="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>~~~ {#asdf.asdf asdf=asdf}&#10;asdf&#10;~~~</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;pre&gt;&lt;code asdf="asdf" class="asdf" id="asdf"&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;</code></pre>
-      </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~~ md
+~~~ asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ .asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ asdf asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="language-asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ .asdf.asdf
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ {#asdf.asdf}
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code class="asdf" id="asdf">asdf
+</code></pre>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~~ md
+~~~ {#asdf.asdf asdf=asdf}
+asdf
+~~~
+~~~~
+
+</td>
+<td>
+
+~~~ html
+<pre><code asdf="asdf" class="asdf" id="asdf">asdf
+</code></pre>
+~~~
+
+</tr>
+</tbody>
 </table>
 
 ### HTML Block
@@ -782,134 +1285,354 @@ Any text that comes after the opening and/or closing of a HTML block is treated 
 Markdown syntax. A blank line is required to end the raw HTML block state:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;div&gt; asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;div&gt; asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt; asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;div&gt;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;div&gt;&#10;asdf asdf &#42;asdf&#42; asdf&lt;/div&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;div&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/div&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;div&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&#10;&lt;/div&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+<div> asdf asdf *asdf* asdf
+</div> asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<div> asdf asdf *asdf* asdf
+</div> asdf asdf *asdf* asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<div>
+asdf asdf *asdf* asdf
+
+</div>
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<div>
+asdf asdf *asdf* asdf</div>
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<div>
+
+asdf asdf *asdf* asdf
+
+</div>
+
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<div>
+<p>asdf asdf <em>asdf</em> asdf</p>
+</div>
+<p>asdf asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw HTML block state:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt; asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt; asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;!-- asdf asdf &#42;asdf&#42; asdf --&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+<!-- asdf asdf *asdf* asdf --> asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<!-- asdf asdf *asdf* asdf --> asdf asdf *asdf* asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<!-- asdf asdf *asdf* asdf -->
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<!-- asdf asdf *asdf* asdf -->
+<p>asdf asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<!-- asdf asdf *asdf* asdf -->
+
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<!-- asdf asdf *asdf* asdf -->
+<p>asdf asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 The examples below will generate a predictable HTML code, but not because this converter cares about the existing HTML
 tag balance:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+<nav>
+<ul>
+<li>
+<a>asdf</a>
+</li>
+<li>
+<a>asdf</a>
+</li>
+<li>
+<a>asdf</a>
+</li>
+</ul>
+</nav>
+
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<nav>
+<ul>
+<li>
+<a>asdf</a>
+</li>
+<li>
+<a>asdf</a>
+</li>
+<li>
+<a>asdf</a>
+</li>
+</ul>
+</nav>
+<p>asdf asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<nav>
+  <ul>
+    <li>
+      <a>asdf</a>
+    </li>
+    <li>
+      <a>asdf</a>
+    </li>
+    <li>
+      <a>asdf</a>
+    </li>
+  </ul>
+</nav>
+
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<nav>
+  <ul>
+    <li>
+      <a>asdf</a>
+    </li>
+    <li>
+      <a>asdf</a>
+    </li>
+    <li>
+      <a>asdf</a>
+    </li>
+  </ul>
+</nav>
+<p>asdf asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 You will understand why when you add a number of blank lines at any point in the HTML block:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;&#10;&#10;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;nav&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;&#10;&lt;p&gt;asdf&lt;/a&gt;&lt;/p&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;li&gt;&#10;&lt;a&gt;asdf&lt;/a&gt;&#10;&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;&#10;&#10;      asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;asdf&lt;/a&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;nav&gt;&#10;  &lt;ul&gt;&#10;    &lt;li&gt;&#10;      &lt;a&gt;&#10;&lt;pre&gt;&lt;code&gt;  asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&#10;&amp;lt;li&amp;gt;&#10;  &amp;lt;a&amp;gt;asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&amp;lt;li&amp;gt;&#10;  &amp;lt;a&amp;gt;asdf&amp;lt;/a&amp;gt;&#10;&amp;lt;/li&amp;gt;&#10;&lt;/code&gt;&lt;/pre&gt;&#10;&lt;/ul&gt;&#10;&lt;/nav&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+<nav>
+<ul>
+<li>
+<a>
+
+asdf</a>
+</li>
+
+<li>
+<a>asdf</a>
+</li>
+<li>
+<a>asdf</a>
+</li>
+</ul>
+</nav>
+
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<nav>
+<ul>
+<li>
+<a>
+<p>asdf</a></p>
+</li>
+<li>
+<a>asdf</a>
+</li>
+<li>
+<a>asdf</a>
+</li>
+</ul>
+</nav>
+<p>asdf asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<nav>
+  <ul>
+    <li>
+      <a>
+
+      asdf</a>
+    </li>
+
+    <li>
+      <a>asdf</a>
+    </li>
+    <li>
+      <a>asdf</a>
+    </li>
+  </ul>
+</nav>
+
+asdf asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<nav>
+  <ul>
+    <li>
+      <a>
+<pre><code>  asdf&lt;/a&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+&lt;a&gt;asdf&lt;/a&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;a&gt;asdf&lt;/a&gt;
+&lt;/li&gt;
+</code></pre>
+  </ul>
+</nav>
+<p>asdf asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Markdown Extra features the `markdown` attribute on HTML to allow you to convert Markdown syntax to HTML in a HTML
@@ -921,68 +1644,132 @@ doesn’t affect the HTML when rendered in the browser window). If you’re used
 HTML block tag and before the closing HTML block tag, you should be okay.
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;div markdown="1"&gt;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt;</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;div markdown="1"&gt;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;div markdown="1"&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&lt;/div&gt;</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;div markdown="1"&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&#10;&lt;/div&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+<div markdown="1">
+asdf asdf *asdf* asdf
+</div>
+~~~
+
+</td>
+<td>
+
+~~~ html
+<div markdown="1">
+asdf asdf *asdf* asdf
+</div>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<div markdown="1">
+
+asdf asdf *asdf* asdf
+</div>
+~~~
+
+</td>
+<td>
+
+~~~ html
+<div markdown="1">
+<p>asdf asdf <em>asdf</em> asdf</p>
+</div>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Opening an inline HTML element will not trigger the raw HTML block state unless the opening and closing tags stand alone
 on a single line. This is explained in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), type 7:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;del&gt;asdf asdf &#42;asdf&#42;&lt;/del&gt; asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;&lt;del&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/del&gt; asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;del&gt;&#10;asdf asdf &#42;asdf&#42;&#10;&lt;/del&gt;&#10;asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;del&gt;&#10;asdf asdf &#42;asdf&#42;&#10;&lt;/del&gt;&#10;asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;del&gt;&#10;&#10;asdf asdf &#42;asdf&#42;&#10;&#10;&lt;/del&gt;&#10;&#10;asdf &#42;asdf&#42; asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;del&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt;&lt;/p&gt;&#10;&lt;/del&gt;&#10;&lt;p&gt;asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+<del>asdf asdf *asdf*</del> asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p><del>asdf asdf <em>asdf</em></del> asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<del>
+asdf asdf *asdf*
+</del>
+asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<del>
+asdf asdf *asdf*
+</del>
+asdf *asdf* asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<del>
+
+asdf asdf *asdf*
+
+</del>
+
+asdf *asdf* asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<del>
+<p>asdf asdf <em>asdf</em></p>
+</del>
+<p>asdf <em>asdf</em> asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Since CommonMark doesn’t care about HTML structure, the examples below will also conform to the specification, even if
@@ -990,30 +1777,58 @@ they result in broken HTML. However, these are very rarely intentionally written
 unlikely to occur:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;h1&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/h1&gt;</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;h1&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&#10;&lt;/h1&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>&lt;p&gt;&#10;&#10;asdf asdf &#42;asdf&#42; asdf&#10;&#10;&lt;/p&gt;</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;&#10;&lt;p&gt;asdf asdf &lt;em&gt;asdf&lt;/em&gt; asdf&lt;/p&gt;&#10;&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+<h1>
+
+asdf asdf *asdf* asdf
+
+</h1>
+~~~
+
+</td>
+<td>
+
+~~~ html
+<h1>
+<p>asdf asdf <em>asdf</em> asdf</p>
+</h1>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+<p>
+
+asdf asdf *asdf* asdf
+
+</p>
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>
+<p>asdf asdf <em>asdf</em> asdf</p>
+</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 ### Image Block
@@ -1024,83 +1839,182 @@ into an image element wrapped in a paragraph element. However, my parser would i
 now, it seems that a figure element would be more desirable in this situation.
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10;&#10;asdf asdf asdf asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+
+![asdf](asdf)
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf</p>
+<figure>
+  <img alt="asdf" src="asdf" />
+</figure>
+<p>asdf asdf asdf asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 A paragraph that immediately follows the image syntax will be treated as the image caption:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10;asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;  &lt;figcaption&gt;asdf asdf asdf asdf&lt;/figcaption&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+
+![asdf](asdf)
+asdf asdf asdf asdf
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf</p>
+<figure>
+  <img alt="asdf" src="asdf" />
+  <figcaption>asdf asdf asdf asdf</figcaption>
+</figure>
+<p>asdf asdf asdf asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Block elements other than paragraph can also be used as the image caption. To make this work, you need to indent the
 portions you want to include in the caption with spaces:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10; # asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;  &lt;figcaption&gt;&#10;    &lt;h1&gt;asdf asdf asdf asdf&lt;/h1&gt;&#10;  &lt;/figcaption&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10;&#10;  asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;  &lt;figcaption&gt;&#10;    &lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;  &lt;/figcaption&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;&#10;![asdf](asdf)&#10;&#10;  asdf asdf asdf asdf&#10;  -------------------&#10;&#10;  asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;figure&gt;&#10;  &lt;img alt="asdf" src="asdf" /&gt;&#10;  &lt;figcaption&gt;&#10;    &lt;h2&gt;asdf asdf asdf asdf&lt;/h2&gt;&#10;    &lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;  &lt;/figcaption&gt;&#10;&lt;/figure&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
-</table>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
 
+~~~ md
+asdf asdf asdf asdf
+
+![asdf](asdf)
+ # asdf asdf asdf asdf
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf</p>
+<figure>
+  <img alt="asdf" src="asdf" />
+  <figcaption>
+    <h1>asdf asdf asdf asdf</h1>
+  </figcaption>
+</figure>
+<p>asdf asdf asdf asdf</p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+
+![asdf](asdf)
+
+  asdf asdf asdf asdf
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf</p>
+<figure>
+  <img alt="asdf" src="asdf" />
+  <figcaption>
+    <p>asdf asdf asdf asdf</p>
+  </figcaption>
+</figure>
+<p>asdf asdf asdf asdf</p>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+
+![asdf](asdf)
+
+  asdf asdf asdf asdf
+  -------------------
+
+  asdf asdf asdf asdf
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf</p>
+<figure>
+  <img alt="asdf" src="asdf" />
+  <figcaption>
+    <h2>asdf asdf asdf asdf</h2>
+    <p>asdf asdf asdf asdf</p>
+  </figcaption>
+</figure>
+<p>asdf asdf asdf asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
+</table>
 
 ### List Block
 
@@ -1109,79 +2023,179 @@ specification for [the `type` attribute of `<ol>` element](https://html.spec.wha
 it does not satisfy the CommonMark rules. Instead, it “extends” them.
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>1) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>1. asdf asdf asdf asdf&#10;2. asdf asdf asdf asdf&#10;3. asdf asdf asdf asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>A. asdf asdf asdf asdf&#10;B. asdf asdf asdf asdf&#10;C. asdf asdf asdf asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>a) asdf asdf asdf asdf&#10;b) asdf asdf asdf asdf&#10;c) asdf asdf asdf asdf</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;ol type="a"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>a. asdf asdf asdf asdf&#10;b. asdf asdf asdf asdf&#10;c. asdf asdf asdf asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>I. asdf asdf asdf asdf&#10;II. asdf asdf asdf asdf&#10;III. asdf asdf asdf asdf</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>i) asdf asdf asdf asdf&#10;ii) asdf asdf asdf asdf&#10;iii) asdf asdf asdf asdf</code></pre>
-      </td>
-      <td rowspan="2">
-        <pre><code>&lt;ol type="i"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>i. asdf asdf asdf asdf&#10;ii. asdf asdf asdf asdf&#10;iii. asdf asdf asdf asdf</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+1) asdf asdf asdf asdf
+2) asdf asdf asdf asdf
+3) asdf asdf asdf asdf
+~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<ol>
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+</ol>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+1. asdf asdf asdf asdf
+2. asdf asdf asdf asdf
+3. asdf asdf asdf asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+A) asdf asdf asdf asdf
+B) asdf asdf asdf asdf
+C) asdf asdf asdf asdf
+~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<ol type="A">
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+</ol>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+A. asdf asdf asdf asdf
+B. asdf asdf asdf asdf
+C. asdf asdf asdf asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+a) asdf asdf asdf asdf
+b) asdf asdf asdf asdf
+c) asdf asdf asdf asdf
+~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<ol type="a">
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+</ol>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+a. asdf asdf asdf asdf
+b. asdf asdf asdf asdf
+c. asdf asdf asdf asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+I) asdf asdf asdf asdf
+II) asdf asdf asdf asdf
+III) asdf asdf asdf asdf
+~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<ol type="I">
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+</ol>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+I. asdf asdf asdf asdf
+II. asdf asdf asdf asdf
+III. asdf asdf asdf asdf
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+i) asdf asdf asdf asdf
+ii) asdf asdf asdf asdf
+iii) asdf asdf asdf asdf
+~~~
+
+</td>
+<td rowspan="2">
+
+~~~ html
+<ol type="i">
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+  <li>asdf asdf asdf asdf</li>
+</ol>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+i. asdf asdf asdf asdf
+ii. asdf asdf asdf asdf
+iii. asdf asdf asdf asdf
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Since the list block marker can now be any lower-case or upper-case characters and will also treat the character “I” and
@@ -1190,60 +2204,96 @@ Since the list block marker can now be any lower-case or upper-case characters a
  1. A **type “A”** list block can only start with the prefix `A) ` or `A. `.
 
     <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        <tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <pre><code>A) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>B) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;p&gt;B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-          </td>
-        </tr>
-      </tbody>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    <tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    A) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="A">
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    B) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <p>B) asdf asdf asdf asdf</p>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
  1. A **type “a”** list block can only start with the prefix `a) ` or `a. `.
  1. A **type “I”** list block can only start with the prefix `I) ` or `I. `.
 
     <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        <tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <pre><code>I) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>II) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;p&gt;II) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-          </td>
-        </tr>
-      </tbody>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    <tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    I) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="I">
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    II) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <p>II) asdf asdf asdf asdf</p>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
  1. A **type “i”** list block can only start with the prefix `i) ` or `i. `.
@@ -1252,30 +2302,51 @@ Those list types don’t support custom `start` attribute (they will always star
 prefixes, they can interrupt the paragraph:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    <tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <pre><code>asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;p&gt;asdf asdf asdf asdf B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+<tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+A) asdf asdf asdf asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf</p>
+<ol type="A">
+  <li>asdf asdf asdf asdf</li>
+</ol>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+B) asdf asdf asdf asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf B) asdf asdf asdf asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 The list item continuation “number” is enforced as follows:
@@ -1283,140 +2354,334 @@ The list item continuation “number” is enforced as follows:
  1. A list item continuation can only use the current number or the next number after it.
 
     <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        <tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <pre><code>1) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>1) asdf asdf asdf asdf&#10;1) asdf asdf asdf asdf&#10;1) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>2) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol start="2"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>1) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>1) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf&#10;4) asdf asdf asdf asdf&#10;5) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf 3) asdf asdf asdf asdf 4) asdf asdf asdf asdf 5) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>1) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf&#10;2) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf 3) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>1) asdf asdf asdf asdf&#10;3) asdf asdf asdf asdf&#10;1) asdf asdf asdf asdf&#10;1) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf 3) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-      </tbody>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    <tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    1) asdf asdf asdf asdf
+    2) asdf asdf asdf asdf
+    3) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    1) asdf asdf asdf asdf
+    1) asdf asdf asdf asdf
+    1) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    2) asdf asdf asdf asdf
+    2) asdf asdf asdf asdf
+    2) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol start="2">
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    1) asdf asdf asdf asdf
+    2) asdf asdf asdf asdf
+    2) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    1) asdf asdf asdf asdf
+    3) asdf asdf asdf asdf
+    4) asdf asdf asdf asdf
+    5) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol>
+      <li>asdf asdf asdf asdf 3) asdf asdf asdf asdf 4) asdf asdf asdf asdf 5) asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    1) asdf asdf asdf asdf
+    3) asdf asdf asdf asdf
+    2) asdf asdf asdf asdf
+    3) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="A">
+      <li>asdf asdf asdf asdf 3) asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    1) asdf asdf asdf asdf
+    3) asdf asdf asdf asdf
+    1) asdf asdf asdf asdf
+    1) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol>
+      <li>asdf asdf asdf asdf 3) asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
  1. A list item continuation of **type “A”** list block can only use the current character or the next character after
     it. After the character “Z”, the list continues with “AA”, “AB”, “AC”, and so on.
 
     <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        <tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;p&gt;B) asdf asdf asdf asdf B) asdf asdf asdf asdf B) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>A) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>A) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf&#10;D) asdf asdf asdf asdf&#10;E) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf C) asdf asdf asdf asdf D) asdf asdf asdf asdf E) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>A) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf&#10;B) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf C) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>A) asdf asdf asdf asdf&#10;C) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf&#10;A) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="A"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf C) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-      </tbody>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    <tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    A) asdf asdf asdf asdf
+    B) asdf asdf asdf asdf
+    C) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="A">
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    A) asdf asdf asdf asdf
+    A) asdf asdf asdf asdf
+    A) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="A">
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    B) asdf asdf asdf asdf
+    B) asdf asdf asdf asdf
+    B) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <p>B) asdf asdf asdf asdf B) asdf asdf asdf asdf B) asdf asdf asdf asdf</p>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    A) asdf asdf asdf asdf
+    B) asdf asdf asdf asdf
+    B) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="A">
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    A) asdf asdf asdf asdf
+    C) asdf asdf asdf asdf
+    D) asdf asdf asdf asdf
+    E) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="A">
+      <li>asdf asdf asdf asdf C) asdf asdf asdf asdf D) asdf asdf asdf asdf E) asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    A) asdf asdf asdf asdf
+    C) asdf asdf asdf asdf
+    B) asdf asdf asdf asdf
+    C) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="A">
+      <li>asdf asdf asdf asdf C) asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    A) asdf asdf asdf asdf
+    C) asdf asdf asdf asdf
+    A) asdf asdf asdf asdf
+    A) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="A">
+      <li>asdf asdf asdf asdf C) asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
  1. A list item continuation of **type “a”** list block can only use the current character or the next character after
@@ -1425,70 +2690,165 @@ The list item continuation “number” is enforced as follows:
     after it.
 
     <table>
-      <thead>
-        <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        <tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;p&gt;II) asdf asdf asdf asdf II) asdf asdf asdf asdf II) asdf asdf asdf asdf&lt;/p&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>I) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;IV) asdf asdf asdf asdf&#10;V) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf IV) asdf asdf asdf asdf V) asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;II) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>I) asdf asdf asdf asdf&#10;III) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf&#10;I) asdf asdf asdf asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;ol type="I"&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf III) asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;  &lt;li&gt;asdf asdf asdf asdf&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-          </td>
-        </tr>
-      </tbody>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    <tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    I) asdf asdf asdf asdf
+    II) asdf asdf asdf asdf
+    III) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="I">
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    I) asdf asdf asdf asdf
+    I) asdf asdf asdf asdf
+    I) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="I">
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    II) asdf asdf asdf asdf
+    II) asdf asdf asdf asdf
+    II) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <p>II) asdf asdf asdf asdf II) asdf asdf asdf asdf II) asdf asdf asdf asdf</p>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    I) asdf asdf asdf asdf
+    II) asdf asdf asdf asdf
+    II) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="I">
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    I) asdf asdf asdf asdf
+    III) asdf asdf asdf asdf
+    IV) asdf asdf asdf asdf
+    V) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="I">
+      <li>asdf asdf asdf asdf III) asdf asdf asdf asdf IV) asdf asdf asdf asdf V) asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    I) asdf asdf asdf asdf
+    III) asdf asdf asdf asdf
+    II) asdf asdf asdf asdf
+    III) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="I">
+      <li>asdf asdf asdf asdf III) asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    I) asdf asdf asdf asdf
+    III) asdf asdf asdf asdf
+    I) asdf asdf asdf asdf
+    I) asdf asdf asdf asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <ol type="I">
+      <li>asdf asdf asdf asdf III) asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+      <li>asdf asdf asdf asdf</li>
+    </ol>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
  1. A list Item continuation of **type “i”** list block can only use the current Roman numeral or the next Roman numeral
@@ -1539,22 +2899,36 @@ consider a very large number. For example,
 With my stricter rules, the result will be more desirable:
 
 <table>
-  <thead>
-    <tr>
-      <th>CommonMark</th>
-      <th>Mine</th>
-    <tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>&lt;ol&gt;&#10;&lt;li&gt;Before the end of the paragraph, I invite you to&#10;consider a very large number. For example,&lt;/li&gt;&#10;&lt;li&gt;Are you thinking about it?&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;ol&gt;&#10;  &lt;li&gt;Before the end of the paragraph, I invite you to consider a very large number. For example, 45000000. Are you thinking about it?&lt;/li&gt;&#10;&lt;/ol&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>CommonMark</th>
+<th>Mine</th>
+<tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ html
+<ol>
+  <li>Before the end of the paragraph, I invite you to
+  consider a very large number. For example,</li>
+  <li>Are you thinking about it?</li>
+</ol>
+~~~
+
+</td>
+<td>
+
+~~~ html
+<ol>
+  <li>Before the end of the paragraph, I invite you to consider a very large number. For example, 45000000. Are you thinking about it?</li>
+</ol>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 Please note that this is just my idea of how CommonMark could improve its implementation. For best compatibility with
@@ -1569,22 +2943,84 @@ slightly different HTML output to match [Mecha](https://github.com/mecha-cms)’
 Extra, multi-line notes don’t have to be indented by four spaces. A space or tab is suffice to continue the note.
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><pre><code>asdf [^1]&#10;&#10;[^1]: asdf</code></pre></td>
-      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&#10;&lt;div role="doc-endnotes"&gt;&#10;  &lt;hr /&gt;&#10;  &lt;ol&gt;&#10;    &lt;li id="to:1" role="doc-endnote"&gt;&#10;      &lt;p&gt;asdf&amp;#xa0;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#x21a9;&lt;/a&gt;&lt;/p&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ol&gt;&#10;&lt;/div&gt;</code></pre></td>
-    </tr>
-    <tr>
-      <td><pre><code>asdf [^1]&#10;&#10;[^1]:&#10;&#10;  asdf&#10;  ----&#10;&#10;  asdf&#10;  asdf&#10;&#10;      asdf&#10;&#10;  asdf&#10;  asdf&#10;&#10;asdf</code></pre></td>
-      <td><pre><code>&lt;p&gt;asdf &lt;sup id="from:1"&gt;&lt;a href="#to:1" role="doc-noteref"&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;&#10;&lt;p&gt;asdf&lt;/p&gt;&#10;&lt;div role="doc-endnotes"&gt;&#10;  &lt;hr /&gt;&#10;  &lt;ol&gt;&#10;    &lt;li id="to:1" role="doc-endnote"&gt;&#10;      &lt;h2&gt;asdf&lt;/h2&gt;&#10;      &lt;p&gt;asdf asdf&lt;/p&gt;&#10;      &lt;pre&gt;&lt;code&gt;asdf&#10;&lt;/code&gt;&lt;/pre&gt;&#10;      &lt;p&gt;asdf asdf&amp;#xa0;&lt;a href="#from:1" role="doc-backlink"&gt;&amp;#x21a9;&lt;/a&gt;&lt;/p&gt;&#10;    &lt;/li&gt;&#10;  &lt;/ol&gt;&#10;&lt;/div&gt;</code></pre></td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+asdf [^1]
+
+[^1]: asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf <sup id="from:1"><a href="#to:1" role="doc-noteref">1</a></sup></p>
+<div role="doc-endnotes">
+  <hr />
+  <ol>
+    <li id="to:1" role="doc-endnote">
+      <p>asdf&#xa0;<a href="#from:1" role="doc-backlink">&#x21a9;</a></p>
+    </li>
+  </ol>
+</div>
+~~~
+
+</td>
+</tr>
+<tr>
+<td>
+
+~~~ md
+asdf [^1]
+
+[^1]:
+
+  asdf
+  ----
+
+  asdf
+  asdf
+
+      asdf
+
+  asdf
+  asdf
+
+asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf <sup id="from:1"><a href="#to:1" role="doc-noteref">1</a></sup></p>
+<p>asdf</p>
+<div role="doc-endnotes">
+  <hr />
+  <ol>
+    <li id="to:1" role="doc-endnote">
+      <h2>asdf</h2>
+      <p>asdf asdf</p>
+      <pre><code>asdf
+      </code></pre>
+      <p>asdf asdf&#xa0;<a href="#from:1" role="doc-backlink">&#x21a9;</a></p>
+    </li>
+  </ol>
+</div>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 ### Soft Break
@@ -1593,18 +3029,34 @@ Extra, multi-line notes don’t have to be indented by four spaces. A space or t
 within paragraphs and list items:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><pre><code>asdf asdf asdf asdf&#10;asdf asdf asdf asdf&#10;&#10;asdf asdf asdf asdf</code></pre></td>
-      <td><pre><code>&lt;p&gt;asdf asdf asdf asdf asdf asdf asdf asdf&lt;/p&gt;&#10;&lt;p&gt;asdf asdf asdf asdf&lt;/p&gt;</code></pre></td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+asdf asdf asdf asdf
+asdf asdf asdf asdf
+
+asdf asdf asdf asdf
+~~~
+
+</td>
+<td>
+
+~~~ html
+<p>asdf asdf asdf asdf asdf asdf asdf asdf</p>
+<p>asdf asdf asdf asdf</p>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 ### Table Block
@@ -1625,105 +3077,312 @@ but with a few additional features and rules:
     and the attribute values of [raw HTML](https://spec.commonmark.org/0.31.2#raw-html) tags:
 
     <table>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    <tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    asdf         | asdf \| asdf
+    ------------ | ------------
+    asdf \| asdf | asdf
+    asdf         | asdf \| asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <table>
       <thead>
         <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        <tr>
+          <th>asdf</th>
+          <th>asdf | asdf</th>
+        </tr>
       </thead>
       <tbody>
         <tr>
-          <td>
-            <pre><code>asdf         | asdf \| asdf&#10;------------ | ------------&#10;asdf \| asdf | asdf&#10;asdf         | asdf \| asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;asdf | asdf&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf | asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf | asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
-          </td>
+          <td>asdf | asdf</td>
+          <td>asdf</td>
         </tr>
         <tr>
-          <td>
-            <pre><code>asdf                    | &lt;asdf:asdf?asdf=|asdf|&gt;&#10;----------------------- | -----------------------&#10;&lt;asdf:asdf?asdf=|asdf|&gt; | asdf&#10;asdf                    | &lt;asdf:asdf?asdf=|asdf|&gt;</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;&lt;a href="asdf:asdf?asdf=%7Casdf%7C"&gt;asdf:asdf?asdf=|asdf|&lt;/a&gt;&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;&lt;a href="asdf:asdf?asdf=%7Casdf%7C"&gt;asdf:asdf?asdf=|asdf|&lt;/a&gt;&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;&lt;a href="asdf:asdf?asdf=%7Casdf%7C"&gt;asdf:asdf?asdf=|asdf|&lt;/a&gt;&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>asdf          | `asdf | asdf`&#10;------------- | -------------&#10;`asdf | asdf` | asdf&#10;asdf          | `asdf | asdf`</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;&lt;code&gt;asdf | asdf&lt;/code&gt;&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;&lt;code&gt;asdf | asdf&lt;/code&gt;&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;&lt;code&gt;asdf | asdf&lt;/code&gt;&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>asdf            | &lt;asdf asdf="|"&gt;&#10;--------------- | ---------------&#10;&lt;asdf asdf="|"&gt; | asdf&#10;asdf            | &lt;asdf asdf="|"&gt;</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;&lt;asdf asdf="|"&gt;&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;&lt;asdf asdf="|"&gt;&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;&lt;asdf asdf="|"&gt;&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
-          </td>
+          <td>asdf</td>
+          <td>asdf | asdf</td>
         </tr>
       </tbody>
+    </table>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    asdf                    | <asdf:asdf?asdf=|asdf|>
+    ----------------------- | -----------------------
+    <asdf:asdf?asdf=|asdf|> | asdf
+    asdf                    | <asdf:asdf?asdf=|asdf|>
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <table>
+      <thead>
+        <tr>
+          <th>asdf</th>
+          <th><a href="asdf:asdf?asdf=%7Casdf%7C">asdf:asdf?asdf=|asdf|</a></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="asdf:asdf?asdf=%7Casdf%7C">asdf:asdf?asdf=|asdf|</a></td>
+          <td>asdf</td>
+        </tr>
+        <tr>
+          <td>asdf</td>
+          <td><a href="asdf:asdf?asdf=%7Casdf%7C">asdf:asdf?asdf=|asdf|</a></td>
+        </tr>
+      </tbody>
+    </table>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    asdf          | `asdf | asdf`
+    ------------- | -------------
+    `asdf | asdf` | asdf
+    asdf          | `asdf | asdf`
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <table>
+      <thead>
+        <tr>
+          <th>asdf</th>
+          <th><code>asdf | asdf</code></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>asdf | asdf</code></td>
+          <td>asdf</td>
+        </tr>
+        <tr>
+          <td>asdf</td>
+          <td><code>asdf | asdf</code></td>
+        </tr>
+      </tbody>
+    </table>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    asdf            | <asdf asdf="|">
+    --------------- | ---------------
+    <asdf asdf="|"> | asdf
+    asdf            | <asdf asdf="|">
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <table>
+      <thead>
+        <tr>
+          <th>asdf</th>
+          <th><asdf asdf="|"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><asdf asdf="|"></td>
+          <td>asdf</td>
+        </tr>
+        <tr>
+          <td>asdf</td>
+          <td><asdf asdf="|"></td>
+        </tr>
+      </tbody>
+    </table>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
  1. Header-less table is supported, but may not be compatible with other Markdown parsers. Consider using this feature
     as rarely as possible, unless you have no plans to switch to other Markdown parsers in the future:
 
     <table>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    <tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    asdf | asdf
+    ---- | ----
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <table>
       <thead>
         <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        <tr>
+          <th>asdf</th>
+          <th>asdf</th>
+        </tr>
       </thead>
+    </table>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    ---- | ----
+    asdf | asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <table>
       <tbody>
         <tr>
-          <td>
-            <pre><code>asdf | asdf&#10;---- | ----</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;table&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10;&lt;/table&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>---- | ----&#10;asdf | asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;table&gt;&#10;  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;</code></pre>
-          </td>
+          <td>asdf</td>
+          <td>asdf</td>
         </tr>
       </tbody>
+    </table>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
  1. Table captions are supported and can be written in the same way as image captions are written:
 
     <table>
+    <thead>
+    <tr>
+    <th>Markdown</th>
+    <th>HTML</th>
+    <tr>
+    </thead>
+    <tbody>
+    <tr>
+    <td>
+
+    ~~~ md
+    | asdf | asdf |
+    | ---- | ---- |
+    | asdf | asdf |
+    asdf
+
+    asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <table>
+      <caption>asdf</caption>
       <thead>
         <tr>
-          <th>Markdown</th>
-          <th>HTML</th>
-        <tr>
+          <th>asdf</th>
+          <th>asdf</th>
+        </tr>
       </thead>
       <tbody>
         <tr>
-          <td>
-            <pre><code>| asdf | asdf |&#10;| ---- | ---- |&#10;| asdf | asdf |&#10;asdf&#10;&#10;asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;table&gt;&#10;  &lt;caption&gt;asdf&lt;/caption&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;&#10;&lt;p&gt;asdf&lt;/p&gt;</code></pre>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <pre><code>| asdf | asdf |&#10;| ---- | ---- |&#10;| asdf | asdf |&#10;&#10;  asdf&#10;  ----&#10;&#10;  asdf&#10;&#10;asdf</code></pre>
-          </td>
-          <td>
-            <pre><code>&lt;table&gt;&#10;  &lt;caption&gt;&#10;    &lt;h2&gt;asdf&lt;/h2&gt;&#10;    &lt;p&gt;asdf&lt;/p&gt;&#10;  &lt;/caption&gt;&#10;  &lt;thead&gt;&#10;    &lt;tr&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;      &lt;th&gt;asdf&lt;/th&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/thead&gt;&#10  &lt;tbody&gt;&#10;    &lt;tr&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;      &lt;td&gt;asdf&lt;/td&gt;&#10;    &lt;/tr&gt;&#10;  &lt;/tbody&gt;&#10;&lt;/table&gt;&#10;&lt;p&gt;asdf&lt;/p&gt;</code></pre>
-          </td>
+          <td>asdf</td>
+          <td>asdf</td>
         </tr>
       </tbody>
+    </table>
+    <p>asdf</p>
+    ~~~
+
+    </td>
+    </tr>
+    <tr>
+    <td>
+
+    ~~~ md
+    | asdf | asdf |
+    | ---- | ---- |
+    | asdf | asdf |
+
+      asdf
+      ----
+
+      asdf
+
+    asdf
+    ~~~
+
+    </td>
+    <td>
+
+    ~~~ html
+    <table>
+      <caption>
+        <h2>asdf</h2>
+        <p>asdf</p>
+      </caption>
+      <thead>
+        <tr>
+          <th>asdf</th>
+          <th>asdf</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>asdf</td>
+          <td>asdf</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>asdf</p>
+    ~~~
+
+    </td>
+    </tr>
+    </tbody>
     </table>
 
 ### Tabs
@@ -1792,22 +3451,32 @@ intention of adding any special security features in the future, sorry. The attr
 risk for you if you want to use this converter on your comment entries, for example:
 
 <table>
-  <thead>
-    <tr>
-      <th>Markdown</th>
-      <th>HTML</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre><code>![asdf](asdf){onerror="alert('Yo!')"}</code></pre>
-      </td>
-      <td>
-        <pre><code>&lt;figure&gt;&#10;  &lt;img alt="asdf" onerror="alert('Yo!')" src="asdf" /&gt;&#10;&lt;/figure&gt;</code></pre>
-      </td>
-    </tr>
-  </tbody>
+<thead>
+<tr>
+<th>Markdown</th>
+<th>HTML</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+~~~ md
+![asdf](asdf){onerror="alert('Yo!')"}
+~~~
+
+</td>
+<td>
+
+~~~ html
+<figure>
+  <img alt="asdf" onerror="alert('Yo!')" src="asdf" />
+</figure>
+~~~
+
+</td>
+</tr>
+</tbody>
 </table>
 
 There should be many specialized PHP applications already that have specific tasks to deal with XSS, so consider

@@ -393,8 +393,8 @@ namespace x\markdown\from {
     function f(string $text) {
         return \defined("\\MB_CASE_FOLD") ? \mb_convert_case($text, \MB_CASE_FOLD, 'UTF-8') : \strtolower($text);
     }
-    function h(string $text) {
-        return \htmlspecialchars($text, \ENT_HTML5 | \ENT_NOQUOTES, 'UTF-8', false);
+    function h(string $text, $deep = false) {
+        return \htmlspecialchars($text, \ENT_HTML5 | \ENT_NOQUOTES, 'UTF-8', $deep);
     }
     // <https://spec.commonmark.org/0.31.2#link-label>
     function k(string $value, int $i, int $limit, int $deep = 0, $void = false) {
@@ -748,7 +748,7 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#code-span>
             if ('`' === $c && ($m = c2e($value, $i, $limit))) {
                 "" !== $s && ($row[] = h($s));
-                $row[] = ['code', h($m[0]), []];
+                $row[] = ['code', h($m[0], true), []];
                 $i += $m[1];
                 $s = "";
                 // Check for attribute syntax after code
@@ -1183,7 +1183,7 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $rows[] = ['pre', [['code', h($s . "\n"), []]], [], [0, ""]];
+                $rows[] = ['pre', [['code', h($s . "\n", true), []]], [], [0, ""]];
                 $s = "";
                 continue;
             }
@@ -1736,7 +1736,7 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $rows[] = ['pre', [['code', h($s), a($info, 0, \strlen($info), '{' !== ($info[0] ?? 0), 'language-%s')[0] ?? []]], [], [$min, $c]];
+                $rows[] = ['pre', [['code', h($s, true), a($info, 0, \strlen($info), '{' !== ($info[0] ?? 0), 'language-%s')[0] ?? []]], [], [$min, $c]];
                 $s = "";
                 continue;
             }
