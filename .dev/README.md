@@ -3495,7 +3495,7 @@ That method is very naive. It will also replace the raw HTML tags that end with 
 no concern with that, but if you do, [here’s a method](x/void.php) you can implement through the data structure:
 
 ~~~ php
-$void = function (array $rows) {
+$void = function (array $rows) use (&$void) {
     if (empty($rows) || !is_array($rows)) {
         return $rows;
     }
@@ -3509,7 +3509,7 @@ $void = function (array $rows) {
         if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true)) {
             foreach ($row[1] as $kk => $vv) {
                 if (is_array($vv[1] ?? 0)) {
-                    $rows[$k][1][$kk][1] = _void($vv[1]);
+                    $rows[$k][1][$kk][1] = $void($vv[1]);
                 }
             }
         }
