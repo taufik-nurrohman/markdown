@@ -1,7 +1,7 @@
 PHP Markdown Parser
 ===================
 
-![from.php]
+![from.php] <!-- -->
 
 [from.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/from.php?branch=main&color=%234f5d95&label=from.php&labelColor=%231f2328&style=flat-square
 
@@ -103,7 +103,7 @@ echo '</p>';
 
 If this option is set to a number greater than or equal to `0`, it will determine the indent size for block elements,
 which will tidy up the HTML output. If it is set to a string, the string will be used as the indent. For example, you
-can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters.
+can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters:
 
 ~~~ php
 <?= from_markdown($value, ['tab' => 0]); ?>
@@ -1276,13 +1276,13 @@ asdf
 
 ### HTML Block
 
-CommonMark doesn’t care about the DOM and therefore also doesn’t care if a HTML element is perfectly balanced or not.
-Unlike the original Markdown syntax specification which doesn’t allow you to convert Markdown syntax inside a HTML
-block, the CommonMark specification doesn’t limit such a case. It cares about blank lines around the lines that look
-like a HTML block tag, as specified in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), type 6.
+CommonMark doesn’t care about the DOM, so it can’t tell if an HTML element is correctly balanced. Unlike the original
+Markdown syntax specification, which doesn’t allow Markdown syntax to be processed inside HTML blocks, the CommonMark
+specification doesn’t limit such cases. It only cares about blank lines that appear around lines that resemble HTML
+block tags, as specified in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), Type 6.
 
-Any text that comes after the opening and/or closing of a HTML block is treated as raw text and is not processed as
-Markdown syntax. A blank line is required to end the raw HTML block state:
+Any text that follows the opening and/or closing of an HTML block is treated as plain text and will not be processed as
+Markdown syntax. A blank line is required to end the raw HTML block:
 
 <table>
 <thead>
@@ -1360,7 +1360,7 @@ asdf asdf *asdf* asdf
 </tbody>
 </table>
 
-Exception for types 1, 2, 3, 4, and 5. A line break is enough to end the raw HTML block state:
+Except for HTML block types 1, 2, 3, 4, and 5. A line break is enough to end the raw HTML block state:
 
 <table>
 <thead>
@@ -1426,8 +1426,8 @@ asdf asdf *asdf* asdf
 </tbody>
 </table>
 
-The examples below will generate a predictable HTML code, but not because this converter cares about the existing HTML
-tag balance:
+The examples below will generate predictable HTML code, but not because this parser cares about the existing HTML tag
+balance:
 
 <table>
 <thead>
@@ -1583,65 +1583,63 @@ asdf asdf *asdf* asdf
 
 </td>
 </tr>
-<tr>
-<td>
-
-~~~ md
-<nav>
-  <ul>
-    <li>
-      <a>
-
-      asdf</a>
-    </li>
-
-    <li>
-      <a>asdf</a>
-    </li>
-    <li>
-      <a>asdf</a>
-    </li>
-  </ul>
-</nav>
-
-asdf asdf *asdf* asdf
-~~~
-
-</td>
-<td>
-
-~~~ html
-<nav>
-  <ul>
-    <li>
-      <a>
-<pre><code>  asdf&lt;/a&gt;
-&lt;/li&gt;
-
-&lt;li&gt;
-&lt;a&gt;asdf&lt;/a&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;a&gt;asdf&lt;/a&gt;
-&lt;/li&gt;
-</code></pre>
-  </ul>
-</nav>
-<p>asdf asdf <em>asdf</em> asdf</p>
-~~~
-
-</td>
-</tr>
 </tbody>
 </table>
 
-Markdown Extra features the `markdown` attribute on HTML to allow you to convert Markdown syntax to HTML in a HTML
-block. In this converter, the feature will not work. For now, I have no plans to add such feature to avoid DOM parsing
-tasks as much as possible. This also ensured me to avoid on using [PHP `dom`](https://www.php.net/book.dom).
+Here’s how it works:
 
-However, if you add a blank line, it’s as if the feature works (although the `markdown` attribute is still there, it
-doesn’t affect the HTML when rendered in the browser window). If you’re used to adding a blank line after the opening
-HTML block tag and before the closing HTML block tag, you should be okay.
+ 1. On the first line, the parser sees a raw HTML block type 6. It will not end the state until it either finds a blank
+    line or reaches the end of the stream. The parser will then continue to treat the next lines as part of the HTML
+    block type 6:
+
+    ~~~ md
+    <nav>
+    <ul>
+    <li>
+    <a>
+    ~~~
+
+ 1. After the blank lines, it sees a paragraph block. Like HTML block type 6, it can only end if it either finds a blank
+    line or reaches the end of the stream. However, it can also end if any type of Markdown block syntax that can
+    interrupt the paragraph appears immediately after it. HTML block type 6 is one of these types of syntax:
+
+    ~~~ md
+    asdf</a>
+    ~~~
+
+ 1. The paragraph ends at the `</a>` because it is interrupted by the `</li>`, which is an HTML block type 6. It then
+    ends at the first blank line:
+
+    ~~~ md
+    </li>
+    ~~~
+
+ 1. After the blank lines, it finds another HTML block type 6, which continues until the first blank line:
+
+    ~~~ md
+    <li>
+    <a>asdf</a>
+    </li>
+    <li>
+    <a>asdf</a>
+    </li>
+    </ul>
+    </nav>
+    ~~~
+
+ 1. And lastly, it sees a paragraph block again:
+
+    ~~~ md
+    asdf asdf *asdf* asdf
+    ~~~
+
+Markdown Extra features the `markdown` attribute in HTML, which allows you to convert Markdown syntax to HTML within an
+HTML block. This parser does not support the feature. I have no plans to add this feature, as I prefer to avoid parsing
+the DOM as much as possible. This also ensures that I can stay away from the [PHP `dom`](https://www.php.net/book.dom).
+
+However, if you add a blank line, it’s as if the feature works. While the `markdown` attribute stays, it doesn’t affect
+the HTML when rendered in the web browser. If you’re used to insert a blank line after the opening HTML block tag and
+before the closing tag, you should be fine:
 
 <table>
 <thead>
@@ -3445,10 +3443,10 @@ normalization” than “tab preservation”.
 XSS
 ---
 
-This converter is intended only to convert Markdown syntax to HTML based on the
+This parser is intended only to convert Markdown syntax to HTML based on the
 [CommonMark](https://spec.commonmark.org/0.31.2) specification. It doesn’t care about your user input. I have no
 intention of adding any special security features in the future, sorry. The attribute syntax feature may be a security
-risk for you if you want to use this converter on your comment entries, for example:
+risk for you if you want to use this parser on your comment entries, for example:
 
 <table>
 <thead>
@@ -3489,9 +3487,98 @@ Tools
 -----
 
 Clone this repository into the root of your web server that supports PHP and then you can open the `tools/test/from.php`
-and `tools/try.php` file with your browser to see the result and the performance of this converter in various cases.
+and `tools/try.php` file with your browser to see the result and the performance of this parser in various cases.
 
 Tweaks
 ------
 
-_TODO_
+Let me share some tips with you so that you can add more features and avoid asking me to modify the core functionality.
+Some of these need to be implemented at the [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree) level, which is
+very specific to my parser. Others need to be implemented after the HTML string is constructed. This one can actually be
+applied to any HTML string, not only the HTML string generated by my Markdown parser. I will call those the “naive”
+tweaks.
+
+
+### Globally Reusable Functions
+
+To make `from_markdown()` function reusable globally, use this method:
+
+~~~ php
+<?php
+
+require 'from.php';
+
+// Or, if you are using Composer…
+// require 'vendor/autoload.php';
+
+function from_markdown(?string $value, $state = []): ?string {
+    return x\markdown\from($value, $state);
+}
+~~~
+
+Now, you should be able to use the `from_markdown()` function anywhere without having to declare the `use function`
+part. Best for those who want to use my Markdown parser as part of their system API.
+
+### XHTML to HTML5
+
+My Markdown parser escapes invalid HTML elements and takes care of HTML special characters that you write in the
+Markdown [attribute syntax](#attributes). So, it is generally safe to replace ` />` with `>` directly from the HTML
+results of the Markdown conversion:
+
+~~~ php
+$value = from_markdown('asdf asdf ![asdf](asdf)');
+// Returns `'<p>asdf asdf <img alt="asdf" src="asdf" /></p>'`
+
+$value = strtr($value, [' />' => '>']);
+// Returns `'<p>asdf asdf <img alt="asdf" src="asdf"></p>'`
+
+echo $value;
+~~~
+
+That method is very naive. It will also replace the raw HTML tags that end with ` />` in the HTML results. You may have
+no concern with that, but if you do, [here’s a method](x/void.php) you can implement through the AST:
+
+~~~ php
+$void = function (array $rows) {
+    if (empty($rows) || !is_array($rows)) {
+        return $rows;
+    }
+    foreach ($rows as $k => $row) {
+        // Find thematic break
+        if ('hr' === ($row[0] ?? 0)) {
+            // Add dummy text so that it will be treated as an HTML element with a content
+            $rows[$k][1] = "\x1a";
+        }
+        // Recurse to look for potential void syntax in container block(s)
+        if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true)) {
+            foreach ($row[1] as $kk => $vv) {
+                if (is_array($vv[1] ?? 0)) {
+                    $rows[$k][1][$kk][1] = _void($vv[1]);
+                }
+            }
+        }
+        if (is_array($row[1])) {
+            foreach ($row[1] as $kk => $vv) {
+                // Find image
+                if ('img' === ($vv[0] ?? 0)) {
+                    // Apply the same change to the image syntax
+                    $rows[$k][1][$kk][1] = "\x1a";
+                }
+            }
+        }
+    }
+    return $rows;
+};
+
+$value = from_markdown('asdf asdf ![asdf](asdf) <img alt="asdf" src="asdf" />', ['with' => [$void]]);
+// Returns `'<p>asdf asdf <img alt="asdf" src="asdf">' . "\x1a" . '</img> <img alt="asdf" src="asdf" /></p>'`
+
+// Now, remove the marker(s) with the closing tag that follows
+$value = strtr($value, [
+    "\x1a</hr>" => "",
+    "\x1a</img>" => ""
+]);
+// Returns `'<p>asdf asdf <img alt="asdf" src="asdf"> <img alt="asdf" src="asdf" /></p>'`
+
+echo $value;
+~~~
