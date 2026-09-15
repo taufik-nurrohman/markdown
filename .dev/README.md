@@ -18,7 +18,7 @@ Motivation
 
 I appreciate the [Parsedown](https://github.com/erusev/parsedown) project for its simplicity and speed. It only uses a
 single class file to convert Markdown syntax to HTML. However, given the decrease in the project’s activity over time, I
-assume it is already “feature complete”. There are still some bugs to fix, and some of the PHP syntax has become
+assume it is already “feature complete”. There are still some bugs to fix, and some of the PHP syntax there has become
 obsolete with [the recent release of PHP version 8.1](https://www.php.net/releases/8.1/en.php).
 
 There is actually a draft available for [Parsedown version 2.0](https://github.com/erusev/parsedown/tree/2.0.x), but it
@@ -27,10 +27,10 @@ easy to add functionality without messing with the core features. Others may fin
 to the features provided by [CommonMark](https://github.com/thephpleague/commonmark/blob/2.4/docs/2.4/customization/extensions.md).
 Therefore, if I want to upgrade, it would be better to simply switch to CommonMark.
 
-I’m not into things like that. As someone who just needs a function to convert Markdown to HTML, that kind of
-flexibility is completely unnecessary. I just want to convert Markdown to HTML once and then move on. [Parsedown version
-1.8](https://github.com/erusev/parsedown/tree/1.8.x-beta) did the job, but it seems that it is no longer being actively
-maintained.
+I’m not into things like that. As someone who just needs a function to convert Markdown syntax to HTML, that kind of
+flexibility is completely unnecessary for me. I just want to convert Markdown syntax to HTML for once and then move on.
+[Parsedown version 1.8](https://github.com/erusev/parsedown/tree/1.8.x-beta) did the job, but it seems that it is no
+longer being actively maintained.
 
 The goal of this project is to have it ready for use in my future [Markdown extension for Mecha](https://github.com/mecha-cms/x.markdown).
 Initially, I wanted to develop the parser directly into the extension. However, my friend advised me to create this
@@ -1474,49 +1474,6 @@ asdf asdf *asdf* asdf
 <a>asdf</a>
 </li>
 </ul>
-</nav>
-<p>asdf asdf <em>asdf</em> asdf</p>
-~~~
-
-</td>
-</tr>
-<tr>
-<td>
-
-~~~ md
-<nav>
-  <ul>
-    <li>
-      <a>asdf</a>
-    </li>
-    <li>
-      <a>asdf</a>
-    </li>
-    <li>
-      <a>asdf</a>
-    </li>
-  </ul>
-</nav>
-
-asdf asdf *asdf* asdf
-~~~
-
-</td>
-<td>
-
-~~~ html
-<nav>
-  <ul>
-    <li>
-      <a>asdf</a>
-    </li>
-    <li>
-      <a>asdf</a>
-    </li>
-    <li>
-      <a>asdf</a>
-    </li>
-  </ul>
 </nav>
 <p>asdf asdf <em>asdf</em> asdf</p>
 ~~~
@@ -3023,7 +2980,7 @@ asdf
 
 ### Soft Break
 
-[Soft breaks](https://spec.commonmark.org/0.31.2#softbreak) are collapsed to a space in non-critical parts, such as
+[Soft breaks](https://spec.commonmark.org/0.31.2#softbreak) are collapsed to spaces in non-critical parts, such as
 within paragraphs and list items:
 
 <table>
@@ -3086,10 +3043,10 @@ but with a few additional features and rules:
     <td>
 
     ~~~ md
-    asdf         | asdf \| asdf
-    ------------ | ------------
-    asdf \| asdf | asdf
-    asdf         | asdf \| asdf
+    | asdf         | asdf \| asdf |
+    | ------------ | ------------ |
+    | asdf \| asdf | asdf         |
+    | asdf         | asdf \| asdf |
     ~~~
 
     </td>
@@ -3122,10 +3079,10 @@ but with a few additional features and rules:
     <td>
 
     ~~~ md
-    asdf                    | <asdf:asdf?asdf=|asdf|>
-    ----------------------- | -----------------------
-    <asdf:asdf?asdf=|asdf|> | asdf
-    asdf                    | <asdf:asdf?asdf=|asdf|>
+    | asdf                    | <asdf:asdf?asdf=|asdf|> |
+    | ----------------------- | ----------------------- |
+    | <asdf:asdf?asdf=|asdf|> | asdf                    |
+    | asdf                    | <asdf:asdf?asdf=|asdf|> |
     ~~~
 
     </td>
@@ -3158,10 +3115,10 @@ but with a few additional features and rules:
     <td>
 
     ~~~ md
-    asdf          | `asdf | asdf`
-    ------------- | -------------
-    `asdf | asdf` | asdf
-    asdf          | `asdf | asdf`
+    | asdf          | `asdf | asdf` |
+    | ------------- | ------------- |
+    | `asdf | asdf` | asdf          |
+    | asdf          | `asdf | asdf` |
     ~~~
 
     </td>
@@ -3194,10 +3151,10 @@ but with a few additional features and rules:
     <td>
 
     ~~~ md
-    asdf            | <asdf asdf="|">
-    --------------- | ---------------
-    <asdf asdf="|"> | asdf
-    asdf            | <asdf asdf="|">
+    | asdf            | <asdf asdf="|"> |
+    | --------------- | --------------- |
+    | <asdf asdf="|"> | asdf            |
+    | asdf            | <asdf asdf="|"> |
     ~~~
 
     </td>
@@ -3244,8 +3201,8 @@ but with a few additional features and rules:
     <td>
 
     ~~~ md
-    asdf | asdf
-    ---- | ----
+    | asdf | asdf |
+    | ---- | ---- |
     ~~~
 
     </td>
@@ -3268,8 +3225,8 @@ but with a few additional features and rules:
     <td>
 
     ~~~ md
-    ---- | ----
-    asdf | asdf
+    | ---- | ---- |
+    | asdf | asdf |
     ~~~
 
     </td>
