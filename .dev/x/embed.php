@@ -3,7 +3,7 @@
 require __DIR__ . '/../from.php';
 
 function embed(array $rows) {
-    if (empty($rows) || !is_array($rows)) {
+    if (!$rows) {
         return $rows;
     }
     foreach ($rows as $k => $row) {

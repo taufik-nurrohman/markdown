@@ -3,7 +3,7 @@
 require __DIR__ . '/../from.php';
 
 $void = function (array $rows) use (&$void) {
-    if (empty($rows) || !is_array($rows)) {
+    if (!$rows) {
         return $rows;
     }
     foreach ($rows as $k => $row) {
