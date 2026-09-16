@@ -83,12 +83,12 @@ Quote Block
 >
 > asdf asdf asdf asdf
 
-Raw
----
+Raw Block
+---------
 
 <div role="note">
 
-**Note:** Please view the source!
+**Note:** Please view the page source! <!-- [asdf](asdf) [asdf](asdf://asdf) -->
 
 </div>
 

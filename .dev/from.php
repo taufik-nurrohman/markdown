@@ -2392,7 +2392,7 @@ namespace x\markdown\from {
             }
         }
         if (false === $row[1]) {
-            return $s .= ' />';
+            return $s .= '>';
         }
         $s .= ($tag ? '>' : "") . ($block && !empty($row[1]) ? "\n" : "");
         if (\is_array($row[1])) {
