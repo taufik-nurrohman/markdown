@@ -344,7 +344,7 @@ optional spaces before the opening attribute syntax:
 
 ~~~ html
 <figure>
-  <img alt="asdf" id="asdf" src="asdf" />
+  <img alt="asdf" id="asdf" src="asdf">
 </figure>
 ~~~
 
@@ -717,7 +717,7 @@ asdf asdf asdf asdf
 
 ~~~ html
 <p>asdf asdf asdf asdf</p>
-<hr asdf="asdf" id="asdf" />
+<hr asdf="asdf" id="asdf">
 <p>asdf asdf asdf asdf</p>
 ~~~
 
@@ -1818,7 +1818,7 @@ asdf asdf asdf asdf
 ~~~ html
 <p>asdf asdf asdf asdf</p>
 <figure>
-  <img alt="asdf" src="asdf" />
+  <img alt="asdf" src="asdf">
 </figure>
 <p>asdf asdf asdf asdf</p>
 ~~~
@@ -1856,7 +1856,7 @@ asdf asdf asdf asdf
 ~~~ html
 <p>asdf asdf asdf asdf</p>
 <figure>
-  <img alt="asdf" src="asdf" />
+  <img alt="asdf" src="asdf">
   <figcaption>asdf asdf asdf asdf</figcaption>
 </figure>
 <p>asdf asdf asdf asdf</p>
@@ -1896,7 +1896,7 @@ asdf asdf asdf asdf
 ~~~ html
 <p>asdf asdf asdf asdf</p>
 <figure>
-  <img alt="asdf" src="asdf" />
+  <img alt="asdf" src="asdf">
   <figcaption>
     <h1>asdf asdf asdf asdf</h1>
   </figcaption>
@@ -1925,7 +1925,7 @@ asdf asdf asdf asdf
 ~~~ html
 <p>asdf asdf asdf asdf</p>
 <figure>
-  <img alt="asdf" src="asdf" />
+  <img alt="asdf" src="asdf">
   <figcaption>
     <p>asdf asdf asdf asdf</p>
   </figcaption>
@@ -1957,7 +1957,7 @@ asdf asdf asdf asdf
 ~~~ html
 <p>asdf asdf asdf asdf</p>
 <figure>
-  <img alt="asdf" src="asdf" />
+  <img alt="asdf" src="asdf">
   <figcaption>
     <h2>asdf asdf asdf asdf</h2>
     <p>asdf asdf asdf asdf</p>
@@ -2920,7 +2920,7 @@ asdf [^1]
 ~~~ html
 <p>asdf <sup id="from:1"><a href="#to:1" role="doc-noteref">1</a></sup></p>
 <div role="doc-endnotes">
-  <hr />
+  <hr>
   <ol>
     <li id="to:1" role="doc-endnote">
       <p>asdf&#xa0;<a href="#from:1" role="doc-backlink">&#x21a9;</a></p>
@@ -2960,7 +2960,7 @@ asdf
 <p>asdf <sup id="from:1"><a href="#to:1" role="doc-noteref">1</a></sup></p>
 <p>asdf</p>
 <div role="doc-endnotes">
-  <hr />
+  <hr>
   <ol>
     <li id="to:1" role="doc-endnote">
       <h2>asdf</h2>
@@ -3425,7 +3425,7 @@ risk for you if you want to use this parser on your comment entries, for example
 
 ~~~ html
 <figure>
-  <img alt="asdf" onerror="alert('Yo!')" src="asdf" />
+  <img alt="asdf" onerror="alert('Yo!')" src="asdf">
 </figure>
 ~~~
 
