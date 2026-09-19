@@ -7,7 +7,7 @@ $embed = static function (array $rows) use (&$embed) {
         return $rows;
     }
     $try = static function (array $a) {
-        // Verify that the current link is an auto-link
+        // Verify that the link is an auto-link
         if (5 !== $a[3][0] ?? 0) {
             return false;
         }
@@ -48,19 +48,19 @@ $embed = static function (array $rows) use (&$embed) {
     };
     foreach ($rows as $k => $row) {
         // Current data is a link, possibly from a “tight” list item
-        if ('a' === (($a = $row ?? [])[0] ?? 0) && 1 === count($rows)) {
-            if ($a = $try($a)) {
-                $rows[$k] = $a[0];
+        if (is_array($row) && 'a' === ($row[0] ?? 0) && 1 === count($rows)) {
+            if ($r = $try($row)) {
+                $rows[$k] = $r[0];
             }
             continue;
         }
         // Find paragraph
         if ('p' === ($row[0] ?? 0)) {
             // Find a link that stands alone
-            if (is_array($row[1]) && 1 === count($row[1]) && 'a' === (($a = $row[1][0] ?? [])[0] ?? 0)) {
-                if ($a = $try($a)) {
-                    $rows[$k][1] = [$a[0]];
-                    if (false === $a[1]) {
+            if (is_array($row[1]) && 1 === count($row[1]) && is_array($r = $row[1][0] ?? 0) && 'a' === ($r[0] ?? 0)) {
+                if ($r = $try($r)) {
+                    $rows[$k][1] = [$r[0]];
+                    if (false === $r[1]) {
                         $rows[$k][0] = null; // Remove paragraph
                     } else {
                         $rows[$k][2]['style'] = 'display:flex;justify-content:center;margin-left:0;margin-right:0;padding:0;';
@@ -69,13 +69,9 @@ $embed = static function (array $rows) use (&$embed) {
             }
             continue;
         }
-        // Recurse to look for potential embed syntax in container block(s)
-        if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true)) {
-            foreach ($row[1] as $kk => $vv) {
-                if (is_array($vv[1] ?? 0)) {
-                    $rows[$k][1][$kk][1] = $embed($vv[1]);
-                }
-            }
+        // Recurse to look for “embed” syntax in child data
+        if (is_array($row[1] ?? 0)) {
+            $rows[$k][1] = $embed($row[1]);
         }
     }
     return $rows;

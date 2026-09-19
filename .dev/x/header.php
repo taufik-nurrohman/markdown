@@ -54,14 +54,9 @@ $header = static function (array $rows) use (&$header) {
             $rows[$k][2]['id'] = $id;
             continue;
         }
-        // Recurse to look for header syntax in container block(s)
-        if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true) && is_array($row[1])) {
+        // Recurse to look for header syntax in child data
+        if (is_array($row[1] ?? 0)) {
             $rows[$k][1] = $header($row[1]);
-            foreach ($row[1] as $kk => $vv) {
-                if (is_array($vv[1] ?? 0)) {
-                    $rows[$k][1][$kk][1] = $header($vv[1]);
-                }
-            }
         }
     }
     return $rows;

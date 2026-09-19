@@ -12,7 +12,7 @@ $strip = static function (array $rows) use (&$strip) {
             $rows[$k][1] = strip_tags($row[1]);
             continue;
         }
-        // Recurse to look for raw HTML syntax in container and leaf block(s)
+        // Recurse to look for raw HTML syntax in child data
         if (is_array($row[1] ?? 0)) {
             $rows[$k][1] = $strip($row[1]);
         }

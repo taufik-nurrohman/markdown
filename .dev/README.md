@@ -3487,14 +3487,15 @@ in a strict Markdown document:
 echo strip_tags(from_markdown($value), [
     'a', 'img',
     'abbr', 'code', 'sup',
+    'blockquote', 'p', 'pre',
     'br', 'hr',
+    'caption', 'table', 'tbody', 'td', 'th', 'thead', 'tr'
     'dd', 'dl', 'dt',
+    'div', // for `<div role="doc-endnotes">`
     'em', 'strong',
     'figcaption', 'figure',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     'li', 'ol', 'ul',
-    'blockquote', 'p', 'pre',
-    'caption', 'table', 'tbody', 'td', 'th', 'thead', 'tr'
 ]);
 ~~~
 
@@ -3521,7 +3522,7 @@ $strip = static function (array $rows) use (&$strip) {
             $rows[$k][1] = strip_tags($row[1]);
             continue;
         }
-        // Recurse to look for raw HTML syntax in container and leaf block(s)
+        // Recurse to look for raw HTML syntax in child data
         if (is_array($row[1] ?? 0)) {
             $rows[$k][1] = $strip($row[1]);
         }
@@ -3637,18 +3638,14 @@ $header = static function (array $rows) use (&$header) {
             $rows[$k][2]['id'] = $id;
             continue;
         }
-        // Recurse to look for header syntax in container block(s)
-        if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true) && is_array($row[1])) {
+        // Recurse to look for header syntax in child data
+        if (is_array($row[1] ?? 0)) {
             $rows[$k][1] = $header($row[1]);
-            foreach ($row[1] as $kk => $vv) {
-                if (is_array($vv[1] ?? 0)) {
-                    $rows[$k][1][$kk][1] = $header($vv[1]);
-                }
-            }
         }
     }
     return $rows;
 };
+
 
 echo from_markdown($value, ['with' => [$header]]);
 ~~~
@@ -3726,35 +3723,30 @@ $embed = static function (array $rows) use (&$embed) {
     }
     foreach ($rows as $k => $row) {
         // Current data is a link, possibly from a “tight” list item
-        if ('a' === (($a = $row ?? [])[0] ?? 0) && 1 === count($rows)) {
-            if ($a = $try($a)) {
-                $rows[$k] = $a[0];
+        if (is_array($row) && 'a' === ($row[0] ?? 0) && 1 === count($rows)) {
+            if ($r = $try($row)) {
+                $rows[$k] = $r[0];
             }
             continue;
         }
         // Find paragraph
         if ('p' === ($row[0] ?? 0)) {
             // Find a link that stands alone
-            if (is_array($row[1]) && 1 === count($row[1]) && 'a' === (($a = $row[1][0] ?? [])[0] ?? 0)) {
-                // Verify that the link was written using the auto-link syntax
-                if (5 === $a[3][0] ?? 0) {
-                    // Verify that the link’s destination value started with `gist:` prefix
-                    $href = $a[2]['href'] ?? "";
-                    if (0 === strpos($href, 'gist:')) {
-                        // Transform…
-                        $rows[$k][1] = [ /* … */ ];
+            if (is_array($row[1]) && 1 === count($row[1]) && is_array($r = $row[1][0] ?? 0) && 'a' === ($r[0] ?? 0)) {
+                if ($r = $try($r)) {
+                    $rows[$k][1] = [$r[0]];
+                    if (false === $r[1]) {
+                        $rows[$k][0] = null; // Remove paragraph
+                    } else {
+                        $rows[$k][2]['style'] = 'display:flex;justify-content:center;margin-left:0;margin-right:0;padding:0;';
                     }
                 }
             }
             continue;
         }
-        // Recurse to look for potential embed syntax in container block(s)
-        if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true)) {
-            foreach ($row[1] as $kk => $vv) {
-                if (is_array($vv[1] ?? 0)) {
-                    $rows[$k][1][$kk][1] = $embed($vv[1]);
-                }
-            }
+        // Recurse to look for “embed” syntax in child data
+        if (is_array($row[1] ?? 0)) {
+            $rows[$k][1] = $embed($row[1]);
         }
     }
     return $rows;

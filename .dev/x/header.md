@@ -33,7 +33,7 @@ asdf asdf asdf asdf
 asdf 2
 ------
 
-### asdf &#x1f4a9; 1.1
+### asdf 1.1 &#x1f4a9;
 
 asdf asdf asdf asdf
 
