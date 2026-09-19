@@ -3521,21 +3521,9 @@ $strip = static function (array $rows) use (&$strip) {
             $rows[$k][1] = strip_tags($row[1]);
             continue;
         }
-        // Recurse to look for potential raw HTML in container block(s)
-        if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true)) {
-            foreach ($row[1] as $kk => $vv) {
-                if (is_array($vv[1] ?? 0)) {
-                    $rows[$k][1][$kk][1] = $strip($vv[1]);
-                }
-            }
-        }
-        if (is_array($row[1])) {
-            foreach ($row[1] as $kk => $vv) {
-                // Find raw HTML
-                if (false === ($vv[0] ?? 0)) {
-                    $rows[$k][1][$kk][1] = strip_tags($vv[1]);
-                }
-            }
+        // Recurse to look for raw HTML syntax in container and leaf block(s)
+        if (is_array($row[1] ?? 0)) {
+            $rows[$k][1] = $strip($row[1]);
         }
     }
     return $rows;

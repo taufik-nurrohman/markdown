@@ -19,3 +19,11 @@ asdf asdf asdf **asdf**
 <p>asdf asdf asdf <strong>asdf</strong></p>
 <p><img alt="asdf" src="../tools/test/asdf.gif"> asdf asdf asdf</p>
 <hr />
+
+> asdf asdf <asdf:asdf> <em>asdf</em>
+>
+> > asdf asdf <asdf:asdf> <em>asdf</em>
+
+- asdf asdf <asdf:asdf> <em>asdf</em>
+  - asdf asdf <asdf:asdf> <em>asdf</em>
+- asdf asdf asdf *asdf*
