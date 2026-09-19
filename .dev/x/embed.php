@@ -21,7 +21,7 @@ $embed = static function (array $rows) use (&$embed) {
         if ('gist' === $key) {
             $a[0] = 'script';
             $a[1] = "";
-            $a[2] = ['src' => 'https://gist.github.com/taufik-nurrohman/' . $value . '.js'];
+            $a[2] = ['src' => 'https://gist.github.com/' . $value . '.js'];
             return [$a, false]; // Remove paragraph
         }
         // Vimeo
@@ -47,8 +47,8 @@ $embed = static function (array $rows) use (&$embed) {
         return false;
     };
     foreach ($rows as $k => $row) {
-        // Current node is a link, possibly from a “tight” list item
-        if ('a' === (($a = $row ?? [])[0] ?? 0)) {
+        // Current data is a link, possibly from a “tight” list item
+        if ('a' === (($a = $row ?? [])[0] ?? 0) && 1 === count($rows)) {
             if ($a = $try($a)) {
                 $rows[$k] = $a[0];
             }

@@ -41,12 +41,10 @@ echo '<title>Strip Extension</title>' . "\n";
 echo '</head>' . "\n";
 echo '<body>' . "\n";
 
-$value = x\markdown\from(file_get_contents(__DIR__ . '/strip.md'), [
+echo x\markdown\from(file_get_contents(__DIR__ . '/strip.md'), [
     'tab' => 0,
     'with' => [$strip]
-]);
-
-echo $value . "\n";
+]) . "\n";
 
 echo '</body>' . "\n";
 echo '</html>';

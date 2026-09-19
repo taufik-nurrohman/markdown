@@ -19,7 +19,7 @@ $external = static function (array $rows) use (&$external) {
         return $a;
     };
     foreach ($rows as $k => $row) {
-        // Current node is a link, possibly from a “tight” list item
+        // Current data is a link, possibly from a “tight” list item
         if (is_array($row) && 'a' === ($row[0] ?? 0)) {
             $rows[$k] = $link($row);
             continue;

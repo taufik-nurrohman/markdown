@@ -1039,90 +1039,28 @@ echo $value;
 
 ### Pre-Defined Abbreviations, Notes, and References
 
-By inserting abbreviations, notes, and references at the end of the Markdown content, it will be as if you had
-pre-defined abbreviations, notes, and references feature. This should be placed at the end of the Markdown content,
-because according to the [link reference definitions](https://spec.commonmark.org/0.31.2#example-204) specification, the
-first declared reference always takes precedence:
+By inserting abbreviations, notes, and references at the end of the Markdown content, it will be as if you had a
+pre-defined abbreviations, notes, and references feature. According to the
+[link reference definitions](https://spec.commonmark.org/0.31.2#example-204), the first declared reference always takes
+precedence, so the additional content should be placed at the end of the Markdown content:
 
 ~~~ php
-$abbreviations = [
-    'CSS' => 'Cascading Style Sheet',
-    'HTML' => 'Hyper Text Markup Language',
-    'JS' => 'JavaScript'
-];
+$extra = implode("\n", [
+    "",
+    // Abbreviation(s)
+    '*[CSS]: Cascading Style Sheet',
+    '*[HTML]: Hyper Text Markup Language',
+    '*[JS]: JavaScript',
+    "",
+    // Note(s)
+    '[^1]: This is an example note.',
+    "",
+    // Reference(s)
+    '[mecha-cms]: https://github.com/mecha-cms (Mecha CMS)',
+    '[taufik-nurrohman]: https://github.com/taufik-nurrohman (Taufik Nurrohman)',
+]);
 
-$references = [
-    'mecha-cms' => ['https://github.com/mecha-cms', 'Mecha CMS', []],
-    'taufik-nurrohman' => ['https://github.com/taufik-nurrohman', 'Taufik Nurrohman', []],
-];
-
-$suffix = "";
-
-if (!empty($abbreviations)) {
-    foreach ($abbreviations as $k => $v) {
-        $k = strtr($k, [
-            '[' => '\[',
-            ']' => '\]'
-        ]);
-        $v = trim(preg_replace('/\s+/', ' ', $v));
-        $suffix .= "\n*[" . $k . ']: ' . $v;
-    }
-}
-
-if (!empty($references)) {
-    foreach ($references as $k => $v) {
-        [$link, $title, $attributes] = $v;
-        $k = strtr($k, [
-            '[' => '\[',
-            ']' => '\]'
-        ]);
-        if ("" === $link || false !== strpos($link, ' ')) {
-            $link = '<' . $link . '>';
-        }
-        $reference = '[' . $k . ']: ' . $link;
-        if (!empty($title)) {
-            $reference .= " '" . strtr($title, ["'" => "\\'"]) . "'";
-        }
-        if (!empty($attributes)) {
-            foreach ($attributes as $kk => &$vv) {
-                // `{.asdf}`
-                if ('class' === $kk) {
-                    $vv = '.' . trim(preg_replace('/\s+/', '.', $vv));
-                    continue;
-                }
-                // `{#asdf}`
-                if ('id' === $kk) {
-                    $vv = '#' . $vv;
-                    continue;
-                }
-                // `{asdf}`
-                if (true === $vv) {
-                    $vv = $kk;
-                    continue;
-                }
-                // `{asdf=""}`
-                if ("" === $vv) {
-                    $vv = $kk . '=""';
-                    continue;
-                }
-                // `{asdf='asdf'}`
-                $vv = $kk . "='" . strtr($vv, ["'" => "\\'"]) . "'";
-            }
-            unset($vv);
-            sort($attributes);
-            $attributes = trim(strtr(implode(' ', $attributes), [
-                ' #' => '#',
-                ' .' => '.'
-            ]));
-            $reference .= ' {' . $attributes . '}';
-        }
-        $suffix .= "\n" . $reference;
-    }
-}
-
-$value = from_markdown($value . "\n" . $suffix);
-
-echo $value;
+echo from_markdown($value . "\n" . $extra);
 ~~~
 
 ### Pre-Defined Header’s ID

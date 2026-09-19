@@ -3546,11 +3546,10 @@ echo from_markdown($value, ['with' => [$strip]]);
 
 ### Task List
 
-I am against the task list feature because it promotes bad practices to abuse the form input element. Although from the
-presentation side it displays a check box interface correctly, I still believe that input elements should ideally be
-used inside a form element. There are several Unicode symbols that are more suitable and easier to read from the
-Markdown source like &#x2610; and &#x2612;, which means that this feature can actually be made using the existing list
-feature:
+I am against the task list feature because it promotes the abuse of form input elements, which is a bad practice.
+Although it does display a checkbox interface correctly, I still believe that input elements should be used inside a
+form element. Several Unicode symbols, such as &#x2610; and &#x2612;, are more suitable and easier to read from the
+Markdown source. This means that the task list feature can actually be made using the standard list feature:
 
 ~~~ md
 - ☒ asdf
@@ -3558,7 +3557,8 @@ feature:
 - ☐ asdf
 ~~~
 
-In case you need it, or don’t want to update your existing task list syntax in your Markdown files, here’s the hack:
+In case you need it or don’t want to revise the syntax of your existing task lists in your Markdown files, here’s a
+naive hack:
 
 ~~~ php
 $value = from_markdown($value, ['tab' => false]);
@@ -3573,4 +3573,199 @@ $value = strtr($value, [
 ]);
 
 echo $value;
+~~~
+
+### Pre-Defined Abbreviations, Notes, and References
+
+By inserting abbreviations, notes, and references at the end of the Markdown content, it will be as if you had a
+pre-defined abbreviations, notes, and references feature. According to the
+[link reference definitions](https://spec.commonmark.org/0.31.2#example-204), the first declared reference always takes
+precedence, so the additional content must be placed at the end of the Markdown content:
+
+~~~ php
+$extra = implode("\n", [
+    "",
+    // Abbreviation(s)
+    '*[CSS]: Cascading Style Sheet',
+    '*[HTML]: Hyper Text Markup Language',
+    '*[JS]: JavaScript',
+    "",
+    // Note(s)
+    '[^1]: This is an example note.',
+    "",
+    // Reference(s)
+    '[mecha-cms]: https://github.com/mecha-cms (Mecha CMS)',
+    '[taufik-nurrohman]: https://github.com/taufik-nurrohman (Taufik Nurrohman)',
+]);
+
+echo from_markdown($value . "\n" . $extra);
+~~~
+
+### Pre-Defined Header’s ID
+
+Add an automatic `id` attribute to headers level 2 through 6 if it’s not set, and then prepend an anchor element that
+points to it:
+
+~~~ php
+$header = static function (array $rows) use (&$header) {
+    if (!$rows) {
+        return $rows;
+    }
+    static $f = []; // Keep track of the defined automatic identifier(s) to avoid duplicate(s)
+    foreach ($rows as $k => $row) {
+        // Find header
+        if (in_array($row[0] ?? 0, ['h2', 'h3', 'h4', 'h5', 'h6'], true)) {
+            $text = "";
+            if (is_array($row[1])) {
+                foreach ($row[1] as $r) {
+                    if (is_array($r) && false !== $r[0]) {
+                        if (is_string($r[1])) {
+                            $text .= $r[1];
+                        }
+                        continue;
+                    }
+                    if (is_string($r)) {
+                        $text .= $r;
+                    }
+                }
+            } else if (is_string($row[1])) {
+                $text = $row[1];
+            }
+            $text = html_entity_decode($text, ENT_HTML5 | ENT_QUOTES, 'UTF-8');
+            $id = $row[2]['id'] ?? trim(preg_replace('/[^a-z\d]+/', '-', strtolower($text)), '-');
+            $f[$id] = ($f[$id] ?? -1) + 1;
+            $id .= ($f[$id] > 0 ? '.' . $f[$id] : ""); // Add a suffix if necessary
+            // Prepend an anchor element that points to this header
+            $anchor = ['a', '&#x2693;', [
+                'href' => '#' . $id,
+                'style' => 'text-decoration: none;'
+            ]];
+            if (is_array($row[1])) {
+                array_unshift($rows[$k][1], $anchor, ' ');
+            } else if (is_string($row[1])) {
+                $rows[$k][1] = [$anchor, ' ', $row[1]];
+            }
+            // Add `id` attribute
+            $rows[$k][2]['id'] = $id;
+            continue;
+        }
+        // Recurse to look for header syntax in container block(s)
+        if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true) && is_array($row[1])) {
+            $rows[$k][1] = $header($row[1]);
+        }
+    }
+    return $rows;
+};
+
+echo from_markdown($value, ['with' => [$header]]);
+~~~
+
+Or, if you prefer the naive method:
+
+~~~ php
+$value = from_markdown($value);
+
+if ($value && false !== strpos($value, '</h')) {
+    static $f = [];
+    $value = preg_replace_callback('/<(h[2-6])(\s(?>"[^"]*"|\'[^\']*\'|[^>])*)?>([\s\S]+?)<\/\1>/', static function ($m) use (&$f) {
+        if (!empty($m[2]) && false !== strpos($m[2], 'id=') && preg_match('/\bid=("[^"]+"|\'[^\']+\'|[^\s>]+)/', $m[2], $v)) {
+            if ('"' === $v[1][0] && '"' === $v[1][-1]) {
+                $id = substr($v[1], 1, -1);
+            } else if ("'" === $v[1][0] && "'" === $v[1][-1]) {
+                $id = substr($v[1], 1, -1);
+            } else {
+                $id = $v[1];
+            }
+            $f[$id] = ($f[$id] ?? -1) + 1;
+            $id .= ($f[$id] > 0 ? '.' . $f[$id] : "");
+            $m[3] = '<a href="#' . htmlspecialchars($id) . '" style="text-decoration: none;">&#x2693;</a> ' . $m[3];
+            return '<' . $m[1] . $m[2] . '>' . $m[3] . '</' . $m[1] . '>';
+        }
+        $text = html_entity_decode($m[3], ENT_HTML5 | ENT_QUOTES, 'UTF-8');
+        $id = trim(preg_replace('/[^a-z\d]+/', '-', strtolower($text)), '-');
+        $f[$id] = ($f[$id] ?? -1) + 1;
+        $id .= ($f[$id] > 0 ? '.' . $f[$id] : "");
+        $m[3] = '<a href="#' . htmlspecialchars($id) . '" style="text-decoration: none;">&#x2693;</a> ' . $m[3];
+        return '<' . $m[1] . ($m[2] ?? "") . ' id="' . htmlspecialchars($id) . '">' . $m[3] . '</' . $m[1] . '>';
+    }, $value);
+}
+
+echo $value;
+~~~
+
+### Idea: Embed Syntax
+
+The [CommonMark specification for automatic links](https://spec.commonmark.org/0.31.2#autolinks) does not limit specific
+types of URL schemes. It specifies a pattern that allows us to use the automatic link syntax as a kind of “embed”
+syntax. This can then be transformed into a chunk of HTML elements.
+
+I’m sure this idea has never been done before, which is why I want to be the first to mention it. However, I won’t
+integrate this feature directly into my parser to keep it slim. I just want to give you a couple ideas.
+
+Here’s a naive method that converts auto-links with the `gist:` scheme into [GitHub’s Gist](https://gist.github.com)
+embed code:
+
+~~~ php
+$value = from_markdown($value);
+
+$value = preg_replace('/^[ ]{0,3}<gist:([^>]+)>\s*$/m', '<script src="https://gist.github.com/$1.js"></script>', $value);
+
+echo $value;
+~~~
+
+That method does not take fenced code blocks and raw HTML blocks into consideration. Therefore, you will likely end up
+converting auto-link syntax in places where it should be left as is:
+
+~~~~ md
+<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+
+~~~ md
+<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+~~~
+~~~~
+
+To avoid such cases, transform the auto-link syntax [this way](x/embed.php):
+
+~~~ php
+$embed = static function (array $rows) use (&$embed) {
+    if (!$rows) {
+        return $rows;
+    }
+    foreach ($rows as $k => $row) {
+        // Current data is a link, possibly from a “tight” list item
+        if ('a' === (($a = $row ?? [])[0] ?? 0) && 1 === count($rows)) {
+            if ($a = $try($a)) {
+                $rows[$k] = $a[0];
+            }
+            continue;
+        }
+        // Find paragraph
+        if ('p' === ($row[0] ?? 0)) {
+            // Find a link that stands alone
+            if (is_array($row[1]) && 1 === count($row[1]) && 'a' === (($a = $row[1][0] ?? [])[0] ?? 0)) {
+                // Verify that the link was written using the auto-link syntax
+                if (5 === $a[3][0] ?? 0) {
+                    // Verify that the link’s destination value started with `gist:` prefix
+                    $href = $a[2]['href'] ?? "";
+                    if (0 === strpos($href, 'gist:')) {
+                        // Transform…
+                        $rows[$k][1] = [ /* … */ ];
+                    }
+                }
+            }
+            continue;
+        }
+        // Recurse to look for potential embed syntax in container block(s)
+        if (in_array($row[0] ?? 0, ['blockquote', 'dl', 'ol', 'ul'], true)) {
+            foreach ($row[1] as $kk => $vv) {
+                if (is_array($vv[1] ?? 0)) {
+                    $rows[$k][1][$kk][1] = $embed($vv[1]);
+                }
+            }
+        }
+    }
+    return $rows;
+};
+
+echo from_markdown($value, ['with' => [$embed]]);
 ~~~

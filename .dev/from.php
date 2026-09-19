@@ -674,7 +674,7 @@ namespace x\markdown\from {
                         $n += \strspn($value, c7, $n + 2) + 2;
                         if ($end === $n && $n - $i - 3 < 7) {
                             $e ??= [];
-                            $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
+                            $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES, 'UTF-8')) ? $y : "";
                             if ("" !== ($e[$k] ?? "")) {
                                 "" !== $s && ($row[] = h($s));
                                 $row[] = [false, $k, [], [3]];
@@ -691,7 +691,7 @@ namespace x\markdown\from {
                     $n += \strspn($value, c4, $n + 1) + 1;
                     if ($end === $n && $n - $i - 2 < 8) {
                         $e ??= [];
-                        $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
+                        $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES, 'UTF-8')) ? $y : "";
                         if ("" !== ($e[$k] ?? "")) {
                             "" !== $s && ($row[] = h($s));
                             $row[] = [false, $k, [], [2]];
@@ -709,11 +709,11 @@ namespace x\markdown\from {
                 if ($end === $n) {
                     // Load a list of known entity reference(s) supported by your PHP to validate the current HTML
                     // entity pattern. This step is necessary to reject unknown entity name(s), such as `&123;`
-                    $e ??= \array_flip(\get_html_translation_table(\HTML_ENTITIES, \ENT_HTML5 | \ENT_QUOTES));
+                    $e ??= \array_flip(\get_html_translation_table(\HTML_ENTITIES, \ENT_HTML5 | \ENT_QUOTES, 'UTF-8'));
                     // If the entity is not present in the list, try to validate it using a more expensive method: pass
                     // the string to the `html_entity_decode()` function and compare the result. If they are the same,
                     // the matching entity pattern is not valid.
-                    $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES)) ? $y : "";
+                    $e[$k = \substr($value, $i, ++$end - $i)] ??= $k !== ($y = \html_entity_decode($k, \ENT_HTML5 | \ENT_QUOTES, 'UTF-8')) ? $y : "";
                     if ("" !== ($e[$k] ?? "")) {
                         "" !== $s && ($row[] = h($s));
                         $row[] = [false, $k, [], [1]];

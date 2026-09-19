@@ -39,7 +39,7 @@ asdf asdf asdf asdf
 
 asdf asdf asdf asdf
 : asdf asdf asdf asdf
-: <vimeo:248618059>
+: <yt:yXXgvKQexLs>
 : asdf asdf asdf asdf
 
 List Block
@@ -49,7 +49,7 @@ List Block
 
 1. asdf asdf asdf asdf
 
-   <yt:yXXgvKQexLs>
+   <youtube:yXXgvKQexLs>
 
    asdf asdf asdf asdf
 
@@ -60,7 +60,7 @@ List Block
 ### Tight
 
 1. asdf asdf asdf asdf
-2. <vm:248618059>
+2. <yt:yXXgvKQexLs>
 3. asdf asdf asdf asdf
 
 Paragraph Block
@@ -70,7 +70,7 @@ Paragraph Block
 
 asdf asdf asdf asdf
 
-<gist:6a13bdfd4eecffcf70012f8e09afd35c>
+<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
 
 asdf asdf asdf asdf
 
@@ -79,7 +79,7 @@ asdf asdf asdf asdf
 ### Tight
 
 asdf asdf asdf asdf
-<gist:6a13bdfd4eecffcf70012f8e09afd35c>
+<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
 asdf asdf asdf asdf
 
 Quote Block
@@ -89,7 +89,7 @@ Quote Block
 >
 > > asdf asdf asdf asdf
 > >
-> > <gist:6a13bdfd4eecffcf70012f8e09afd35c>
+> > <gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
 >
 > asdf asdf asdf asdf
 
@@ -98,12 +98,12 @@ Raw Block
 
 <div role="note">
 
-**Note:** Please view the page source! <!-- <gist:6a13bdfd4eecffcf70012f8e09afd35c> -->
+**Note:** Please view the page source! <!-- <gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c> -->
 
 </div>
 
 <!--
 
-<gist:6a13bdfd4eecffcf70012f8e09afd35c>
+<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
 
 -->
