@@ -53,7 +53,7 @@ $task = static function (array $rows) use (&$task) {
                     }
                 }
             }
-            $rows[$k][2]['style'] = 'list-style:none;margin-left:0;';
+            $rows[$k][2]['style'] = 'list-style:none;padding-left:0;';
             continue;
         }
         if (is_array($row[1] ?? 0)) {
