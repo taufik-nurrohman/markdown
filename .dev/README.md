@@ -1279,7 +1279,7 @@ asdf
 CommonMark doesn’t care about the DOM, so it can’t tell if an HTML element is correctly balanced. Unlike the original
 Markdown syntax specification, which doesn’t allow Markdown syntax to be processed inside HTML blocks, the CommonMark
 specification doesn’t limit such cases. It only cares about blank lines that appear around lines that resemble HTML
-block tags, as specified in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), Type 6.
+block tags, as specified in [Section 4.6](https://spec.commonmark.org/0.31.2#html-blocks), type 6.
 
 Any text that follows the opening and/or closing of an HTML block is treated as plain text and will not be processed as
 Markdown syntax. A blank line is required to end the raw HTML block:
@@ -3512,6 +3512,8 @@ it to be accidentally stripped. To correctly remove only the raw HTML tags from 
 allow `**asdf**` but not `<strong>asdf</strong>`), you can remove them [this way](x/strip.php):
 
 ~~~ php
+<?php
+
 $strip = static function (array $rows) use (&$strip) {
     if (!$rows) {
         return $rows;
@@ -3550,6 +3552,8 @@ In case you need it or don’t want to revise the syntax of your existing task l
 naive hack:
 
 ~~~ php
+<?php
+
 $value = from_markdown($value, ['tab' => false]);
 
 $value = strtr($value, [
@@ -3572,6 +3576,8 @@ pre-defined abbreviations, notes, and references feature. According to the
 precedence, so the additional content must be placed at the end of the Markdown content:
 
 ~~~ php
+<?php
+
 $extra = implode("\n", [
     "",
     // Abbreviation(s)
@@ -3596,6 +3602,8 @@ Add an automatic `id` attribute to headers level 2 through 6 if it’s not set, 
 points to it:
 
 ~~~ php
+<?php
+
 $header = static function (array $rows) use (&$header) {
     if (!$rows) {
         return $rows;
@@ -3653,6 +3661,8 @@ echo from_markdown($value, ['with' => [$header]]);
 Or, if you prefer the naive method:
 
 ~~~ php
+<?php
+
 $value = from_markdown($value);
 
 if ($value && false !== strpos($value, '</h')) {
@@ -3692,10 +3702,12 @@ syntax. This can then be transformed into a chunk of HTML elements.
 I’m sure this idea has never been done before, which is why I want to be the first to mention it. However, I won’t
 integrate this feature directly into my parser to keep it slim. I just want to give you a couple ideas.
 
-Here’s a naive method that converts auto-links with the `gist:` scheme into [GitHub’s Gist](https://gist.github.com)
-embed code:
+Here’s a naive method that converts auto-links with `gist:` scheme into [GitHub’s Gist](https://gist.github.com) embed
+code:
 
 ~~~ php
+<?php
+
 $value = from_markdown($value);
 
 $value = preg_replace('/^[ ]{0,3}<gist:([^>]+)>\s*$/m', '<script src="https://gist.github.com/$1.js"></script>', $value);
@@ -3714,43 +3726,72 @@ converting auto-link syntax in places where it should be left as is:
 ~~~
 ~~~~
 
-To avoid such cases, transform the auto-link syntax [this way](x/embed.php):
+To avoid such cases, transform the auto-link syntax [this way](x/embed.php).
+
+### Idea: Note Block
+
+Several people have discussed this feature, and I think I like
+[this answer](https://stackoverflow.com/a/41449789/1163000) the most. The syntax is compatible with native Markdown
+syntax, which is nice to look at directly through the Markdown source, even when it gets rendered to HTML:
+
+~~~ md
+------------------------------
+
+  **NOTE:** asdf asdf asdf
+
+------------------------------
+~~~
+
+~~~ md
+------------------------------
+
+  **NOTE:**
+
+  asdf asdf asdf asdf
+  asdf asdf asdf asdf
+
+  asdf asdf asdf asdf
+
+------------------------------
+~~~
+
+Most Markdown parsers will render the syntax above to this HTML, which is still acceptable to be treated as a note block
+from its presentation, despite its broken semantic:
+
+~~~ html
+<hr />
+<p><strong>NOTE:</strong> asdf asdf asdf</p>
+<hr />
+~~~
+
+~~~ html
+<hr />
+<p><strong>NOTE:</strong></p>
+<p>asdf asdf asdf asdf asdf asdf asdf asdf</p>
+<p>asdf asdf asdf asdf</p>
+<hr />
+~~~
+
+With regular expressions, you can improve its [semantic](https://w3c.github.io/aria#note):
 
 ~~~ php
-$embed = static function (array $rows) use (&$embed) {
-    if (!$rows) {
-        return $rows;
-    }
-    foreach ($rows as $k => $row) {
-        // Current data is a link, possibly from a “tight” list item
-        if (is_array($row) && 'a' === ($row[0] ?? 0) && 1 === count($rows)) {
-            if ($r = $try($row)) {
-                $rows[$k] = $r[0];
-            }
-            continue;
-        }
-        // Find paragraph
-        if ('p' === ($row[0] ?? 0)) {
-            // Find a link that stands alone
-            if (is_array($row[1]) && 1 === count($row[1]) && is_array($r = $row[1][0] ?? 0) && 'a' === ($r[0] ?? 0)) {
-                if ($r = $try($r)) {
-                    $rows[$k][1] = [$r[0]];
-                    if (false === $r[1]) {
-                        $rows[$k][0] = null; // Remove paragraph
-                    } else {
-                        $rows[$k][2]['style'] = 'display:flex;justify-content:center;margin-left:0;margin-right:0;padding:0;';
-                    }
-                }
-            }
-            continue;
-        }
-        // Recurse to look for “embed” syntax in child data
-        if (is_array($row[1] ?? 0)) {
-            $rows[$k][1] = $embed($row[1]);
-        }
-    }
-    return $rows;
-};
+$value = from_markdown($value);
 
-echo from_markdown($value, ['with' => [$embed]]);
+$value = preg_replace_callback('/<hr\s*\/?>\s*(<p><strong>NOTE:<\/strong>[\s\S]*?<\/p>)\s*<hr\s*\/?>/', static function ($m) {
+    return '<div role="note">' . $m[1] . '</div>';
+}, $value);
+
+echo $value;
 ~~~
+
+License
+-------
+
+This library is licensed under the [MIT License](LICENSE). Please consider
+[donating 💰](https://github.com/sponsors/taufik-nurrohman) if you benefit financially from this library.
+
+Links
+-----
+
+ - Autumn image sample by [@blmiers2](https://www.flickr.com/photos/41304517@N00/6250498399)
+ - Emoticon image sample by [@emoticons4u](https://web.archive.org/web/20090117060451/http://emoticons4u.com) (web archive)

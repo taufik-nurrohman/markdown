@@ -2,7 +2,7 @@
 
 require __DIR__ . '/../from.php';
 
-$task_list = static function (array $rows) use (&$task_list) {
+$task = static function (array $rows) use (&$task) {
     if (!$rows) {
         return $rows;
     }
@@ -31,7 +31,7 @@ $task_list = static function (array $rows) use (&$task_list) {
             continue;
         }
         if (is_array($row[1] ?? 0)) {
-            $rows[$k][1] = $task_list($row[1]);
+            $rows[$k][1] = $task($row[1]);
         }
     }
     return $rows;
@@ -46,9 +46,9 @@ echo '<title>Task List Extension</title>' . "\n";
 echo '</head>' . "\n";
 echo '<body>' . "\n";
 
-echo x\markdown\from(file_get_contents(__DIR__ . '/task-list.md'), [
+echo x\markdown\from(file_get_contents(__DIR__ . '/task.md'), [
     'tab' => 0,
-    'with' => [$task_list]
+    'with' => [$task]
 ]) . "\n";
 
 echo '</body>' . "\n";

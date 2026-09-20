@@ -90,13 +90,12 @@ blockquote {
   padding: 0 0 0 0.75em;
 }
 code, textarea {
-  font: normal normal 0.95em/1.25 'Courier New', monospace;
+  font: normal normal 0.85em/1.25 monospace;
 }
 code {
   background: #eee;
   display: inline-block;
   padding: 0 0.15em;
-  vertical-align: middle;
   white-space: pre;
 }
 del {
@@ -182,7 +181,7 @@ textarea {
 :root {
   background: #fff;
   color: #000;
-  font: normal normal 13px/1.5 Verdana, sans-serif;
+  font: normal normal 16px/1.5 serif;
   padding: 1em;
 }
 :target {
