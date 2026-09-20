@@ -3539,8 +3539,8 @@ echo from_markdown($value, ['with' => [$strip]]);
 
 I am against the task list feature because it promotes the abuse of form input elements, which is a bad practice.
 Although it does display a checkbox interface correctly, I still believe that input elements should be used inside a
-form element. Several Unicode symbols, such as &#x2610; and &#x2612;, are more suitable and easier to read from the
-Markdown source. This means that the task list feature can actually be made using the standard list feature:
+form element. Several Unicode symbols, such as &#x2610;, &#x2611;, and &#x2612;, are more suitable and easier to read
+from the Markdown source. This means that the task list feature can actually be made using the standard list feature:
 
 ~~~ md
 - ☒ asdf
