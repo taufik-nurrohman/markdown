@@ -489,7 +489,7 @@ $s .= 'Markdown to HTML';
 $s .= '</title>';
 $s .= '<style>';
 $s .= <<<CSS
-@import url('../index.css');
+@import url('../../index.css');
 body > form {
   margin-bottom: 1em;
 }

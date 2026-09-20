@@ -353,7 +353,7 @@ $s .= 'Try';
 $s .= '</title>';
 $s .= '<style>';
 $s .= <<<CSS
-@import url('index.css');
+@import url('../index.css');
 textarea {
   background: #ffc;
   display: block;

@@ -7,27 +7,53 @@ $task = static function (array $rows) use (&$task) {
         return $rows;
     }
     foreach ($rows as $k => $row) {
-        if (is_array($row) && 'li' === ($row[0] ?? 0)) {
-            if (is_array($row[1])) {
-                $first = $row[1][$key = array_key_first($row[1])];
-                if (is_array($first) && 'a' === ($first[0] ?? 0) && 'x' === $first[1] && 3 === $first[3][0]) {
-                    $rows[$k][1][$key] = [false, '&#x2612;'];
-                } else if (is_string($first) && '[' === ($first[0] ?? 0)) {
-                    if (0 === strpos($first, '[ ] ')) {
-                        $rows[$k][1][$key] = substr($first, 3);
-                        array_unshift($rows[$k][1], [false, '&#x2610;']);
-                    } else if (0 === strpos($first, '[x] ')) {
-                        $rows[$k][1][$key] = substr($first, 3);
-                        array_unshift($rows[$k][1], [false, '&#x2612;']);
+        if (is_array($row) && 'ul' === ($row[0] ?? 0)) {
+            if (is_array($row[1] ?? 0)) {
+                foreach ($row[1] as $kk => $vv) {
+                    if (is_array($vv[1] ?? 0)) {
+                        $r = $vv[1][$first = array_key_first($vv[1])];
+                        if (is_array($r) && 'p' === ($r[0] ?? 0)) {
+                            if (is_array($r[1] ?? 0)) {
+                                $p_r = $r[1][$p_first = array_key_first($r[1])];
+                                if (is_array($p_r) && 'a' === ($p_r[0] ?? 0) && 'x' === $p_r[1] && 3 === $p_r[3][0]) {
+                                    $rows[$k][1][$kk][1][$first][1][$p_first] = [false, '&#x2612;'];
+                                } else if (is_string($p_r) && '[' === ($p_r[0] ?? 0)) {
+                                    if (0 === strpos($p_r, '[ ] ')) {
+                                        $rows[$k][1][$kk][1][$first][1][$p_first] = substr($p_r, 3);
+                                        array_unshift($rows[$k][1][$kk][1][$first][1], [false, '&#x2610;']);
+                                    } else if (0 === strpos($p_r, '[x] ')) {
+                                        $rows[$k][1][$kk][1][$first][1][$p_first] = substr($p_r, 3);
+                                        array_unshift($rows[$k][1][$kk][1][$first][1], [false, '&#x2612;']);
+                                    }
+                                }
+                            } else if (is_string($r[1]) && '[' === ($r[1][0] ?? 0)) {
+                                if (0 === strpos($r[1], '[ ] ')) {
+                                    $rows[$k][1][$kk][1][$first][1] = [[false, '&#x2610;'], substr($r[1], 3)];
+                                } else if (0 === strpos($r[1], '[x] ')) {
+                                    $rows[$k][1][$kk][1][$first][1] = [[false, '&#x2612;'], substr($r[1], 3)];
+                                }
+                            }
+                        } else if (is_array($r) && 'a' === ($r[0] ?? 0) && 'x' === $r[1] && 3 === $r[3][0]) {
+                            $rows[$k][1][$kk][1][$first] = [false, '&#x2612;'];
+                        } else if (is_string($r) && '[' === ($r[0] ?? 0)) {
+                            if (0 === strpos($r, '[ ] ')) {
+                                $rows[$k][1][$kk][1][$first] = substr($r, 3);
+                                array_unshift($rows[$k][1][$kk][1], [false, '&#x2610;']);
+                            } else if (0 === strpos($r, '[x] ')) {
+                                $rows[$k][1][$kk][1][$first] = substr($r, 3);
+                                array_unshift($rows[$k][1][$kk][1], [false, '&#x2612;']);
+                            }
+                        }
+                    } else if (is_string($vv[1] ?? 0) && '[' === ($vv[1][0] ?? 0)) {
+                        if (0 === strpos($vv[1], '[ ] ')) {
+                            $rows[$k][1][$kk][1] = [[false, '&#x2610;'], substr($vv[1], 3)];
+                        } else if (0 === strpos($vv[1], '[x] ')) {
+                            $rows[$k][1][$kk][1] = [[false, '&#x2612;'], substr($vv[1], 3)];
+                        }
                     }
                 }
-            } else if (is_string($row[1]) && '[' === ($row[1][0] ?? 0)) {
-                if (0 === strpos($row[1], '[ ] ')) {
-                    $rows[$k][1] = [[false, '&#x2610;'], substr($row[1], 3)];
-                } else if (0 === strpos($row[1], '[x] ')) {
-                    $rows[$k][1] = [[false, '&#x2612;'], substr($row[1], 3)];
-                }
             }
+            $rows[$k][2]['style'] = 'list-style:none;padding-left:0;';
             continue;
         }
         if (is_array($row[1] ?? 0)) {
