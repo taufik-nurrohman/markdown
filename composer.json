@@ -8,8 +8,7 @@
   ],
   "autoload": {
     "files": [
-      "from.php",
-      "to.php"
+      "from.php"
     ]
   },
   "description": "Obviously, a Markdown parser.",
@@ -30,7 +29,7 @@
   "license": "MIT",
   "name": "taufik-nurrohman/markdown",
   "require": {
-    "php": ">=7.1"
+    "php": ">=7.3"
   },
   "support": {
     "docs": "https://github.com/taufik-nurrohman/markdown#readme",
