@@ -1,33 +1,39 @@
-### Task List
+### Loose
 
 - [x] asdf
+
 - [ ] asdf
+
 - [ ] asdf **asdf**
 
-### Task List
+### Tight
 
 - [x] asdf
-
 - [ ] asdf
-
 - [ ] asdf **asdf**
 
 [x] asdf asdf asdf asdf
 [x] asdf asdf asdf asdf
 [x] asdf asdf **asdf** asdf
 
-> ### Task List
+> ### Loose
 >
 > - [x] asdf
+>
+>   asdf asdf asdf asdf
+>
 > - [ ] asdf
+>
+>   asdf asdf asdf asdf
+>
 > - [ ] asdf **asdf**
 >
-> ### Task List
+>   asdf asdf asdf asdf
+>
+> ### Tight
 >
 > - [x] asdf
->
 > - [ ] asdf
->
 > - [ ] asdf **asdf**
 
-<!-- [x]: asdf -->
+[x]: asdf

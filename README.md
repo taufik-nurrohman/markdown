@@ -54,13 +54,11 @@ composer require taufik-nurrohman/markdown
 Require the generated auto-loader file in your application:
 
 ~~~ php
-<?php
-
-use function x\markdown\from as from_markdown;
+<?php use function x\markdown\from;
 
 require 'vendor/autoload.php';
 
-echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo from('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 ### Using File
@@ -68,13 +66,11 @@ echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 Require the `from.php` file in your application:
 
 ~~~ php
-<?php
-
-use function x\markdown\from as from_markdown;
+<?php use function x\markdown\from;
 
 require 'from.php';
 
-echo from_markdown('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
+echo from('# asdf {#asdf}'); // Returns `'<h1 id="asdf">asdf</h1>'`
 ~~~
 
 Options
@@ -86,13 +82,11 @@ If this option is set to `false`, the input will be assumed to contain inline sy
 block syntax will be rendered literally. Here’s an example of when this option will be useful:
 
 ~~~ php
-<?php
-
-use function x\markdown\from as from_markdown;
+<?php use function x\markdown\from;
 
 echo '<p>';
 
-echo from_markdown('# [asdf](asdf)', [
+echo from('# [asdf](asdf)', [
     'block' => false
 ]); // Returns `'# <a href="asdf">asdf</a>'`
 
@@ -106,15 +100,15 @@ which will tidy up the HTML output. If it is set to a string, the string will be
 can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters:
 
 ~~~ php
-<?= from_markdown($value, ['tab' => 0]); ?>
+<?= from($value, ['tab' => 0]); ?>
 ~~~
 
 ~~~ php
-<?= from_markdown($value, ['tab' => 2]); ?>
+<?= from($value, ['tab' => 2]); ?>
 ~~~
 
 ~~~ php
-<?= from_markdown($value, ['tab' => "\t"]); ?>
+<?= from($value, ['tab' => "\t"]); ?>
 ~~~
 
 ### `with`
@@ -123,26 +117,24 @@ A very simple extension system. Pass a list of callables there. It will modify t
 HTML string:
 
 ~~~ php
-<?php
-
-use function x\markdown\from as from_markdown;
+<?php use function x\markdown\from;
 
 // Extension as a closure
-$my_extension = function (array $rows) { /* … */ };
+$extension = function (array $rows) { /* … */ };
 
 // Extension as a function
-function my_extension(array $rows) { /* … */ }
+function extension(array $rows) { /* … */ }
 
 // Extension as a class
-class MyExtension {
+class Extension {
     public function __invoke(array $rows) { /* … */ }
 }
 
-echo from_markdown($value, [
+echo from($value, [
     'with' => [
-        $my_extension,
-        'my_extension',
-        new MyExtension,
+        $extension,
+        'extension',
+        new Extension,
         // …
     ]
 ]);
@@ -503,10 +495,10 @@ __asdf__{#asdf}
 
 I decided it would be better to not allow optional spaces between them. There are several reasons for this:
 
- 1. The CommonMark rules do not allow optional spaces after the link label [^link:1] [^link:2] [^link:3] for consistency
-    with the link [shortcut](https://spec.commonmark.org/0.31.2#shortcut-reference-link) syntax. I assume that people
-    who are already familiar with CommonMark rules would expect me to treat the attribute syntax the same way CommonMark
-    treats the link parts syntax.
+ 1. The CommonMark rules do not allow optional spaces after the link label [^1] for consistency with the link
+    [shortcut](https://spec.commonmark.org/0.31.2#shortcut-reference-link) syntax. I assume that people who are already
+    familiar with CommonMark rules would expect me to treat the attribute syntax the same way CommonMark treats the link
+    parts syntax.
 
  1. It is easier to determine the priority when this construct occurs:
 
@@ -576,9 +568,7 @@ I decided it would be better to not allow optional spaces between them. There ar
     </tbody>
     </table>
 
- [^link:1]: <https://spec.commonmark.org/0.31.2#example-542>
- [^link:2]: <https://spec.commonmark.org/0.31.2#example-556>
- [^link:3]: <https://spec.commonmark.org/0.31.2#example-511>
+ [^1]: See examples [511](https://spec.commonmark.org/0.31.2#example-511), [542](https://spec.commonmark.org/0.31.2#example-542), and [556](https://spec.commonmark.org/0.31.2#example-556).
 
 Attribute syntax can be classified into two types:
 
@@ -1683,6 +1673,7 @@ on a single line. This is explained in [Section 4.6](https://spec.commonmark.org
 ~~~ md
 <del>
 asdf asdf *asdf*
+
 </del>
 asdf *asdf* asdf
 ~~~
@@ -1692,8 +1683,7 @@ asdf *asdf* asdf
 
 ~~~ html
 <del>
-asdf asdf *asdf*
-</del>
+asdf asdf *asdf*</del>
 asdf *asdf* asdf
 ~~~
 
@@ -2816,31 +2806,31 @@ Consider the following examples. Without stricter rules for the list block, my p
 and `asdf. ` as the start of another list item:
 
 ~~~
-a) asdf (asdf
-asdf) asdf
-b) asdf asdf
-c) asdf asdf
+a) asdf (asdf asdf asdf
+asdf) asdf asdf asdf
+b) asdf asdf asdf asdf
+c) asdf asdf asdf asdf
 ~~~
 
 ~~~
-a) asdf (asdf
-   asdf) asdf
-b) asdf asdf
-c) asdf asdf
+a) asdf (asdf asdf asdf
+   asdf) asdf asdf asdf
+b) asdf asdf asdf asdf
+c) asdf asdf asdf asdf
 ~~~
 
 ~~~
-a. asdf asdf
-asdf. asdf
-b. asdf asdf
-c. asdf asdf
+a. asdf asdf asdf asdf
+asdf. asdf asdf asdf
+b. asdf asdf asdf asdf
+c. asdf asdf asdf asdf
 ~~~
 
 ~~~
-a. asdf asdf
-   asdf. asdf
-b. asdf asdf
-c. asdf asdf
+a. asdf asdf asdf asdf
+   asdf. asdf asdf asdf
+b. asdf asdf asdf asdf
+c. asdf asdf asdf asdf
 ~~~
 
 Also, consider the following example which is taken from [this discussion](https://talk.commonmark.org/t/bad-interaction-between-laziness-rule-and-ordered-lists/9085?u=taufik-nurrohman):
@@ -2909,21 +2899,21 @@ Extra, multi-line notes don’t have to be indented by four spaces. A space or t
 <td>
 
 ~~~ md
-asdf [^1]
+asdf asdf asdf asdf [^1]
 
-[^1]: asdf
+[^1]: asdf asdf asdf asdf
 ~~~
 
 </td>
 <td>
 
 ~~~ html
-<p>asdf <sup id="from:1"><a href="#to:1" role="doc-noteref">1</a></sup></p>
+<p>asdf asdf asdf asdf <sup id="from:1"><a href="#to:1" role="doc-noteref">1</a></sup></p>
 <div role="doc-endnotes">
   <hr>
   <ol>
     <li id="to:1" role="doc-endnote">
-      <p>asdf&#xa0;<a href="#from:1" role="doc-backlink">&#x21a9;</a></p>
+      <p>asdf asdf asdf asdf&#xa0;<a href="#from:1" role="doc-backlink">&#x21a9;</a></p>
     </li>
   </ol>
 </div>
@@ -2935,39 +2925,39 @@ asdf [^1]
 <td>
 
 ~~~ md
-asdf [^1]
+asdf asdf asdf asdf [^1]
 
 [^1]:
 
-  asdf
-  ----
+  asdf asdf asdf asdf
+  -------------------
 
-  asdf
-  asdf
+  asdf asdf asdf asdf
+  asdf asdf asdf asdf
 
-      asdf
+      asdf asdf asdf asdf
 
-  asdf
-  asdf
+  asdf asdf asdf asdf
+  asdf asdf asdf asdf
 
-asdf
+asdf asdf asdf asdf
 ~~~
 
 </td>
 <td>
 
 ~~~ html
-<p>asdf <sup id="from:1"><a href="#to:1" role="doc-noteref">1</a></sup></p>
-<p>asdf</p>
+<p>asdf asdf asdf asdf <sup id="from:1"><a href="#to:1" role="doc-noteref">1</a></sup></p>
+<p>asdf asdf asdf asdf</p>
 <div role="doc-endnotes">
   <hr>
   <ol>
     <li id="to:1" role="doc-endnote">
-      <h2>asdf</h2>
-      <p>asdf asdf</p>
-      <pre><code>asdf
+      <h2>asdf asdf asdf asdf</h2>
+      <p>asdf asdf asdf asdf asdf asdf asdf asdf</p>
+      <pre><code>asdf asdf asdf asdf
 </code></pre>
-      <p>asdf asdf&#xa0;<a href="#from:1" role="doc-backlink">&#x21a9;</a></p>
+      <p>asdf asdf asdf asdf asdf asdf asdf asdf&#xa0;<a href="#from:1" role="doc-backlink">&#x21a9;</a></p>
     </li>
   </ol>
 </div>
@@ -3451,30 +3441,10 @@ Tweaks
 
 Let me share some tips with you so that you can add features without having to ask me to modify the core functionality.
 Some of these need to be implemented at the data structure level, which is very specific to my Markdown parser. Others
-need to be implemented after the HTML string is ready [^1].
+need to be implemented after the HTML string is ready [^2].
 
- [^1]: This one can actually be applied to any HTML string, not only to the HTML string generated by my Markdown parser.
+ [^2]: This one can actually be applied to any HTML string, not only to the HTML string generated by my Markdown parser.
        I will call this type of method the “naive” method.
-
-### Globally Reusable Functions
-
-To make `from_markdown()` function reusable globally, use this method:
-
-~~~ php
-<?php
-
-require 'from.php';
-
-// Or, if you are using Composer…
-// require 'vendor/autoload.php';
-
-function from_markdown(?string $value, $state = []): ?string {
-    return x\markdown\from($value, $state);
-}
-~~~
-
-Now, you should be able to use the `from_markdown()` function anywhere without having to declare the `use function`
-part. Best for those who want to use my Markdown parser as part of their system API.
 
 ### Strip HTML
 
@@ -3482,9 +3452,7 @@ If you’re naive, just use [`strip_tags()`](https://www.php.net/strip-tags) and
 in a strict Markdown document:
 
 ~~~ php
-<?php
-
-echo strip_tags(from_markdown($value), [
+echo strip_tags(from($value), [
     'a', 'img',
     'abbr', 'code', 'sup',
     'blockquote', 'p', 'pre',
@@ -3502,9 +3470,7 @@ echo strip_tags(from_markdown($value), [
 Even better, strip them from the Markdown source immediately:
 
 ~~~ php
-<?php
-
-echo from_markdown(strip_tags($value));
+echo from(strip_tags($value));
 ~~~
 
 The only issue with the second method is that it will misidentify the auto-link syntax as an HTML/XML element, causing
@@ -3512,8 +3478,6 @@ it to be accidentally stripped. To correctly remove only the raw HTML tags from 
 allow `**asdf**` but not `<strong>asdf</strong>`), you can remove them [this way](x/strip.php):
 
 ~~~ php
-<?php
-
 $strip = static function (array $rows) use (&$strip) {
     if (!$rows) {
         return $rows;
@@ -3532,14 +3496,14 @@ $strip = static function (array $rows) use (&$strip) {
     return $rows;
 };
 
-echo from_markdown($value, ['with' => [$strip]]);
+echo from($value, ['with' => [$strip]]);
 ~~~
 
 ### Task List
 
 I am against the task list feature because it promotes the abuse of form input elements, which is a bad practice.
 Although it does display a checkbox interface correctly, I still believe that input elements should be used inside a
-form element. Several Unicode symbols, such as &#x2610;, &#x2611;, and &#x2612;, are more suitable and easier to read
+form element. Several Unicode symbols, such as &#x2610; and &#x2612;, are more suitable and easier to read
 from the Markdown source. This means that the task list feature can actually be made using the standard list feature:
 
 ~~~ md
@@ -3552,9 +3516,7 @@ In case you need it or don’t want to revise the syntax of your existing task l
 naive hack:
 
 ~~~ php
-<?php
-
-$value = from_markdown($value, ['tab' => false]);
+$value = from($value, ['tab' => false]);
 
 $value = strtr($value, [
     // Loose list item(s)
@@ -3568,6 +3530,10 @@ $value = strtr($value, [
 echo $value;
 ~~~
 
+However, it will only transform the list items and cannot seamlessly add a `class` or `style` attribute to the list
+container. If you want to add a `class` or `style` attribute to the list container, it is best to use
+[this method](x/task.php).
+
 ### Pre-Defined Abbreviations, Notes, and References
 
 By inserting abbreviations, notes, and references at the end of the Markdown content, it will be as if you had a
@@ -3576,8 +3542,6 @@ pre-defined abbreviations, notes, and references feature. According to the
 precedence, so the additional content must be placed at the end of the Markdown content:
 
 ~~~ php
-<?php
-
 $extra = implode("\n", [
     "",
     // Abbreviation(s)
@@ -3593,7 +3557,7 @@ $extra = implode("\n", [
     '[taufik-nurrohman]: https://github.com/taufik-nurrohman (Taufik Nurrohman)',
 ]);
 
-echo from_markdown($value . "\n" . $extra);
+echo from($value . "\n" . $extra);
 ~~~
 
 ### Pre-Defined Header’s ID
@@ -3602,8 +3566,6 @@ Add an automatic `id` attribute to headers level 2 through 6 if it’s not set, 
 points to it:
 
 ~~~ php
-<?php
-
 $header = static function (array $rows) use (&$header) {
     if (!$rows) {
         return $rows;
@@ -3655,15 +3617,13 @@ $header = static function (array $rows) use (&$header) {
 };
 
 
-echo from_markdown($value, ['with' => [$header]]);
+echo from($value, ['with' => [$header]]);
 ~~~
 
 Or, if you prefer the naive method:
 
 ~~~ php
-<?php
-
-$value = from_markdown($value);
+$value = from($value);
 
 if ($value && false !== strpos($value, '</h')) {
     static $f = [];
@@ -3706,9 +3666,7 @@ Here’s a naive method that converts auto-links with `gist:` scheme into [GitHu
 code:
 
 ~~~ php
-<?php
-
-$value = from_markdown($value);
+$value = from($value);
 
 $value = preg_replace('/^[ ]{0,3}<gist:([^>]+)>\s*$/m', '<script src="https://gist.github.com/$1.js"></script>', $value);
 
@@ -3775,9 +3733,9 @@ from its presentation, despite its broken semantic:
 With regular expressions, you can improve its [semantic](https://w3c.github.io/aria#note):
 
 ~~~ php
-$value = from_markdown($value);
+$value = from($value);
 
-$value = preg_replace_callback('/<hr\s*\/?>\s*(<p><strong>NOTE:<\/strong>[\s\S]*?<\/p>)\s*<hr\s*\/?>/', static function ($m) {
+$value = preg_replace_callback('/<hr\s*\/?>(\s*<p><strong>NOTE:<\/strong>[\s\S]*?<\/p>\s*)<hr\s*\/?>/', static function ($m) {
     return '<div role="note">' . $m[1] . '</div>';
 }, $value);
 
