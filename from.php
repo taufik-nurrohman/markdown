@@ -1100,7 +1100,7 @@ namespace x\markdown\from {
                 // <https://spec.commonmark.org/0.31.2#images>
                 } else {
                     $row[$current] = ['img', false, ($v[2] ?? []) + [
-                        'alt' => alt($chunk),
+                        'alt' => \trim(alt($chunk)),
                         'src' => $v[0],
                         'title' => $v[1]
                     ], [$v[3]]];
@@ -1133,7 +1133,7 @@ namespace x\markdown\from {
         if ($deep > 1) {
             $row = e($row, $stack, $last);
         }
-        return [y($row, true), $lot, 0];
+        return [y($row), $lot, 0];
     }
     function rows(string $value, array &$lot = [], int $deep = 0, int $i = 0, int $limit = 0) {
         $lot = \array_replace([[], [], []], $lot);
@@ -2454,14 +2454,14 @@ namespace x\markdown\from {
         }
         return $s;
     }
-    function y($row, $flat = false) {
+    function y($row) {
         if (\is_array($row)) {
             $limit = \count($row);
             $r = [];
             $s = "";
             for ($i = 0; $i < $limit; ++$i) {
                 if (\is_string($c = $row[$i])) {
-                    $s .= $flat ? \strtr($c, "\n", ' ') : $c;
+                    $s .= \strtr($c, "\n", ' ');
                     continue;
                 }
                 "" !== $s && ($r[] = $s);

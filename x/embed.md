@@ -70,7 +70,7 @@ Paragraph Block
 
 asdf asdf asdf asdf
 
-<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+<gist:taufik-nurrohman/1da313a2db48a26d836d781258b6c139>
 
 asdf asdf asdf asdf
 
@@ -79,7 +79,7 @@ asdf asdf asdf asdf
 ### Tight
 
 asdf asdf asdf asdf
-<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+<gist:taufik-nurrohman/1da313a2db48a26d836d781258b6c139>
 asdf asdf asdf asdf
 
 Quote Block
@@ -87,11 +87,11 @@ Quote Block
 
 > asdf asdf asdf asdf
 >
-> <gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+> <gist:taufik-nurrohman/1da313a2db48a26d836d781258b6c139>
 >
 > > asdf asdf asdf asdf
 > >
-> > <gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+> > <gist:taufik-nurrohman/1da313a2db48a26d836d781258b6c139>
 >
 > asdf asdf asdf asdf
 
@@ -100,12 +100,12 @@ Raw Block
 
 <div role="note">
 
-**Note:** Please view the page source! <!-- <gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c> -->
+**Note:** Please view the page source! <!-- <gist:taufik-nurrohman/1da313a2db48a26d836d781258b6c139> -->
 
 </div>
 
 <!--
 
-<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+<gist:taufik-nurrohman/1da313a2db48a26d836d781258b6c139>
 
 -->

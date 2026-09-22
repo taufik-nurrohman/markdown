@@ -3384,8 +3384,8 @@ the white space column positions of the child blocks will be shifted correctly.
 All CommonMark white space column rules are passed. The only limitation is that it is currently not possible to preserve
 tab characters.
 
-For tab characters in code blocks, you can preserve them [this way](). Though, it would be more accurate to call it “tab
-normalization” than “tab preservation”.
+For tab characters in code blocks, you can preserve them [this way](x/tab.php). Though, it would be more accurate to
+call it “tab normalization” than “tab preservation”.
 
 XSS
 ---
@@ -3677,10 +3677,10 @@ That method does not take fenced code blocks and raw HTML blocks into considerat
 converting auto-link syntax in places where it should be left as is:
 
 ~~~~ md
-<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+<gist:taufik-nurrohman/1da313a2db48a26d836d781258b6c139>
 
 ~~~ md
-<gist:taufik-nurrohman/6a13bdfd4eecffcf70012f8e09afd35c>
+<gist:taufik-nurrohman/1da313a2db48a26d836d781258b6c139>
 ~~~
 ~~~~
 
@@ -3713,8 +3713,8 @@ syntax, which is nice to look at directly through the Markdown source, even when
 ------------------------------
 ~~~
 
-Most Markdown parsers will render the syntax above to this HTML, which is still acceptable to be treated as a note block
-from its presentation, despite its broken semantic:
+Most Markdown parsers will render the above syntax to the following HTML, which is still acceptable as a note block from
+its appearance, despite its broken semantics:
 
 ~~~ html
 <hr />

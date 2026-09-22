@@ -488,52 +488,11 @@ $s .= '<title>';
 $s .= 'Markdown to HTML';
 $s .= '</title>';
 $s .= '<style>';
-$s .= <<<CSS
-@import url('../../index.css');
-body > form {
-  margin-bottom: 1em;
-}
-body > form > fieldset > p + p {
-  margin-top: 1em;
-}
-body > main > div {
-  display: flex;
-  flex-direction: column;
-  gap: 1em;
-}
-body > main > div > iframe,
-body > main > div > pre {
-  border: 1px solid #000;
-  min-width: 0;
-  padding: 0.75em;
-  word-wrap: break-word;
-}
-body > main > div > iframe {
-  border-width: 2px;
-  padding: 0;
-}
-body > main > div > p {
-  font-size: 75%;
-  margin-top: -0.5rem;
-  min-width: 0;
-}
-body > main > div > pre {
-  background: #ffc;
-  padding: 0.25em 0.45em;
-  white-space: pre-wrap;
-}
-body > main > div + div {
-  margin-top: 1em;
-}
-@media (min-width: 1200px) {
-  body > main > div {
-    flex-direction: row;
-  }
-  body > main > div > * {
-    flex: 1;
-  }
-}
-CSS;
+$s .= trim(
+<<<CSS
+*{background:0 0;border:0;box-sizing:border-box;color:inherit;font:inherit;margin:0;padding:0;text-decoration:none}a{color:#00f}a:focus{color:red}b,h1,h2,h3,h4,h5,h6,legend,strong,th{font-weight:700}button,input,select,textarea{appearance:none;background:50% 50% no-repeat #fff;border:1px solid #000;display:inline-block;height:calc(1.5em + (.125em * 2) + 2px);line-height:1.5em;padding:.125em .5em}button,select{background-color:#eee;cursor:pointer}input[type=checkbox],input[type=radio]{cursor:pointer;height:1em;padding:0;position:relative;width:1em}input[type=radio]{border-radius:100%}input[type=checkbox]:checked::before{border-bottom:1px solid #00f;border-right:1px solid #00f;bottom:3px;content:"";left:3px;position:absolute;right:3px;top:0;transform:rotate(45deg)}input[type=radio]:checked::before{background:#00f;border-radius:100%;bottom:2px;content:"";left:2px;position:absolute;right:2px;top:2px}code,textarea{font:12px/1.25 'Courier New',monospace}textarea{resize:vertical}em,i{font-style:italic}fieldset{border:1px solid #000;padding:1em}fieldset+fieldset{margin-top:1em}hr{border-top:1px solid #000}label{cursor:pointer}legend{line-height:0;padding:0 .25em;white-space:nowrap}pre{overflow:auto;tab-size:4}pre[aria-errormessage]{background:#fcc}pre code{display:block}select{background-image:url(data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjAgMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTQgN0wxMCAxM0wxNiA3IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS1saW5lY2FwPSJidXR0IiBzdHJva2UtbGluZWpvaW49Im1pdGVyIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=);background-position:right .4em center;background-size:1rem;padding-right:1.75em}.c{font-style:normal;font-weight:400;position:relative}.c::before{background:#dda;bottom:0;color:#774;content:"";text-align:center}.c-n::before{content:'\\5c n'}.c-r::before{content:'\\5c r'}.c-s::before{bottom:0;content:'\\22c5';left:0;position:absolute;right:0;top:0}.c-t::before{bottom:0;left:0;overflow:hidden;position:absolute;right:0;text-align:left;top:0}pre:focus .c-t::before,pre:hover .c-t::before{content:'1234'}:disabled{cursor:not-allowed;opacity:.5}:root{background:#fff;color:#000;font:13px/1.5 Verdana,sans-serif;padding:1em}[role=group]{align-items:center;display:flex;flex-wrap:wrap;gap:.5em}body>form{margin-bottom:1em}body>form>fieldset>p+p,body>main>div+div{margin-top:1em}body>main>div{display:flex;flex-direction:column;gap:1em}body>main>div>iframe,body>main>div>pre{border:1px solid #000;min-width:0;word-wrap:break-word}body>main>div>iframe{border-width:2px;padding:0}body>main>div>p{font-size:75%;margin-top:-.5rem;min-width:0}body>main>div>pre{background:#ffc;padding:.25em .45em;white-space:pre-wrap}@media (min-width:1200px){body>main>div{flex-direction:row}body>main>div>*{flex:1}}
+CSS
+);
 $s .= '</style>';
 $s .= '</head>';
 $s .= '<body spellcheck="false">';
