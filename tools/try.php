@@ -4,7 +4,7 @@ if (!in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1'])) {
     // exit;
 }
 
-error_reporting(E_ALL | E_STRICT);
+error_reporting(E_ALL);
 
 ini_set('display_errors', true);
 ini_set('display_startup_errors', true);
