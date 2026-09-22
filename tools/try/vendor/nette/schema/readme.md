@@ -1,5 +1,4 @@
-Nette Schema
-************
+# Nette Schema
 
 [![Downloads this Month](https://img.shields.io/packagist/dm/nette/schema.svg)](https://packagist.org/packages/nette/schema)
 [![Tests](https://github.com/nette/schema/workflows/Tests/badge.svg?branch=master)](https://github.com/nette/schema/actions)
@@ -21,7 +20,7 @@ Installation:
 composer require nette/schema
 ```
 
-It requires PHP version 7.1 and supports PHP up to 8.3.
+It requires PHP version 8.1 and supports PHP up to 8.5.
 
 
 [Support Me](https://github.com/sponsors/dg)
@@ -127,7 +126,7 @@ Expect::null()
 Expect::array($default = [])
 ```
 
-And then all types [supported by the Validators](https://doc.nette.org/validators#toc-validation-rules) via `Expect::type('scalar')` or abbreviated `Expect::scalar()`. Also class or interface names are accepted, e.g. `Expect::type('AddressEntity')`.
+And then all types [supported by the Validators](https://doc.nette.org/validators#toc-expected-types) via `Expect::type('scalar')` or abbreviated `Expect::scalar()`. Also class or interface names are accepted, e.g. `Expect::type('AddressEntity')`.
 
 You can also use union notation:
 
@@ -439,7 +438,7 @@ Expect::structure([
 // creates '$obj = new Info' and writes to $obj->processRefund and $obj->refundAmount
 ```
 
-If the class has a constructor, the elements of the structure are passed as named parameters to the constructor (requires PHP 8):
+If the class has a constructor, the elements of the structure are passed as named parameters to the constructor:
 
 ```php
 class Info

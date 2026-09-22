@@ -382,9 +382,9 @@ if ("" !== trim($_SESSION['r'][1] ?? "")) {
     $s .= '</option>';
     foreach ([
         'cebe/markdown' => '“cebe” Markdown Extra',
+        'erusev/parsedown-extra' => 'Parsedown Extra',
         'league/commonmark' => 'CommonMark PHP',
         'michelf/php-markdown' => 'Markdown Extra',
-        'erusev/parsedown-extra' => 'Parsedown Extra',
     ] as $k => $v) {
         $s .= '<option' . ($k === strtr($w, [D => '/']) ? ' selected' : "") . ' value="' . $k . '">';
         $s .= $v;

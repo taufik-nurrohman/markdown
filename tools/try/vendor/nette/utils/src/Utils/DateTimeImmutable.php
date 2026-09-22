@@ -7,49 +7,30 @@
 
 namespace Nette\Utils;
 
-use function array_merge, checkdate, implode, is_numeric, is_string, preg_replace_callback, sprintf, time, trim;
+use function array_merge, checkdate, implode, is_int, is_string, preg_match, preg_replace_callback, sprintf, trim;
 
 
 /**
- * Extends PHP's DateTime with strict validation and additional factory methods.
+ * Extends PHP's DateTimeImmutable with strict validation and additional factory methods.
+ * Invalid dates and times are rejected with an exception instead of being silently adjusted.
+ * All modifications return a new instance, the original object never changes.
  */
-class DateTime extends \DateTime implements \JsonSerializable
+class DateTimeImmutable extends \DateTimeImmutable implements \JsonSerializable
 {
-	/** minute in seconds */
-	public const MINUTE = 60;
-
-	/** hour in seconds */
-	public const HOUR = 60 * self::MINUTE;
-
-	/** day in seconds */
-	public const DAY = 24 * self::HOUR;
-
-	/** week in seconds */
-	public const WEEK = 7 * self::DAY;
-
-	/** average month in seconds */
-	public const MONTH = 2_629_800;
-
-	/** average year in seconds */
-	public const YEAR = 31_557_600;
+	/** matches relative sub-day parts (minutes, seconds, ...) that must be applied in UTC to be DST-safe */
+	private const RelativePattern = '/[+-]?\s*\d+\s+((microsecond|millisecond|[mµu]sec)s?|[mµ]s|sec(ond)?s?|min(ute)?s?|hours?)(\s+ago)?\b/iu';
 
 
 	/**
-	 * Creates a DateTime object from a string, UNIX timestamp, or other DateTimeInterface object.
+	 * Creates a DateTimeImmutable object from a string, UNIX timestamp, or other DateTimeInterface object.
 	 * @throws \Exception if the date and time are not valid.
 	 */
 	public static function from(string|int|\DateTimeInterface|null $time): static
 	{
 		if ($time instanceof \DateTimeInterface) {
 			return static::createFromInterface($time);
-
-		} elseif (is_numeric($time)) {
-			if ($time <= self::YEAR) {
-				$time += time();
-			}
-
-			return (new static)->setTimestamp((int) $time);
-
+		} elseif (is_int($time)) {
+			return (new static)->setTimestamp($time);
 		} else { // textual or null
 			return new static((string) $time);
 		}
@@ -57,7 +38,7 @@ class DateTime extends \DateTime implements \JsonSerializable
 
 
 	/**
-	 * Creates DateTime object.
+	 * Creates DateTimeImmutable object.
 	 * @throws \Exception if the date and time are not valid.
 	 */
 	public static function fromParts(
@@ -70,14 +51,14 @@ class DateTime extends \DateTime implements \JsonSerializable
 	): static
 	{
 		$sec = (int) floor($second);
-		return (new static(''))
+		return (new static)
 			->setDate($year, $month, $day)
 			->setTime($hour, $minute, $sec, (int) round(($second - $sec) * 1e6));
 	}
 
 
 	/**
-	 * Returns a new DateTime object formatted according to the specified format.
+	 * Returns a new DateTimeImmutable object formatted according to the specified format.
 	 */
 	public static function createFromFormat(
 		string $format,
@@ -96,14 +77,20 @@ class DateTime extends \DateTime implements \JsonSerializable
 
 	public function __construct(string $datetime = 'now', ?\DateTimeZone $timezone = null)
 	{
-		$this->apply($datetime, $timezone, true);
+		if (preg_match(self::RelativePattern, $datetime)) {
+			// sub-day relative parts must be applied in UTC, which cannot happen inside a constructor => resolve & re-parse
+			$result = self::resolve(null, $datetime, $timezone);
+			parent::__construct($result->format('Y-m-d H:i:s.u'), $result->getTimezone());
+		} else {
+			parent::__construct($datetime, $timezone);
+			self::handleErrors($datetime);
+		}
 	}
 
 
 	public function modify(string $modifier): static
 	{
-		$this->apply($modifier);
-		return $this;
+		return static::createFromInterface(self::resolve($this, $modifier, null));
 	}
 
 
@@ -131,40 +118,43 @@ class DateTime extends \DateTime implements \JsonSerializable
 
 
 	/**
-	 * Converts a relative time string (e.g. '10 minut') to seconds.
+	 * Splits the input into absolute and relative parts and returns the resulting instant. Relative sub-day
+	 * parts are applied in UTC so that crossing a DST boundary does not shift the result.
 	 */
-	public static function relativeToSeconds(string $relativeTime): int
-	{
-		return (new self('@0 ' . $relativeTime))
-			->getTimestamp();
-	}
-
-
-	private function apply(string $datetime, ?\DateTimeZone $timezone = null, bool $ctr = false): void
+	private static function resolve(?\DateTimeInterface $base, string $input, ?\DateTimeZone $timezone): \DateTimeImmutable
 	{
 		$relPart = '';
 		$absPart = preg_replace_callback(
-			'/[+-]?\s*\d+\s+((microsecond|millisecond|[mµu]sec)s?|[mµ]s|sec(ond)?s?|min(ute)?s?|hours?)(\s+ago)?\b/iu',
+			self::RelativePattern,
 			function ($m) use (&$relPart) {
 				$relPart .= $m[0] . ' ';
 				return '';
 			},
-			$datetime,
+			$input,
 		);
 
-		if ($ctr) {
-			parent::__construct($absPart, $timezone);
-			$this->handleErrors($datetime);
-		} elseif (trim($absPart)) {
-			parent::modify($absPart) && $this->handleErrors($datetime);
+		if ($base === null) {
+			$result = new \DateTimeImmutable($absPart, $timezone);
+			self::handleErrors($input);
+		} else {
+			$result = \DateTimeImmutable::createFromInterface($base);
+			if (trim($absPart) !== '') {
+				$modified = @$result->modify($absPart); // @ - on PHP 8.2 an invalid modifier emits a warning and returns false instead of throwing; handleErrors() turns it into an exception
+				self::handleErrors($input);
+				$result = $modified ?: $result;
+			}
 		}
 
-		if ($relPart) {
-			$timezone ??= $this->getTimezone();
-			$this->setTimezone(new \DateTimeZone('UTC'));
-			parent::modify($relPart) && $this->handleErrors($datetime);
-			$this->setTimezone($timezone);
+		if ($relPart !== '') {
+			$timezone ??= $result->getTimezone();
+			$result = $result
+				->setTimezone(new \DateTimeZone('UTC'))
+				->modify($relPart)
+				->setTimezone($timezone);
+			self::handleErrors($input);
 		}
+
+		return $result;
 	}
 
 
@@ -186,17 +176,7 @@ class DateTime extends \DateTime implements \JsonSerializable
 	}
 
 
-	/**
-	 * Returns a modified copy of the object. Use (clone $dt)->modify(...) for better type safety.
-	 */
-	public function modifyClone(string $modify = ''): static
-	{
-		$dolly = clone $this;
-		return $modify ? $dolly->modify($modify) : $dolly;
-	}
-
-
-	private function handleErrors(string $value): void
+	private static function handleErrors(string $value): void
 	{
 		$errors = self::getLastErrors();
 		$errors = array_merge($errors['errors'] ?? [], $errors['warnings'] ?? []);

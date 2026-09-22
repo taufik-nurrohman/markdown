@@ -1,11 +1,9 @@
-<?php
+<?php declare(strict_types=1);
 
 /**
  * This file is part of the Nette Framework (https://nette.org)
  * Copyright (c) 2004 David Grudl (https://davidgrudl.com)
  */
-
-declare(strict_types=1);
 
 namespace Nette\Schema\Elements;
 
@@ -13,21 +11,21 @@ use Nette;
 use Nette\Schema\Context;
 use Nette\Schema\Helpers;
 use Nette\Schema\Schema;
+use function array_merge, array_unique, implode, is_array;
 
 
+/**
+ * Schema that accepts any of a fixed set of values or sub-schemas (union type / enumeration).
+ */
 final class AnyOf implements Schema
 {
 	use Base;
-	use Nette\SmartObject;
 
-	/** @var array */
-	private $set;
+	/** @var mixed[] */
+	private array $set;
 
 
-	/**
-	 * @param  mixed|Schema  ...$set
-	 */
-	public function __construct(...$set)
+	public function __construct(mixed ...$set)
 	{
 		if (!$set) {
 			throw new Nette\InvalidStateException('The enumeration must not be empty.');
@@ -37,6 +35,9 @@ final class AnyOf implements Schema
 	}
 
 
+	/**
+	 * Sets the first variant as the default value (instead of null).
+	 */
 	public function firstIsDefault(): self
 	{
 		$this->default = $this->set[0];
@@ -44,6 +45,9 @@ final class AnyOf implements Schema
 	}
 
 
+	/**
+	 * Allows null as an accepted value in addition to the defined variants.
+	 */
 	public function nullable(): self
 	{
 		$this->set[] = null;
@@ -51,6 +55,9 @@ final class AnyOf implements Schema
 	}
 
 
+	/**
+	 * Allows the value to be a DynamicParameter as an accepted variant.
+	 */
 	public function dynamic(): self
 	{
 		$this->set[] = new Type(Nette\Schema\DynamicParameter::class);
@@ -61,13 +68,13 @@ final class AnyOf implements Schema
 	/********************* processing ****************d*g**/
 
 
-	public function normalize($value, Context $context)
+	public function normalize(mixed $value, Context $context): mixed
 	{
 		return $this->doNormalize($value, $context);
 	}
 
 
-	public function merge($value, $base)
+	public function merge(mixed $value, mixed $base): mixed
 	{
 		if (is_array($value) && isset($value[Helpers::PreventMerging])) {
 			unset($value[Helpers::PreventMerging]);
@@ -78,7 +85,7 @@ final class AnyOf implements Schema
 	}
 
 
-	public function complete($value, Context $context)
+	public function complete(mixed $value, Context $context): mixed
 	{
 		$isOk = $context->createChecker();
 		$value = $this->findAlternative($value, $context);
@@ -87,16 +94,19 @@ final class AnyOf implements Schema
 	}
 
 
-	private function findAlternative($value, Context $context)
+	private function findAlternative(mixed $value, Context $context): mixed
 	{
 		$expecteds = $innerErrors = [];
 		foreach ($this->set as $item) {
 			if ($item instanceof Schema) {
 				$dolly = new Context;
+				$dolly->skipDefaults = $context->skipDefaults;
+				$dolly->isKey = $context->isKey;
 				$dolly->path = $context->path;
 				$res = $item->complete($item->normalize($value, $dolly), $dolly);
 				if (!$dolly->errors) {
 					$context->warnings = array_merge($context->warnings, $dolly->warnings);
+					$context->dynamics = array_merge($context->dynamics, $dolly->dynamics);
 					return $res;
 				}
 
@@ -125,18 +135,20 @@ final class AnyOf implements Schema
 				[
 					'value' => $value,
 					'expected' => implode('|', array_unique($expecteds)),
-				]
+				],
 			);
 		}
+
+		return null;
 	}
 
 
-	public function completeDefault(Context $context)
+	public function completeDefault(Context $context): mixed
 	{
 		if ($this->required) {
 			$context->addError(
 				'The mandatory item %path% is missing.',
-				Nette\Schema\Message::MissingItem
+				Nette\Schema\Message::MissingItem,
 			);
 			return null;
 		}
