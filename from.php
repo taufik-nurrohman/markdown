@@ -1386,7 +1386,7 @@ namespace x\markdown\from {
                     $d = d($value, $i, $limit);
                     $m = m($value, $i, $limit);
                     // Reference(s) cannot interrupt a paragraph
-                    if ($d[0] < 4 && '[' === $value[$d[0] + $i] ?? 0) {
+                    if ($d[0] < 4 && '[' === ($value[$d[0] + $i] ?? 0)) {
                         $s .= "\n" . s($value, $i, $m[0]);
                         $i += $m[0] + $m[1];
                         continue;
@@ -1946,6 +1946,12 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ("" !== $s && "\n" !== $s[-1]) {
+                        // Reference(s) cannot interrupt a paragraph
+                        if ('[' === ($value[$d[0] + $i] ?? 0)) {
+                            $s .= "\n" . s($value, $i, $m[0]);
+                            $i += $m[0] + $m[1];
+                            continue;
+                        }
                         $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                         // Current line is not a paragraph continuation text
                         if (!($b = \reset($b)) || !('pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0] || \in_array($b[0], ['figure', 'p'], true))) {
@@ -2019,6 +2025,12 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ("" !== $s && "\n" !== $s[-1]) {
+                        // Reference(s) cannot interrupt a paragraph
+                        if ('[' === ($value[$d[0] + $i] ?? 0)) {
+                            $s .= "\n" . s($value, $i, $m[0]);
+                            $i += $m[0] + $m[1];
+                            continue;
+                        }
                         $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                         // Current line is not a paragraph continuation text
                         if (!($b = \reset($b)) || !('pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0] || \in_array($b[0], ['figure', 'p'], true))) {
