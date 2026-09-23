@@ -29,7 +29,7 @@
   "license": "MIT",
   "name": "taufik-nurrohman/markdown",
   "require": {
-    "php": ">=7.3"
+    "php": ">=7.4"
   },
   "support": {
     "docs": "https://github.com/taufik-nurrohman/markdown#readme",

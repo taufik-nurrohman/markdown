@@ -2,13 +2,13 @@
 
 namespace x\markdown {
     function from(?string $value, $state = []): ?string {
-        if ("" === $value) {
+        if ("" === ($value ??= "")) {
             return null;
         }
         if (!\is_array($state)) {
             $state = ['block' => !!$state];
         }
-        $state = \array_replace_recursive([
+        $state = \array_replace([
             'block' => true,
             'tab' => false,
             'with' => []
@@ -76,9 +76,9 @@ namespace x\markdown\from {
     // <https://en.wikipedia.org/wiki/Latin_script_in_Unicode>
     const c18 = c4 . c10 . '_ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĹĺĻļĽľĿŀŁłŃńŅņŇňŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽž';
     const deep = 25;
-    const x1 = "\x1"; // SOH
-    const x2 = "\x2"; // STX
-    const x3 = "\x3"; // ETX
+    const x1 = "\x1"; // `SOH`
+    const x2 = "\x2"; // `STX`
+    const x3 = "\x3"; // `ETX`
     // Currently, there is no official attribute syntax specification in CommonMark except for the raw HTML attribute.
     // To make it as close as possible to the CommonMark specification or to prepare for the possibility of such
     // specification in the future, I will make the attribute syntax rule(s) as close as possible to the raw HTML
