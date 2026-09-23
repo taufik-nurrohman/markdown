@@ -1028,8 +1028,7 @@ namespace x\markdown\from {
                     ++$i;
                     continue;
                 }
-                $chunk = [];
-                $chunk_set = [];
+                $chunk = $chunk_set = $chunk_stack = [];
                 $current = $stack[$at][2][0];
                 foreach ($row as $k => $r) {
                     if ($k <= $current) {
@@ -1041,7 +1040,6 @@ namespace x\markdown\from {
                 }
                 $chunk_at = $stack[$at][2][2];
                 $chunk_last = null;
-                $chunk_stack = [];
                 while (null !== $chunk_at && isset($chunk_set[$stack[$chunk_at][2][0]])) {
                     $chunk_next = $stack[$chunk_at][2][2];
                     $chunk_v = $stack[$chunk_at];
@@ -1256,7 +1254,7 @@ namespace x\markdown\from {
                     if ("" !== $s && "\n" !== $s[-1] && x3 !== $s[-1]) {
                         $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                         // Current line is not a paragraph continuation text
-                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                        if (!($b = \reset($b)) || !('pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0] || \in_array($b[0], ['figure', 'p'], true))) {
                             break;
                         }
                         $s .= "\n" . s($value, $i, $m[0]);
@@ -1387,6 +1385,12 @@ namespace x\markdown\from {
                 while ($i < $limit) {
                     $d = d($value, $i, $limit);
                     $m = m($value, $i, $limit);
+                    // Reference(s) cannot interrupt a paragraph
+                    if ($d[0] < 4 && '[' === $value[$d[0] + $i] ?? 0) {
+                        $s .= "\n" . s($value, $i, $m[0]);
+                        $i += $m[0] + $m[1];
+                        continue;
+                    }
                     if ($d[0] < 4 && '>' === ($value[$d[1] + $i] ?? 0)) {
                         $text = s($value, $i, $m[0], 0, $d[1] + 1);
                         if (' ' === ($text[0] ?? 0)) {
@@ -1402,7 +1406,7 @@ namespace x\markdown\from {
                     }
                     $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                     // Current line is not a paragraph continuation text
-                    if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                    if (!($b = \reset($b)) || !('pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0] || \in_array($b[0], ['figure', 'p'], true))) {
                         break;
                     }
                     // At this point, a paragraph continuation text is present next to the currently captured quote
@@ -1944,7 +1948,7 @@ namespace x\markdown\from {
                     if ("" !== $s && "\n" !== $s[-1]) {
                         $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                         // Current line is not a paragraph continuation text
-                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                        if (!($b = \reset($b)) || !('pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0] || \in_array($b[0], ['figure', 'p'], true))) {
                             break;
                         }
                         $s .= "\n" . s($value, $i, $m[0]);
@@ -2017,7 +2021,7 @@ namespace x\markdown\from {
                     if ("" !== $s && "\n" !== $s[-1]) {
                         $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                         // Current line is not a paragraph continuation text
-                        if (!($b = \reset($b)) || !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
+                        if (!($b = \reset($b)) || !('pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0] || \in_array($b[0], ['figure', 'p'], true))) {
                             break;
                         }
                         $s .= "\n" . s($value, $i, $m[0]);
