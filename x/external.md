@@ -67,10 +67,16 @@ asdf asdf asdf [asdf](asdf)
 
 asdf asdf asdf [asdf](asdf://asdf)
 
+asdf asdf asdf [asdf](asdf){target='_new'}
+
+asdf asdf asdf [asdf](asdf://asdf){target='_new'}
+
 ### Tight
 
 asdf asdf asdf [asdf](asdf)
 asdf asdf asdf [asdf](asdf://asdf)
+asdf asdf asdf [asdf](asdf){target='_new'}
+asdf asdf asdf [asdf](asdf://asdf){target='_new'}
 
 Quote Block
 -----------

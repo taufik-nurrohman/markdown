@@ -12,8 +12,8 @@ $external = static function (array $rows) use (&$external) {
         if ("" === $href || false === strpos($href, '://')) {
             return $a;
         }
-        $a[2]['rel'] = 'nofollow noopener noreferrer';
-        $a[2]['target'] = '_blank';
+        $a[2]['rel'] ??= 'nofollow noopener noreferrer';
+        $a[2]['target'] ??= '_blank';
         return $a;
     };
     foreach ($rows as $k => $row) {
@@ -36,7 +36,7 @@ echo '<head>' . "\n";
 echo '<meta content="width=device-width" name="viewport">' . "\n";
 echo '<meta charset="utf-8">' . "\n";
 echo '<title>External Link Extension</title>' . "\n";
-echo '<style>[target="_blank"]::after{content:\'↗\'}</style>';
+echo '<style>[target^="_"]::after{content:\'↗\'}</style>';
 echo '</head>' . "\n";
 echo '<body>' . "\n";
 

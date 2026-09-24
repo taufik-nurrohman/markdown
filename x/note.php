@@ -15,7 +15,7 @@ $value = x\markdown\from(file_get_contents(__DIR__ . '/note.md'), [
     'tab' => 0
 ]);
 
-$value = preg_replace_callback('/<hr\s*\/?>(\s*<p><strong>NOTE:<\/strong>[\s\S]*?<\/p>\s*)<hr\s*\/?>/', static function ($m) {
+$value = preg_replace_callback('/<hr\s*\/?>(\s*<p><strong>NOTE:<\/strong>.*?<\/p>\s*)<hr\s*\/?>/s', static function ($m) {
     return '<div role="note">' . $m[1] . '</div>';
 }, $value);
 
