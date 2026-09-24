@@ -1781,7 +1781,7 @@ asdf asdf *asdf* asdf
 Markdown was introduced before the HTML5 era. When the `<figure>` element was introduced, people started to use it to
 display images with captions. Most Markdown parsers would convert an image syntax that stands alone on a single line
 into an image element wrapped in a paragraph element. However, my parser would instead wrap it in a figure element. For
-now, it seems that a figure element would be more desirable in this situation.
+now, it seems that a figure element would be more desirable in this situation:
 
 <table>
 <thead>
@@ -1965,7 +1965,7 @@ asdf asdf asdf asdf
 
 My parser supports list items numbered with Latin letters and Roman numerals. While this satisfies the HTML5
 specification for [the `type` attribute of `<ol>` element](https://html.spec.whatwg.org/multipage/grouping-content.html#attr-ol-type),
-it does not satisfy the CommonMark rules. Instead, it “extends” them.
+it does not satisfy the CommonMark rules. Instead, it “extends” them:
 
 <table>
 <thead>
@@ -2146,7 +2146,7 @@ iii. asdf asdf asdf asdf
 Since the list block marker can now be any lower-case or upper-case characters and will also treat the character “I” and
 “i” as the start of a list block with Roman numerals, the rules for this type of list block have been strictly enforced:
 
- 1. A **type “A”** list block can only start with the prefix `A) ` or `A. `.
+ 1. A **type “A”** list block can only start with the prefix `A) ` or `A. `:
 
     <table>
     <thead>
@@ -2194,7 +2194,7 @@ Since the list block marker can now be any lower-case or upper-case characters a
     </table>
 
  1. A **type “a”** list block can only start with the prefix `a) ` or `a. `.
- 1. A **type “I”** list block can only start with the prefix `I) ` or `I. `.
+ 1. A **type “I”** list block can only start with the prefix `I) ` or `I. `:
 
     <table>
     <thead>
@@ -2296,7 +2296,7 @@ B) asdf asdf asdf asdf
 
 The list item continuation “number” is enforced as follows:
 
- 1. A list item continuation can only use the current number or the next number after it.
+ 1. A list item continuation can only use the current number or the next number after it:
 
     <table>
     <thead>
@@ -2465,7 +2465,7 @@ The list item continuation “number” is enforced as follows:
     </table>
 
  1. A list item continuation of **type “A”** list block can only use the current character or the next character after
-    it. After the character “Z”, the list continues with “AA”, “AB”, “AC”, and so on.
+    it. After the character “Z”, the list continues with “AA”, “AB”, “AC”, and so on:
 
     <table>
     <thead>
@@ -2632,7 +2632,7 @@ The list item continuation “number” is enforced as follows:
  1. A list item continuation of **type “a”** list block can only use the current character or the next character after
     it. After the character “z”, the list continues with “aa”, “ab”, “ac”, and so on.
  1. A list Item continuation of **type “I”** list block can only use the current Roman numeral or the next Roman numeral
-    after it.
+    after it:
 
     <table>
     <thead>
@@ -2885,7 +2885,7 @@ reuse the number from the last list item.
 
 Notes follow [Markdown Extra’s syntax for notes](https://michelf.ca/projects/php-markdown/extra#footnotes), but with
 slightly different HTML output to match [Mecha](https://github.com/mecha-cms)’s common naming style. Unlike Markdown
-Extra, multi-line notes don’t have to be indented by four spaces. A space or tab is suffice to continue the note.
+Extra, multi-line notes don’t have to be indented by four spaces. A space or tab is suffice to continue the note:
 
 <table>
 <thead>
