@@ -275,7 +275,7 @@ namespace x\markdown\from {
                 if (\strlen($text) > 1 && ' ' === $text[0] && ' ' === \substr($text, -1) && "" !== \trim($text, ' ')) {
                     $text = \substr($text, 1, -1);
                 }
-                return [$text, $eat + $n - $i];
+                return [$text, $eat + $n - $i, [$w, $c]];
             }
             $eat += $w;
         }
@@ -352,9 +352,9 @@ namespace x\markdown\from {
                 // delimiter, the value of `$end_k` is always greater than the value of `$start_k + 1`. Thus,
                 // `$start_k + 1` is always a safe, empty slot in which to store the new AST sub-tree.
                 if ($start_k + 1 < $end_k) {
-                    $row[$start_k + 1] = [$k, y($chunk), []];
+                    $row[$start_k + 1] = [$k, y($chunk), [], [$n, $c]];
                 } else {
-                    // $row[$start_k] = [$k, y($chunk), []];
+                    // $row[$start_k] = [$k, y($chunk), [], [$n, $c]];
                 }
                 // Sever link(s) for all delimiter(s) physically between `$left` and `$right`
                 $stack[$left][2][2] = $right;
@@ -748,7 +748,7 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#code-span>
             if ('`' === $c && ($m = c2e($value, $i, $limit))) {
                 "" !== $s && ($row[] = h($s));
-                $row[] = ['code', h($m[0], true), []];
+                $row[] = ['code', h($m[0], true), [], $m[2]];
                 $i += $m[1];
                 $s = "";
                 // Check for attribute syntax after code
