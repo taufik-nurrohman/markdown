@@ -3689,11 +3689,9 @@ Here’s a naive method that converts auto-links with `gist:` scheme into [GitHu
 code:
 
 ~~~ php
-$value = from($value);
-
 $value = preg_replace('/^[ ]{0,3}<gist:([^>]+)>\s*$/m', '<script src="https://gist.github.com/$1.js"></script>', $value);
 
-echo $value;
+echo from($value);
 ~~~
 
 That method does not take fenced code blocks and raw HTML blocks into consideration. Therefore, you will likely end up
