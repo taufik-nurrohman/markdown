@@ -15,9 +15,8 @@ $tab = static function (array $rows) use (&$tab) {
                 if ($n >= 4) {
                     $r[] = str_repeat("\t", $n >> 2) . substr($t, ($n >> 2) << 2);
                     continue;
-                } else {
-                    $r[] = $t;
                 }
+                $r[] = $t;
             }
             $rows[$k][1][0][1] = implode("\n", $r);
             continue;
