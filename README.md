@@ -129,6 +129,16 @@ HTML string:
 // Extension as a closure
 $extension = function (array $rows) { /* … */ };
 
+// Extension as an array of event(s)
+$extension = [
+    // Pre-parse
+    function (?string $value) { /* … */ },
+    // Parse
+    function (array $rows) { /* … */ },
+    // Post-parse
+    function (?string $value) { /* … */ }
+];
+
 // Extension as a function
 function extension(array $rows) { /* … */ }
 

@@ -15,23 +15,38 @@ namespace x\markdown {
         ], $state);
         $block = !empty($state['block']);
         $with = (array) ($state['with'] ?? []);
+        if ($with) foreach ($with as $w) {
+            if (\is_array($w) && \is_callable($w[0] ?? 0)) {
+                $value = $w[0]($value, $state);
+            }
+        }
         if (!$block) {
             $lot = [];
             $row = from\row($value, $lot, from\deep, \strspn($value, from\c3), \strlen($value));
             $row[] = $state = ['tab' => false] + $state;
             if ($with) foreach ($with as $w) {
-                $row[0] = $w(...$row);
+                $row[0] = \is_array($w) && \is_callable($w[1] ?? 0) ? $w[1](...$row) : (\is_callable($w) ? $w(...$row) : $row[0]);
             }
             $s = from\tags($row[0], $state);
+            if ($with) foreach ($with as $w) {
+                if (\is_array($w) && isset($w[2])) {
+                    $s = $w[2]($s, $state);
+                }
+            }
             return "" !== $s ? $s : null;
         }
         $lot = [];
         $rows = from\rows($value, $lot, from\deep, 0, \strlen($value));
         $rows[] = $state;
         if ($with) foreach ($with as $w) {
-            $rows[0] = $w(...$rows);
+            $rows[0] = \is_array($w) && \is_callable($w[1] ?? 0) ? $w[1](...$rows) : (\is_callable($w) ? $w(...$rows) : $rows[0]);
         }
         $s = from\tags($rows[0], $state);
+        if ($with) foreach ($with as $w) {
+            if (\is_array($w) && \is_callable($w[2] ?? 0)) {
+                $s = $w[2]($s, $state);
+            }
+        }
         return "" !== $s ? $s : null;
     }
 }
