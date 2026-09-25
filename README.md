@@ -3,9 +3,17 @@ PHP Markdown Parser
 
 ![from.php] <!-- -->
 
-[from.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/from.php?branch=main&color=%234f5d95&label=from.php&labelColor=%231f2328&style=flat-square
+ [from.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/from.php?branch=main&color=%234f5d95&label=from.php&labelColor=%231f2328&style=flat-square
 
-With 99% compliance to [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2) specifications.
+With 99% compliance to the [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2) specifications. It is faster than
+[Michel Fortin’s Markdown converter][michelf/php-markdown]. Well, it is not as fast as [Emanuil Rusev’s Markdown converter][erusev/parsedown-extra], but it
+is as accurate as [Colin O’Dell’s PHP implementation of CommonMark][league/commonmark] (with [one exception](#tabs)), but much faster.
+
+ [erusev/parsedown-extra]: https://packagist.org/packages/erusev/parsedown-extra
+ [erusev/parsedown]: https://packagist.org/packages/erusev/parsedown
+ [league/commonmark]: https://packagist.org/packages/league/commonmark
+ [michelf/php-markdown]: https://packagist.org/packages/michelf/php-markdown
+ [taufik-nurrohman/markdown]: https://packagist.org/packages/taufik-nurrohman/markdown
 
 Motivation
 ----------
@@ -16,10 +24,10 @@ Motivation
   <img alt="Why?" src="https://github.com/taufik-nurrohman/markdown/assets/1669261/164b592d-e8db-4e28-be5d-467522f65f0d">
 </picture>
 
-I appreciate the [Parsedown](https://github.com/erusev/parsedown) project for its simplicity and speed. It only uses a
-single class file to convert Markdown syntax to HTML. However, given the decrease in the project’s activity over time, I
-assume it is already “feature complete”. There are still some bugs to fix, and some of the PHP syntax there has become
-obsolete with [the recent release of PHP version 8.1](https://www.php.net/releases/8.1/en.php).
+I appreciate the [Parsedown][erusev/parsedown] project for its simplicity and speed. It only uses a single class file to
+convert Markdown syntax to HTML. However, given the decrease in the project’s activity over time, I assume it is already
+“feature complete”. There are still some bugs to fix, and some of the PHP syntax there has become obsolete with [the
+recent release of PHP version 8.1](https://www.php.net/releases/8.1/en.php).
 
 There is actually a draft available for [Parsedown version 2.0](https://github.com/erusev/parsedown/tree/2.0.x), but it
 is no longer created as a single class file. It has been broken down into components. I think the goal is to make it
@@ -39,9 +47,9 @@ project separately, as it may be useful for developers who work with other appli
 Usage
 -----
 
-This parser can be installed using [Composer](https://packagist.org/packages/taufik-nurrohman/markdown), but it doesn’t
-require any other dependencies. It simply uses Composer’s ability to automatically include files. Those of you who don’t
-use Composer should be able to include the `from.php` file directly into your application.
+This parser can be installed using [Composer][taufik-nurrohman/markdown], but it doesn’t require any other dependencies.
+It simply uses Composer’s ability to automatically include files. Those of you who don’t use Composer should be able to
+include the `from.php` file directly into your application.
 
 ### Using Composer
 

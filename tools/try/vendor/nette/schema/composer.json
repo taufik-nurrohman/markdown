@@ -15,21 +15,16 @@
 		}
 	],
 	"require": {
-		"php": "8.1 - 8.5",
-		"nette/utils": "^4.0"
+		"php": "7.1 - 8.3",
+		"nette/utils": "^2.5.7 || ^3.1.5 ||  ^4.0"
 	},
 	"require-dev": {
-		"nette/tester": "^2.6",
-		"tracy/tracy": "^2.8",
-		"phpstan/phpstan": "^2.1.39@stable",
-		"phpstan/extension-installer": "^1.4@stable",
-		"nette/phpstan-rules": "^1.0"
+		"nette/tester": "^2.3 || ^2.4",
+		"tracy/tracy": "^2.7",
+		"phpstan/phpstan-nette": "^1.0"
 	},
 	"autoload": {
-		"classmap": ["src/"],
-		"psr-4": {
-			"Nette\\": "src"
-		}
+		"classmap": ["src/"]
 	},
 	"minimum-stability": "dev",
 	"scripts": {
@@ -38,12 +33,7 @@
 	},
 	"extra": {
 		"branch-alias": {
-			"dev-master": "1.3-dev"
-		}
-	},
-	"config": {
-		"allow-plugins": {
-			"phpstan/extension-installer": true
+			"dev-master": "1.2-dev"
 		}
 	}
 }
