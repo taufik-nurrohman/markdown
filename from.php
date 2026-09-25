@@ -29,7 +29,7 @@ namespace x\markdown {
             }
             $s = from\tags($row[0], $state);
             if ($with) foreach ($with as $w) {
-                if (\is_array($w) && isset($w[2])) {
+                if (\is_array($w) && \is_callable($w[2] ?? 0)) {
                     $s = $w[2]($s, $state);
                 }
             }
