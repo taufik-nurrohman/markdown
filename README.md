@@ -120,8 +120,7 @@ can set its value to `"\t"` to indent the HTML output with [Tab](https://www.com
 
 ### `with`
 
-A very simple extension system. Pass a list of callables there. It will modify the data structure before it becomes a
-HTML string:
+A very simple extension system:
 
 ~~~ php
 <?php use function x\markdown\from;
