@@ -5,9 +5,8 @@ PHP Markdown Parser
 
  [from.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/from.php?branch=main&color=%234f5d95&label=from.php&labelColor=%231f2328&style=flat-square
 
-With 99% compliance to the [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2) specifications. It is faster than
-[Michel Fortin’s Markdown converter][michelf/php-markdown]. Well, it is not as fast as [Emanuil Rusev’s Markdown converter][erusev/parsedown-extra], but it
-is as accurate as [Colin O’Dell’s PHP implementation of CommonMark][league/commonmark] (with [one exception](#tabs)), but much faster.
+With 99% compliance to the [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2) specifications. It is as accurate as
+[`league/commonmark`][league/commonmark] (with [one exception](#tabs)), but faster.
 
  [erusev/parsedown-extra]: https://packagist.org/packages/erusev/parsedown-extra
  [erusev/parsedown]: https://packagist.org/packages/erusev/parsedown
