@@ -93,7 +93,7 @@ echo '<title>Strike Extension</title>' . "\n";
 echo '</head>' . "\n";
 echo '<body>' . "\n";
 
-echo x\markdown\from($value = file_get_contents(__DIR__ . '/strike.md'), [
+echo x\markdown\from(file_get_contents(__DIR__ . '/strike.md'), [
     'tab' => 0,
     'with' => [$strike]
 ]) . "\n";
