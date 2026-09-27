@@ -1,4 +1,6 @@
 .gitattributes export-ignore
 .gitignore export-ignore
+1.svg export-ignore
+2.svg export-ignore
 tools export-ignore
 x export-ignore

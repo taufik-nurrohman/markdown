@@ -18,9 +18,9 @@ Motivation
 ----------
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/taufik-nurrohman/markdown/assets/1669261/0a488f4a-0450-4e0a-8137-196a4b0657b0">
-  <source media="(prefers-color-scheme: light)" srcset="https://github.com/taufik-nurrohman/markdown/assets/1669261/164b592d-e8db-4e28-be5d-467522f65f0d">
-  <img alt="Why?" src="https://github.com/taufik-nurrohman/markdown/assets/1669261/164b592d-e8db-4e28-be5d-467522f65f0d">
+  <source media="(prefers-color-scheme: dark)" srcset="2.svg">
+  <source media="(prefers-color-scheme: light)" srcset="1.svg">
+  <img alt="Why?" src="1.svg">
 </picture>
 
 I appreciate the [Parsedown][erusev/parsedown] project for its simplicity and speed. It only uses a single class file to
