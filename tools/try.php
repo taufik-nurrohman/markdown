@@ -52,7 +52,7 @@ if ('POST' === $_SERVER['REQUEST_METHOD']) {
 }
 
 function view_result(string $text) {
-    $b1 = 'blockquote, dd, div, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, p, pre, table';
+    $b1 = 'blockquote, dd, div, dt, figure, h1, h2, h3, h4, h5, h6, hgroup, hr, p, picture, pre, table';
     $b2 = $b1 . ', dl, ol, ul';
     $s = '<!DOCTYPE html>';
     $s .= '<html dir="ltr">';
@@ -170,6 +170,9 @@ ol[type='a' s] {
 }
 ol[type='i' s] {
   list-style-type: lower-roman;
+}
+picture {
+  display: block;
 }
 ul {
   list-style-type: disc;
