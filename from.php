@@ -29,7 +29,11 @@ namespace x\markdown {
         }
         $r[] = $state;
         if ($with) foreach ($with as $w) {
-            $r[0] = \is_array($w) && \is_callable($w[1] ?? 0) ? $w[1](...$r) : (\is_callable($w) ? $w(...$r) : $r[0]);
+            if (\is_array($w) && \is_callable($w[1] ?? 0)) {
+                $r[0] = $w[1](...$r);
+            } else if (\is_callable($w)) {
+                $r[0] = $w(...$r);
+            }
         }
         $s = from\tags($r[0], $state);
         if ($with) foreach ($with as $w) {
