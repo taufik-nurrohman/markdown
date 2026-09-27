@@ -2,16 +2,6 @@
 
 require __DIR__ . '/../from.php';
 
-echo '<!DOCTYPE html>' . "\n";
-echo '<html dir="ltr">' . "\n";
-echo '<head>' . "\n";
-echo '<meta content="width=device-width" name="viewport">' . "\n";
-echo '<meta charset="utf-8">' . "\n";
-echo '<title>Header Extension</title>' . "\n";
-echo '<style>:target{background:#ff0}</style>' . "\n";
-echo '</head>' . "\n";
-echo '<body>' . "\n";
-
 $header = static function (array $rows) use (&$header) {
     if (!$rows) {
         return $rows;
@@ -61,6 +51,16 @@ $header = static function (array $rows) use (&$header) {
     }
     return $rows;
 };
+
+echo '<!DOCTYPE html>' . "\n";
+echo '<html dir="ltr">' . "\n";
+echo '<head>' . "\n";
+echo '<meta content="width=device-width" name="viewport">' . "\n";
+echo '<meta charset="utf-8">' . "\n";
+echo '<title>Header Extension</title>' . "\n";
+echo '<style>:target{background:#ff0}</style>' . "\n";
+echo '</head>' . "\n";
+echo '<body>' . "\n";
 
 echo x\markdown\from(file_get_contents(__DIR__ . '/header.md'), [
     'tab' => 0,

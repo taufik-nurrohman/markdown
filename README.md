@@ -1332,7 +1332,8 @@ asdf asdf *asdf* asdf
 
 ~~~ html
 <div>
-asdf asdf *asdf* asdf</div>
+asdf asdf *asdf* asdf
+</div>
 asdf asdf *asdf* asdf
 ~~~
 
@@ -1699,7 +1700,8 @@ asdf *asdf* asdf
 
 ~~~ html
 <del>
-asdf asdf *asdf*</del>
+asdf asdf *asdf*
+</del>
 asdf *asdf* asdf
 ~~~
 
