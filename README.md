@@ -17,11 +17,7 @@ With 99% compliance to the [CommonMark 0.31.2](https://spec.commonmark.org/0.31.
 Motivation
 ----------
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="2.svg">
-  <source media="(prefers-color-scheme: light)" srcset="1.svg">
-  <img alt="Why?" src="1.svg">
-</picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="2.svg"><source media="(prefers-color-scheme: light)" srcset="1.svg"><img alt="Why?" src="1.svg"></picture>
 
 I appreciate the [Parsedown][erusev/parsedown] project for its simplicity and speed. It only uses a single class file to
 convert Markdown syntax to HTML. However, given the decrease in the project’s activity over time, I assume it is already
