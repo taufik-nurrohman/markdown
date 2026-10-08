@@ -60,7 +60,7 @@ namespace x\markdown\from {
     // <https://spec.commonmark.org/0.31.2#line-ending>
     // <https://spec.commonmark.org/0.31.2#space>
     // <https://spec.commonmark.org/0.31.2#tab>
-    const c1 = " \t";
+    const c1 = " \t\x0";
     const c2 = "\r\n";
     const c3 = c1 . c2;
     const c4 = '0123456789'; // Digit
@@ -81,13 +81,14 @@ namespace x\markdown\from {
     // <https://spec.commonmark.org/0.31.2#ascii-punctuation-character>
     const c16 = c14 . '"%-.<>^_`{|}~' . "\\";
     // <https://spec.commonmark.org/0.31.2#ascii-control-character>
-    const c17 = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x7f";
+    const c17 = "\x0\x1\x2\x3\x4\x5\x6\x7\x8\x9\xa\xb\xc\xd\xe\xf\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x7f";
     // <https://en.wikipedia.org/wiki/Latin_script_in_Unicode>
     const c18 = c4 . c10 . '_ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĹĺĻļĽľĿŀŁłŃńŅņŇňŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽž';
     const deep = 25;
-    const x1 = "\x1"; // `SOH`
-    const x2 = "\x2"; // `STX`
-    const x3 = "\x3"; // `ETX`
+    const x0 = c17[0]; // `NUL`
+    const x1 = c17[1]; // `SOH`
+    const x2 = c17[2]; // `STX`
+    const x3 = c17[3]; // `ETX`
     // Currently, there is no official attribute syntax specification in CommonMark except for the raw HTML attribute.
     // To make it as close as possible to the CommonMark specification or to prepare for the possibility of such
     // specification in the future, I will make the attribute syntax rule(s) as close as possible to the raw HTML
@@ -297,7 +298,7 @@ namespace x\markdown\from {
         $d = $n = 0;
         while ($i + $n < $limit) {
             $c = $value[$i + $n];
-            if ("\t" === $c) {
+            if (x0 === $c || "\t" === $c) {
                 $d += 4 - ($d % 4);
                 ++$n;
                 continue;
@@ -1190,7 +1191,7 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $rows[] = ['pre', [['code', h($s . "\n", true), []]], [], [0, ""]];
+                $rows[] = ['pre', [['code', h(t($s) . "\n", true), []]], [], [0, ""]];
                 $s = "";
                 continue;
             }
@@ -1386,7 +1387,7 @@ namespace x\markdown\from {
             if ('>' === $value[$d + $i]) {
                 "" !== $s && ($rows[] = ['p', \trim($s), []]) && ($s = "");
                 $text = s($value, $i, $m[0], 0, $d + 1);
-                if (' ' === ($text[0] ?? 0)) {
+                if (false !== \strpos(x0 . ' ', $text[0] ?? x1)) {
                     $text = \substr($text, 1);
                 }
                 $s .= $text;
@@ -1729,7 +1730,7 @@ namespace x\markdown\from {
                 $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
-                    $w = \strspn($value, ' ', $i);
+                    $w = \strspn($value, x0 . ' ', $i);
                     // End of the block
                     if ($w < 4 && \strspn($value, $c, $i + $w) >= $min) {
                         $i += $m[0] + $m[1];
@@ -1739,7 +1740,10 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
                     $text = s($value, $i, $m[0]);
-                    if ($w = \strspn($text, ' ')) {
+                    if ($w = \strspn($text, x0)) {
+                        // TODO
+                        $text = \str_repeat(' ', $w - $d) . \substr($text, $w);
+                    } else if ($w = \strspn($text, ' ')) {
                         $text = \substr($text, \min($d, $w));
                     }
                     $s .= $text . "\n";
@@ -1749,7 +1753,7 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $rows[] = ['pre', [['code', h($s, true), a($info, 0, \strlen($info), '{' !== ($info[0] ?? 0), 'language-%s')[0] ?? []]], [], [$min, $c]];
+                $rows[] = ['pre', [['code', h(t($s), true), a($info, 0, \strlen($info), '{' !== ($info[0] ?? 0), 'language-%s')[0] ?? []]], [], [$min, $c]];
                 $s = "";
                 continue;
             }
@@ -2340,7 +2344,8 @@ namespace x\markdown\from {
             $d += $w;
             $i += $w;
             if ($max -= $w) {
-                $s .= \str_repeat(' ', $w = 4 - ($d % 4));
+                // Replace every tab with a sequence of `\x0`
+                $s .= \str_repeat(x0, $w = 4 - ($d % 4));
                 $d += $w;
                 ++$i;
                 --$max; // Consume 1 tab
@@ -2358,6 +2363,14 @@ namespace x\markdown\from {
         }
         $r[] = \substr($text, $i);
         return $r;
+    }
+    // Restore tab(s)
+    function t(string $s) {
+        $s = \strtr($s, [x0 . x0 . x0 . x0 => "\t"]);
+        $s = \strtr($s, [x0 . x0 . x0 => "\t"]);
+        $s = \strtr($s, [x0 . x0 => "\t"]);
+        $s = \strtr($s, [x0 => "\t"]);
+        return $s;
     }
     function tag($row, array $state, int $deep = 0) {
         if (!$row) {
@@ -2489,12 +2502,15 @@ namespace x\markdown\from {
                     $s .= \strtr($c, "\n", ' ');
                     continue;
                 }
-                "" !== $s && ($r[] = $s);
+                "" !== $s && ($r[] = t($s));
+                if (\is_array($c) && \is_string($c[1] ?? 0)) {
+                    $c[1] = t($c[1]);
+                }
                 $r[] = $c;
                 $s = "";
             }
             if ("" !== $s) {
-                $r[] = $s;
+                $r[] = t($s);
             }
             $row = $r;
         }
