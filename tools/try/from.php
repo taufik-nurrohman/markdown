@@ -13,28 +13,28 @@ ini_set('html_errors', 1);
 define('D', DIRECTORY_SEPARATOR);
 define('PATH', __DIR__);
 
-require PATH . D . '..' . D . 'from.php';
-require PATH . D . 'try' . D . 'vendor' . D . 'autoload.php';
+require PATH . D . '..' . D . '..' . D . 'from.php';
+require PATH . D . 'from' . D . 'vendor' . D . 'autoload.php';
 
 if ('POST' === $_SERVER['REQUEST_METHOD']) {
     if (($token = $_POST['token'] ?? 0) !== ($_SESSION['token'] ?? 1)) {
         $_SESSION['alert'] = 'Invalid token.';
-        header('location: try.php');
+        header('location: from.php');
         exit;
     }
     if (strlen($content = $_POST['content'] ?? "") > 102400) {
         $_SESSION['alert'] = 'For security reasons, the maximum content size has been limited to 100 KiB.';
-        header('location: try.php');
+        header('location: from.php');
         exit;
     }
     if ("" === $content) {
         $_SESSION['alert'] = 'Content is empty.';
-        header('location: try.php');
+        header('location: from.php');
         exit;
     }
     $_SESSION['r'][0] = $content;
     $_SESSION['t'][0] = 0;
-    $_SESSION['r'][1] = require PATH . D . 'try' . D . 'w' . D . 'taufik-nurrohman' . D . 'markdown.php';
+    $_SESSION['r'][1] = require PATH . D . 'from' . D . 'w' . D . 'taufik-nurrohman' . D . 'markdown.php';
     $_SESSION['t'][1] = $t;
     if ("" !== ($w = strip_tags($_POST['w'] ?? ""))) {
         $w = trim(strtr($w, ["\\" => D, '/' => D]), D);
@@ -42,12 +42,12 @@ if ('POST' === $_SERVER['REQUEST_METHOD']) {
         while (false !== strpos($w, '..' . D)) {
             $w = strtr($w, ['..' . D => ""]);
         }
-        $_SESSION['r'][2] = require PATH . D . 'try' . D . 'w' . D . $w . '.php';
+        $_SESSION['r'][2] = require PATH . D . 'from' . D . 'w' . D . $w . '.php';
         $_SESSION['t'][2] = $t;
         $_SESSION['w'] = [$w, $with ?? $w];
     }
     $_SESSION['v'] = !empty($_POST['v']);
-    header('location: try.php');
+    header('location: from.php');
     exit;
 }
 
@@ -349,7 +349,7 @@ $s .= '<head>';
 $s .= '<meta content="width=device-width" name="viewport">';
 $s .= '<meta charset="utf-8">';
 $s .= '<title>';
-$s .= 'Try';
+$s .= 'Markdown to HTML';
 $s .= '</title>';
 $s .= '<style>';
 $s .= trim(
@@ -370,7 +370,7 @@ $s .= 'Input';
 $s .= '</legend>';
 $s .= '<p>';
 $s .= '<textarea name="content" placeholder="Markdown goes here&hellip;">';
-$s .= htmlspecialchars($_SESSION['r'][0] ?? (empty($_SESSION['alert']) ? file_get_contents(PATH . D . '..' . D . 'README.md') : ""));
+$s .= htmlspecialchars($_SESSION['r'][0] ?? (empty($_SESSION['alert']) ? file_get_contents(PATH . D . '..' . D . '..' . D . 'README.md') : ""));
 $s .= '</textarea>';
 $s .= '</p>';
 $w = $_SESSION['w'][0] ?? "";
