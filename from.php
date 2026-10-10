@@ -57,10 +57,12 @@ namespace x\markdown\from {
         'option' => 1, 'p' => 1, 'param' => 1, 'search' => 1, 'section' => 1, 'summary' => 1, 'table' => 1,
         'tbody' => 1, 'td' => 1, 'tfoot' => 1, 'th' => 1, 'thead' => 1, 'title' => 1, 'tr' => 1, 'track' => 1, 'ul' => 1
     ];
-    // <https://spec.commonmark.org/0.31.2#line-ending>
-    // <https://spec.commonmark.org/0.31.2#space>
-    // <https://spec.commonmark.org/0.31.2#tab>
-    const c1 = " \t";
+    // We use a dummy character to hold the column position occupied by `\t` so that doing a string slice will retain
+    // the original column position. This is the easiest method to preserve the `\t` character(s).
+    // We use `\v` as the dummy character because it is very rarely written in a Markdown document by hand. It is also
+    // very rarely written in an HTML document. Another benefit of using `\v` character instead of a more appropriate
+    // dummy character such as `\x1a` is that `\v` character can be trimmed natively using the PHP’s `trim()` function.
+    const c1 = " \t\v";
     const c2 = "\n\r";
     const c3 = c1 . c2;
     const c4 = '0123456789'; // Digit
@@ -302,7 +304,7 @@ namespace x\markdown\from {
                 ++$n;
                 continue;
             }
-            if (' ' === $c) {
+            if (' ' === $c || "\v" === $c) {
                 $d += 1;
                 ++$n;
                 continue;
@@ -1190,7 +1192,7 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $rows[] = ['pre', [['code', h($s . "\n", true), []]], [], [0, ""]];
+                $rows[] = ['pre', [['code', h(t($s) . "\n", true), []]], [], [0, ""]];
                 $s = "";
                 continue;
             }
@@ -1212,7 +1214,7 @@ namespace x\markdown\from {
             // description detail(s) cannot stand alone without their term(s). To identify a valid description list,
             // locate the description detail syntax then check the previous line. If it is a paragraph block, then the
             // entire list is valid.
-            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+            if (':' === $value[$n = $d + $i] && false !== \strpos(c3, $value[$n + 1] ?? ' ')) {
                 // In case the paragraph block has been put in the queue, pop it out!
                 if ("" === $s && $rows && \is_array($row = $rows[$last = \array_key_last($rows)]) && 'p' === $row[0]) {
                     $s = x1 . \trim($row[1]) . x2 . "\n";
@@ -1246,7 +1248,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     $d = d($value, $i, $limit);
-                    if ($d[0] < \min($min, 4) && ':' === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+                    if ($d[0] < \min($min, 4) && ':' === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? ' ')) {
                         $min = $d[0] + 2;
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                             $min += $w;
@@ -1386,7 +1388,7 @@ namespace x\markdown\from {
             if ('>' === $value[$d + $i]) {
                 "" !== $s && ($rows[] = ['p', $s, []]) && ($s = "");
                 $text = s($value, $i, $m[0], 0, $d + 1);
-                if (' ' === ($text[0] ?? 0)) {
+                if (false !== \strpos(" \v", $text[0] ?? x1)) {
                     $text = \substr($text, 1);
                 }
                 $s .= $text;
@@ -1510,7 +1512,7 @@ namespace x\markdown\from {
                                 if (x2 === $s[-1] && $b && !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                                     $s .= "\n";
                                 }
-                                $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                                $s .= "\n" . s($value, $i, $m[0], $min, $min);
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
@@ -1749,7 +1751,7 @@ namespace x\markdown\from {
                         break;
                     }
                 }
-                $rows[] = ['pre', [['code', h($s, true), a($info, 0, \strlen($info), '{' !== ($info[0] ?? 0), 'language-%s')[0] ?? []]], [], [$min, $c]];
+                $rows[] = ['pre', [['code', h(t($s), true), a($info, 0, \strlen($info), '{' !== ($info[0] ?? 0), 'language-%s')[0] ?? []]], [], [$min, $c]];
                 $s = "";
                 continue;
             }
@@ -1802,7 +1804,7 @@ namespace x\markdown\from {
                         if (x2 === $s[-1] && $b && !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                             $s .= "\n";
                         }
-                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $s .= "\n" . s($value, $i, $m[0], $min, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1881,7 +1883,7 @@ namespace x\markdown\from {
                 false !== \strpos('AIai', $value[$n = $d + $i]) && ($w = 1) ||
                 // 1, 2, 3, …
                 ($w = \strspn($value, c4, $n)) && $w < 10
-            ) && false !== \strpos(').', $c = $value[$n + $w] ?? x1) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+            ) && false !== \strpos(').', $c = $value[$n + $w] ?? x1) && false !== \strpos(c3, $value[$n + $w + 1] ?? ' ')) {
                 $current = $start = match ($type = $t = \substr($value, $n, $min = $d + $w)) {
                     'A' => l3n($t, 1), 'I' => r3n($t, 1), 'a' => l3n($t), 'i' => r3n($t), default => (int) $t
                 };
@@ -1923,7 +1925,7 @@ namespace x\markdown\from {
                         'a' === $type && ($w = \strspn($value, c9, $n)) ||
                         'i' === $type && ($w = \strspn($value, 'cdilmvx', $n)) ||
                         ($w = \strspn($value, c4, $n = $d[1] + $i)) && $w < 10
-                    ) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? c3[0])) {
+                    ) && $c === ($value[$n + $w] ?? 0) && false !== \strpos(c3, $value[$n + $w + 1] ?? ' ')) {
                         // The CommonMark specification does not care about the order of the number value(s). My parser
                         // keeps track of the number value(s) and does a strict comparison with the previous number
                         // value. A valid continuation list item number value must be the same as the previous list item
@@ -1984,7 +1986,7 @@ namespace x\markdown\from {
                 continue;
             }
             // <https://spec.commonmark.org/0.31.2#bullet-list>
-            if (false !== \strpos('*+-', $c = $value[$n = $d + $i]) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+            if (false !== \strpos('*+-', $c = $value[$n = $d + $i]) && false !== \strpos(c3, $value[$n + 1] ?? ' ')) {
                 $min = $d + 2;
                 if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                     $min += $w;
@@ -2014,7 +2016,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     $d = d($value, $i, $limit);
-                    if ($d[0] < \min($min, 4) && $c === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? c3[0])) {
+                    if ($d[0] < \min($min, 4) && $c === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? ' ')) {
                         $min = $d[0] + 2;
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
                             $min += $w;
@@ -2118,12 +2120,12 @@ namespace x\markdown\from {
                     $part = \explode(x2, $row[1], 2);
                     $row[1] = [];
                     $row[1][0] = row($part[0], $lot, $deep - 1, \strspn($part[0], ' '), \strlen($part[0]))[0][0];
-                    if (isset($part[1]) && "" !== $part[1]) {
+                    if ("" !== \trim($s = $part[1] ?? "")) {
                         // Image caption as a container block
-                        if (false !== \strpos($part[1], "\n\n") && ($r = rows($part[1] = \trim($part[1], "\n"), $lot, $deep - 1, 0, \strlen($part[1]), 1)[0] ?: "")) {
+                        if (false !== \strpos($s, "\n\n") && ($r = rows($s = \trim($s, "\n"), $lot, $deep - 1, 0, \strlen($s))[0] ?: "")) {
                             $row[1][1] = ['figcaption', $r, []];
                         // Image caption as a leaf block
-                        } else if ($r = row($part[1] = \trim($part[1]), $lot, $deep - 1, 0, \strlen($part[1]))[0] ?: "") {
+                        } else if ($r = row($s = \trim($s), $lot, $deep - 1, 0, \strlen($s))[0] ?: "") {
                             $row[1][1] = ['figcaption', $r, []];
                         }
                     }
@@ -2340,7 +2342,8 @@ namespace x\markdown\from {
             $d += $w;
             $i += $w;
             if ($max -= $w) {
-                $s .= \str_repeat(' ', $w = 4 - ($d % 4));
+                // Replace every `\t` with a sequence of `\v`
+                $s .= \str_repeat("\v", $w = 4 - ($d % 4));
                 $d += $w;
                 ++$i;
                 --$max; // Consume 1 tab
@@ -2358,6 +2361,17 @@ namespace x\markdown\from {
         }
         $r[] = \substr($text, $i);
         return $r;
+    }
+    function t(string $s) {
+        return \strtr($s, [
+            // <https://spec.commonmark.org/0.31.2#insecure-characters>
+            "\0" => "\xef\xbf\xbd",
+            // Restore `\t`
+            "\v\v\v\v" => "\t",
+            "\v\v\v" => "\t",
+            "\v\v" => "\t",
+            "\v" => "\t"
+        ]);
     }
     function tag($row, array $state, int $deep = 0) {
         if (!$row) {
@@ -2489,12 +2503,15 @@ namespace x\markdown\from {
                     $s .= \strtr($c, "\n", ' ');
                     continue;
                 }
-                "" !== $s && ($r[] = $s);
+                "" !== $s && ($r[] = t($s));
+                if (\is_array($c) && \is_string($c[1] ?? 0)) {
+                    $c[1] = t($c[1]);
+                }
                 $r[] = $c;
                 $s = "";
             }
             if ("" !== $s) {
-                $r[] = $s;
+                $r[] = t($s);
             }
             $row = $r;
         }
