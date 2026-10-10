@@ -60,7 +60,7 @@ namespace x\markdown\from {
     // <https://spec.commonmark.org/0.31.2#line-ending>
     // <https://spec.commonmark.org/0.31.2#space>
     // <https://spec.commonmark.org/0.31.2#tab>
-    const c1 = " \t\x1a";
+    const c1 = " \t\x1c";
     const c2 = "\r\n";
     const c3 = c1 . c2;
     const c4 = '0123456789'; // Digit
@@ -303,7 +303,7 @@ namespace x\markdown\from {
                 ++$n;
                 continue;
             }
-            if ("\x1a" === $c) {
+            if ("\x1c" === $c) {
                 $d += 4 - ($d % 4);
                 ++$n;
                 continue;
@@ -1394,9 +1394,9 @@ namespace x\markdown\from {
                 $text = s($value, $i, $m[0], 0, $d + 1);
                 if (' ' === ($text[0] ?? x0)) {
                     $text = \substr($text, 1);
-                } else if ("\x1a" === ($text[0] ?? x0)) {
+                } else if ("\x1c" === ($text[0] ?? x0)) {
                     $text = \substr($text, 1);
-                    if (\strspn($text, "\x1a") >= 3) {
+                    if (\strspn($text, "\x1c") >= 3) {
                         $text = \str_repeat(' ', 3) . \substr($text, 3);
                     }
                 }
@@ -1750,16 +1750,13 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
                     $text = s($value, $i, $m[0]);
-                    if ($w = \strspn($text, "\x1a")) {
+                    if ($w = \strspn($text, "\x1c")) {
                         $text = \str_repeat(' ', \max(0, 4 - $d)) . \substr($text, 4);
                     } else if ($w = \strspn($text, ' ')) {
+                        $t = \strpos($text, "\x1c");
                         $text = \substr($text, \min($d, $w));
-                        // TODO
-                        if ($w = \strspn($text, "\x1a")) {
-                            if ($w < 4) {
-                                //$text = \str_repeat(' ', $w) . \substr($text, $w);
-                            }
-                            echo '<pre style="border:1px solid;"><code>' . json_encode([$text,$d]) . '</code></pre>';
+                        if (false !== $t && $d > $t) {
+                            $text = \str_repeat(' ', 4 - $d) . \substr($text, 4 - $t);
                         }
                     }
                     $s .= $text . "\n";
@@ -2361,7 +2358,7 @@ namespace x\markdown\from {
             $i += $w;
             if ($max -= $w) {
                 // Replace every tab with a sequence of `SUB`
-                $s .= \str_repeat("\x1a", $w = 4 - ($d % 4));
+                $s .= \str_repeat("\x1c", $w = 4 - ($d % 4));
                 $d += $w;
                 ++$i;
                 --$max; // Consume 1 tab
@@ -2385,10 +2382,10 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#insecure-characters>
             x0 => "\xef\xbf\xbd",
             // Restore tab(s)
-            "\x1a\x1a\x1a\x1a" => "\t",
-            "\x1a\x1a\x1a" => "\t",
-            "\x1a\x1a" => "\t",
-            "\x1a" => "\t"
+            "\x1c\x1c\x1c\x1c" => "\t",
+            "\x1c\x1c\x1c" => "\t",
+            "\x1c\x1c" => "\t",
+            "\x1c" => "\t"
         ]);
     }
     function tag($row, array $state, int $deep = 0) {
