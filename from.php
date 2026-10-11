@@ -1731,7 +1731,8 @@ namespace x\markdown\from {
                 $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
-                    $w = \strspn($value, ' ', $i);
+                    // $w = \strspn($value, ' ', $i);
+                    $w = d($value, $i, $limit)[0];
                     // End of the block
                     if ($w < 4 && \strspn($value, $c, $i + $w) >= $min) {
                         $i += $m[0] + $m[1];
@@ -1740,10 +1741,7 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-131>
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
-                    $text = s($value, $i, $m[0]);
-                    if ($w = \strspn($text, ' ')) {
-                        $text = \substr($text, \min($d, $w));
-                    }
+                    $text = s($value, $i, $m[0], $d, \min($d, $w));
                     $s .= $text . "\n";
                     $i += $m[0] + $m[1];
                     // End of the stream
