@@ -1741,7 +1741,7 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-131>
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
-                    $text = s($value, $i, $m[0], $d, \min($d, $w));
+                    $text = s($value, $i, $m[0], 0, \min($d, $w));
                     $s .= $text . "\n";
                     $i += $m[0] + $m[1];
                     // End of the stream
@@ -2369,9 +2369,15 @@ namespace x\markdown\from {
                 $start = $i;
                 while ($i < $length && "\v" === $text[$i]) {
                     ++$i;
-                    ++$column;
                 }
-                $out .= \substr($text, $start, $i - $start);
+
+                $n = $i - $start;
+
+                $out .= 0 === ($column % 4) && 0 === ($n % 4)
+                    ? \substr($text, $start, $n)
+                    : \str_repeat(' ', $n);
+
+                $column += $n;
                 continue;
             }
 
