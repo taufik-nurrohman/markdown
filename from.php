@@ -1731,8 +1731,7 @@ namespace x\markdown\from {
                 $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
-                    // $w = \strspn($value, ' ', $i);
-                    $w = d($value, $i, $limit)[0];
+                    $w = \strspn($value, ' ', $i);
                     // End of the block
                     if ($w < 4 && \strspn($value, $c, $i + $w) >= $min) {
                         $i += $m[0] + $m[1];
@@ -1741,7 +1740,17 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-131>
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
-                    $text = s($value, $i, $m[0], 0, \min($d, $w));
+                    $t = \strspn($value, "\t", $i);
+                    if ($t && 0 !== 4 % d($value, $i, $limit)[0]) {
+                        $text = s($value, $i, $m[0], 0, \min($d, $w));
+                        $text = \str_repeat(' ', 4 - $d) . \substr($text, 4);
+                    } else {
+                        $text = \substr(s($value, $i, $m[0]), \min($d, $w));
+                        // TODO
+                        echo '<pre style="border:1px solid;"><code>';
+                        echo json_encode([$text,$d,$w]);
+                        echo '</code></pre>';
+                    }
                     $s .= $text . "\n";
                     $i += $m[0] + $m[1];
                     // End of the stream
