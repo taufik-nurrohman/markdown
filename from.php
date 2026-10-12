@@ -1512,7 +1512,7 @@ namespace x\markdown\from {
                                 if (x2 === $s[-1] && $b && !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                                     $s .= "\n";
                                 }
-                                $s .= "\n" . s($value, $i, $m[0], $min, $min);
+                                $s .= "\n" . s($value, $i, $m[0], 0, $min);
                                 $i += $m[0] + $m[1];
                                 continue;
                             }
@@ -1802,7 +1802,7 @@ namespace x\markdown\from {
                         if (x2 === $s[-1] && $b && !('p' === $b[0] || 'pre' === $b[0] && "" === $b[3][1] || false === $b[0] && 7 === $b[3][0])) {
                             $s .= "\n";
                         }
-                        $s .= "\n" . s($value, $i, $m[0], $min, $min);
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -2326,9 +2326,10 @@ namespace x\markdown\from {
         return [$rows, $lot, $void];
     }
     function s(string $value, int $i, int $max, int $d = 0, int $eat = 0) {
+        $start = $d;
         if (false === ($t = \strpos($value, "\t", $i)) || $t >= $i + $max) {
             $s = \substr($value, $i, $max);
-            return $eat ? \substr($s, $eat) : $s;
+            return $eat ? remove($s, $start, $eat) : $s;
         }
         $s = "";
         while ($max) {
@@ -2347,7 +2348,39 @@ namespace x\markdown\from {
                 --$max; // Consume 1 tab
             }
         }
-        return $eat ? \substr($s, $eat) : $s;
+        return $eat ? remove($s, $start, $eat) : $s;
+    }
+    function remove(string $text, int $used_column, int $remove_start): string {
+        $length = \strlen($text);
+        $i = 0;
+        $column = $used_column;
+        $out = '';
+
+        while ($i < $length) {
+            $c = $text[$i];
+
+            if ($i < $remove_start) {
+                ++$column;
+                ++$i;
+                continue;
+            }
+
+            if ("\v" === $c) {
+                $start = $i;
+                while ($i < $length && "\v" === $text[$i]) {
+                    ++$i;
+                    ++$column;
+                }
+                $out .= \substr($text, $start, $i - $start);
+                continue;
+            }
+
+            $out .= $c;
+            ++$column;
+            ++$i;
+        }
+
+        return $out;
     }
     function s3t(string $text, ?int $max = null) {
         $i = 0;
