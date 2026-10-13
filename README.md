@@ -3351,7 +3351,8 @@ character, so that slicing through the string will retain the correct visual col
 to preserve tab characters compared to tracking tab offsets during every block parsing phase.
 
 Using dummy characters means that the visual column position is stored directly in the string. Thus, I can safely slice
-the string, as every character now holds exactly one column.
+the string, as every character now holds exactly one column. It’s not perfect. You’ll probably still find bugs when
+using tabs for indentation. For the best results and maximum compatibility, use multiple spaces for indentation.
 
 I chose [`\v`](https://unicode-explorer.com/c/000B) as the dummy character because it is extremely rare for it to be
 written by hand in a standard Markdown document. It’s also very rare to find it in an HTML document. The probability of

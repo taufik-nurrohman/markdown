@@ -1254,7 +1254,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $s .= "\n" . s($value, $i, $m[0], $min - $w, $min);
+                        $s .= "\n" . s($value, $i, $m[0], $min, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1951,7 +1951,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
+                        $s .= "\n" . s($value, $i, $m[0], $min, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -2030,7 +2030,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $s .= "\n" . s($value, $i, $m[0], $min - $w, $min);
+                        $s .= "\n" . s($value, $i, $m[0], $min, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -2327,10 +2327,10 @@ namespace x\markdown\from {
         return [$rows, $lot, $void];
     }
     function s(string $value, int $i, int $max, int $d = 0, int $eat = 0) {
-        $start = $d;
+        $dent = $d;
         if (false === ($t = \strpos($value, "\t", $i)) || $t >= $i + $max) {
             $s = \substr($value, $i, $max);
-            return $eat ? remove($s, $start, $eat) : $s;
+            return $eat ? s3e($s, $dent, $eat) : $s;
         }
         $s = "";
         while ($max) {
@@ -2349,45 +2349,34 @@ namespace x\markdown\from {
                 --$max; // Consume 1 tab
             }
         }
-        return $eat ? remove($s, $start, $eat) : $s;
+        return $eat ? s3e($s, $dent, $eat) : $s;
     }
-    function remove(string $text, int $used_column, int $remove_start): string {
-        $length = \strlen($text);
+    function s3e(string $text, int $d, int $eat) {
         $i = 0;
-        $column = $used_column;
-        $out = '';
-
-        while ($i < $length) {
+        $limit = \strlen($text);
+        $s = "";
+        while ($i < $limit) {
             $c = $text[$i];
-
-            if ($i < $remove_start) {
-                ++$column;
+            if ($i < $eat) {
+                ++$d;
                 ++$i;
                 continue;
             }
-
             if ("\v" === $c) {
                 $start = $i;
-                while ($i < $length && "\v" === $text[$i]) {
+                while ($i < $limit && "\v" === $text[$i]) {
                     ++$i;
                 }
-
                 $n = $i - $start;
-
-                $out .= 0 === ($column % 4) && 0 === ($n % 4)
-                    ? \substr($text, $start, $n)
-                    : \str_repeat(' ', $n);
-
-                $column += $n;
+                $s .= 0 === ($d % 4) && 0 === ($n % 4) ? \substr($text, $start, $n) : \str_repeat(' ', $n);
+                $d += $n;
                 continue;
             }
-
-            $out .= $c;
-            ++$column;
+            $s .= $c;
+            ++$d;
             ++$i;
         }
-
-        return $out;
+        return $s;
     }
     function s3t(string $text, ?int $max = null) {
         $i = 0;
