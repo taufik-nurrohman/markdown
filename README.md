@@ -6,7 +6,7 @@ PHP Markdown Parser
  [from.php]: https://img.shields.io/github/size/taufik-nurrohman/markdown/from.php?branch=main&color=%234f5d95&label=from.php&labelColor=%231f2328&style=flat-square
 
 With 99% compliance to the [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2) specifications. It is as accurate as
-[`league/commonmark`][league/commonmark] (with [one exception](#tabs)), but faster 🚀
+[`league/commonmark`][league/commonmark], but faster 🚀
 
  [erusev/parsedown-extra]: https://packagist.org/packages/erusev/parsedown-extra
  [erusev/parsedown]: https://packagist.org/packages/erusev/parsedown
@@ -3346,60 +3346,18 @@ but with a few additional features and rules:
 
 ### Tabs
 
-Unlike CommonMark, this parser does not preserve tabs. This is probably the hardest part. Once it’s solved, the parser
-will be 100% compliant with the CommonMark rules. However, I am not currently an expert in this area. Initially, it does
-seem possible. I was able to preserve the tab characters, but it turns out that this only works for top-level blocks.
-Once I enter a container block to parse its content, I then lose track of the correct column position because the
-container block’s markers have been removed.
+I use a dummy character to hold the visual column position occupied by the [`\t`](https://unicode-explorer.com/c/0009)
+character, so that slicing through the string will retain the correct visual column position. This is the easiest method
+to preserve tab characters compared to tracking tab offsets during every block parsing phase.
 
-The recommended CommonMark parsing strategy is to parse the inner blocks of the current container block immediately,
-producing nested blocks instantly.
+Using dummy characters means that the visual column position is stored directly in the string. Thus, I can safely slice
+the string, as every character now holds exactly one column.
 
-Given this input:
-
-~~~ md
-asdf asdf asdf asdf
-
-> asdf asdf asdf asdf
->
-> 1. asdf asdf asdf asdf
->
->    asdf asdf asdf asdf
-~~~
-
-CommonMark would parse the input as follows:
-
- 1. At line 1, got a paragraph block.
- 2. At line 2, got a blank line which marks the end of the paragraph.
- 3. At line 3, got a quote block.
-    1. At line 3, got a paragraph block.
-    2. At line 4, got a blank line which marks the end of the paragraph block.
-       1. At line 5, got a list block.
-          1. At line 5, got a paragraph block.
-          2. At line 6, got a blank line which marks the end of the paragraph block.
-          3. At line 7, got a paragraph block.
-          4. At the end of the line, all open blocks will be closed.
-
-My parser doesn’t work that way. Instead, it extracts the inner blocks as plain Markdown text. Once all top-level blocks
-have been processed, it moves on to parse the inner blocks:
-
- 1. At line 1, got a paragraph block.
- 2. At line 2, got a blank line which marks the end of the paragraph; push it to the array.
- 3. At line 3, got a quote block.
- 4. At line 4 up to line 7, got a quote block continuation.
- 5. At the end of the line, push the last block (the quote block) to the array.
- 6. Iterate over the array to find the container blocks. Then, repeat this process within those blocks.
-
-Due to the way I parse, it is hard to keep track of the current column position, though it can be done with more effort.
-However, doing so would make the parser overly complex. The least complex way to correctly store white space column
-positions is to convert all tab sequences to spaces. This ensures that, when the container block markers are omitted,
-the white space column positions of the child blocks will be shifted correctly.
-
-All CommonMark white space column rules are passed. The only limitation is that it is currently not possible to preserve
-tab characters.
-
-For tab characters in code blocks, you can preserve them [this way](x/tab.php). Though, it would be more accurate to
-call it “tab normalization” than “tab preservation”.
+I chose [`\v`](https://unicode-explorer.com/c/000B) as the dummy character because it is extremely rare for it to be
+written by hand in a standard Markdown document. It’s also very rare to find it in an HTML document. The probability of
+a person wanting to keep a vertical tab in an HTML document exactly as-is is very small. One benefit of using the `\v`
+character instead of a more appropriate character such as [`\x1a`](https://unicode-explorer.com/c/001A) is that `\v`
+character can be trimmed using the PHP’s [`trim()`](https://www.php.net/trim) function, natively.
 
 XSS
 ---

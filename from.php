@@ -57,11 +57,7 @@ namespace x\markdown\from {
         'option' => 1, 'p' => 1, 'param' => 1, 'search' => 1, 'section' => 1, 'summary' => 1, 'table' => 1,
         'tbody' => 1, 'td' => 1, 'tfoot' => 1, 'th' => 1, 'thead' => 1, 'title' => 1, 'tr' => 1, 'track' => 1, 'ul' => 1
     ];
-    // We use a dummy character to hold the column position occupied by `\t` so that doing a string slice will retain
-    // the original column position. This is the easiest method to preserve the `\t` character(s).
-    // We use `\v` as the dummy character because it is very rarely written in a Markdown document by hand. It is also
-    // very rarely written in an HTML document. Another benefit of using `\v` character instead of a more appropriate
-    // dummy character such as `\x1a` is that `\v` character can be trimmed natively using the PHP’s `trim()` function.
+    // The `\v` was a dummy character intended to preserve the `\t`. It is not part of the CommonMark specification
     const c1 = " \t\v";
     const c2 = "\n\r";
     const c3 = c1 . c2;
@@ -1741,7 +1737,9 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
                     if ($d <= \strspn($value, ' ', $i)) {
-                        $text = \substr($value, $i + $d, $m[0] - $d);
+                        $text = \substr($value, $d + $i, $m[0] - $d);
+                    } else if (\strspn($value, "\t", $i)) {
+                        $text = \str_repeat(' ', 4 - $d) . s($value, $i, $m[0], $d, 4 - $d);
                     } else {
                         $text = s($value, $i, $m[0], 0, \min($d, $w));
                     }
