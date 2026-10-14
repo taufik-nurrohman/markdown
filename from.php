@@ -288,11 +288,12 @@ namespace x\markdown\from {
         }
         return [];
     }
-    function d(string $value, int $i, int $limit) {
+    function d(string $value, int $i, int $limit, int $skip = 0) {
         if ($i >= $limit || false === \strpos(c1, $value[$i])) {
             return [0, 0];
         }
-        $d = $n = 0;
+        $d = $skip;
+        $n = 0;
         while ($i + $n < $limit) {
             $c = $value[$i + $n];
             if ("\t" === $c) {
@@ -307,7 +308,7 @@ namespace x\markdown\from {
             }
             break; // Stop at the first character that is not a white-space
         }
-        return [$d, $n];
+        return [$d - $skip, $n];
     }
     // <https://spec.commonmark.org/0.31.2#process-emphasis>
     function e(array $row, array $stack, ?int $last) {
@@ -2342,6 +2343,8 @@ namespace x\markdown\from {
                 --$max; // Consume 1 tab
             }
         }
+        return $eat ? \substr($s, $eat) : $s;
+        /*
         if ($eat) {
             $s = \substr($s, $eat);
             $i = 0;
@@ -2371,6 +2374,7 @@ namespace x\markdown\from {
             }
         }
         return $s;
+        */
     }
     function t(string $s) {
         return \strtr($s, [
