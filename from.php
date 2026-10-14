@@ -1254,7 +1254,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $s .= "\n" . s($value, $i, $m[0], $min, $min);
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1736,14 +1736,7 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-131>
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
-                    if ($d <= \strspn($value, ' ', $i)) {
-                        $text = \substr($value, $d + $i, $m[0] - $d);
-                    } else if (\strspn($value, "\t", $i)) {
-                        $text = \str_repeat(' ', 4 - $d) . s($value, $i, $m[0], $d, 4 - $d);
-                    } else {
-                        $text = s($value, $i, $m[0], 0, \min($d, $w));
-                    }
-                    $s .= $text . "\n";
+                    $s .= s($value, $i, $m[0], 0, \min($d, $w)) . "\n";
                     $i += $m[0] + $m[1];
                     // End of the stream
                     if (0 === $m[1]) {
@@ -1951,7 +1944,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $s .= "\n" . s($value, $i, $m[0], $min, $min);
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -2030,7 +2023,7 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] >= $min) {
-                        $s .= "\n" . s($value, $i, $m[0], $min, $min);
+                        $s .= "\n" . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -2327,12 +2320,12 @@ namespace x\markdown\from {
         return [$rows, $lot, $void];
     }
     function s(string $value, int $i, int $max, int $d = 0, int $eat = 0) {
-        $dent = $d;
         if (false === ($t = \strpos($value, "\t", $i)) || $t >= $i + $max) {
             $s = \substr($value, $i, $max);
-            return $eat ? s3e($s, $dent, $eat) : $s;
+            return $eat ? \substr($s, $eat) : $s;
         }
         $s = "";
+        $start = $d;
         while ($max) {
             $w = \strcspn($value, "\t", $i);
             if ($w > $max) {
@@ -2349,45 +2342,35 @@ namespace x\markdown\from {
                 --$max; // Consume 1 tab
             }
         }
-        return $eat ? s3e($s, $dent, $eat) : $s;
-    }
-    function s3e(string $text, int $d, int $eat) {
-        $i = 0;
-        $limit = \strlen($text);
-        $s = "";
-        while ($i < $limit) {
-            $c = $text[$i];
-            if ($i < $eat) {
-                ++$d;
+        if ($eat) {
+            $s = \substr($s, $eat);
+            $i = 0;
+            $max = \strlen($s);
+            while ($i < $max && ' ' === $s[$i]) {
                 ++$i;
-                continue;
+                ++$start;
             }
-            if ("\v" === $c) {
-                $start = $i;
-                while ($i < $limit && "\v" === $text[$i]) {
-                    ++$i;
+            if ($i < $max && "\v" === $s[$i]) {
+                $vStartCol = $start; // The exact column where the first \v lands
+                $vStartIdx = $i;
+
+                $vLen = 0;
+                while ($i < $max && $s[$i] === "\v") {
+                    $start++;
+                    $vLen++;
+                    $i++;
                 }
-                $n = $i - $start;
-                $s .= 0 === ($d % 4) && 0 === ($n % 4) ? \substr($text, $start, $n) : \str_repeat(' ', $n);
-                $d += $n;
-                continue;
+
+                // 3. Rule: If the first \v does not sit on a 4-column grid boundary,
+                // convert the \v sequence into literal spaces.
+                if ($vStartCol % 4 !== 0) {
+                    $s = \substr($s, 0, $vStartIdx)
+                        . \str_repeat(' ', $vLen)
+                        . \substr($s, $i);
+                }
             }
-            $s .= $c;
-            ++$d;
-            ++$i;
         }
         return $s;
-    }
-    function s3t(string $text, ?int $max = null) {
-        $i = 0;
-        $p = p($text, 0, \strlen($text), null !== $max ? $max - 1 : $max);
-        $r = [];
-        foreach ($p as $n) {
-            $r[] = \substr($text, $i, $n - $i);
-            $i = $n + 1;
-        }
-        $r[] = \substr($text, $i);
-        return $r;
     }
     function t(string $s) {
         return \strtr($s, [
