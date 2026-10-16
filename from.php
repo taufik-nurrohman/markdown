@@ -288,11 +288,11 @@ namespace x\markdown\from {
         }
         return [];
     }
-    function d(string $value, int $i, int $limit, int $skip = 0) {
+    function d(string $value, int $i, int $limit, int $start = 0) {
         if ($i >= $limit || false === \strpos(c1, $value[$i])) {
             return [0, 0];
         }
-        $d = $skip;
+        $d = $start;
         $n = 0;
         while ($i + $n < $limit) {
             $c = $value[$i + $n];
@@ -308,7 +308,7 @@ namespace x\markdown\from {
             }
             break; // Stop at the first character that is not a white-space
         }
-        return [$d - $skip, $n];
+        return [$d - $start, $n];
     }
     // <https://spec.commonmark.org/0.31.2#process-emphasis>
     function e(array $row, array $stack, ?int $last) {
@@ -1228,8 +1228,8 @@ namespace x\markdown\from {
                     continue;
                 }
                 $min = $d + 2;
-                if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
-                    $min += $w;
+                if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min - 1, $limit, $min - 1)[0]) < 5) {
+                    $min += $w - 1;
                 }
                 $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
                 $i += $m[0] + $m[1];
@@ -1247,10 +1247,10 @@ namespace x\markdown\from {
                     $d = d($value, $i, $limit);
                     if ($d[0] < \min($min, 4) && ':' === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? ' ')) {
                         $min = $d[0] + 2;
-                        if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
-                            $min += $w;
+                        if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min - 1, $limit, $min - 1)[0]) < 5) {
+                            $min += $w - 1;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], $min - $w, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], $min, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1881,8 +1881,8 @@ namespace x\markdown\from {
                     'A' => l3n($t, 1), 'I' => r3n($t, 1), 'a' => l3n($t), 'i' => r3n($t), default => (int) $t
                 };
                 $min += 2;
-                if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
-                    $min += $w;
+                if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min - 1, $limit, $min - 1)[0]) < 5) {
+                    $min += $w - 1;
                 }
                 if ("" !== $s) {
                     // <https://spec.commonmark.org/0.31.2#example-285>
@@ -1936,10 +1936,10 @@ namespace x\markdown\from {
                             continue;
                         }
                         $min += 2;
-                        if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
-                            $min += $w;
+                        if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min - 1, $limit, $min - 1)[0]) < 5) {
+                            $min += $w - 1;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], $min - $w, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], $min, $min);
                         $i += $m[0] + $m[1];
                         $current = $next;
                         continue;
@@ -1981,8 +1981,8 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#bullet-list>
             if (false !== \strpos('*+-', $c = $value[$n = $d + $i]) && false !== \strpos(c3, $value[$n + 1] ?? ' ')) {
                 $min = $d + 2;
-                if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
-                    $min += $w;
+                if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min - 1, $limit, $min - 1)[0]) < 5) {
+                    $min += $w - 1;
                 }
                 if ("" !== $s) {
                     // <https://spec.commonmark.org/0.31.2#example-285>
@@ -2011,15 +2011,15 @@ namespace x\markdown\from {
                     $d = d($value, $i, $limit);
                     if ($d[0] < \min($min, 4) && $c === ($value[$n = $d[1] + $i] ?? 0) && false !== \strpos(c3, $value[$n + 1] ?? ' ')) {
                         $min = $d[0] + 2;
-                        if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min, $limit)[0]) < 4) {
-                            $min += $w;
+                        if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min - 1, $limit, $min - 1)[0]) < 5) {
+                            $min += $w - 1;
                         }
                         $b = rows($value, $lot, 0, $i, $i + $m[0])[0] ?? [];
                         // Current line is a thematic break
                         if (($b = \reset($b)) && 'hr' === $b[0]) {
                             break;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], $min - $w, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], $min, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
