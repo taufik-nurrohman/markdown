@@ -288,11 +288,11 @@ namespace x\markdown\from {
         }
         return [];
     }
-    function d(string $value, int $i, int $limit, int $start = 0) {
+    function d(string $value, int $i, int $limit, int $from = 0) {
         if ($i >= $limit || false === \strpos(c1, $value[$i])) {
             return [0, 0];
         }
-        $d = $start;
+        $d = $from;
         $n = 0;
         while ($i + $n < $limit) {
             $c = $value[$i + $n];
@@ -308,7 +308,7 @@ namespace x\markdown\from {
             }
             break; // Stop at the first character that is not a white-space
         }
-        return [$d - $start, $n];
+        return [$d - $from, $n];
     }
     // <https://spec.commonmark.org/0.31.2#process-emphasis>
     function e(array $row, array $stack, ?int $last) {
@@ -1737,7 +1737,16 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-131>
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
-                    $s .= s($value, $i, $m[0], 0, \min($d, $w)) . "\n";
+                    $text = s($value, $i, $m[0]);
+                    if ($x = \min($d, $w)) {
+                        $w = \strspn($text, ' ');
+                        $text = \substr($text, $x);
+                        $t = \strspn($text, "\v");
+                        if ($t && 0 !== ($t % 4) && $d !== $w) {
+                            $text = \str_repeat(' ', $t % 4) . \substr($text, $t % 4);
+                        }
+                    }
+                    $s .= $text . "\n";
                     $i += $m[0] + $m[1];
                     // End of the stream
                     if (0 === $m[1]) {
@@ -2343,8 +2352,6 @@ namespace x\markdown\from {
                 --$max; // Consume 1 tab
             }
         }
-        return $eat ? \substr($s, $eat) : $s;
-        /*
         if ($eat) {
             $s = \substr($s, $eat);
             $i = 0;
@@ -2356,25 +2363,31 @@ namespace x\markdown\from {
             if ($i < $max && "\v" === $s[$i]) {
                 $vStartCol = $start; // The exact column where the first \v lands
                 $vStartIdx = $i;
-
                 $vLen = 0;
                 while ($i < $max && $s[$i] === "\v") {
                     $start++;
                     $vLen++;
                     $i++;
                 }
-
                 // 3. Rule: If the first \v does not sit on a 4-column grid boundary,
                 // convert the \v sequence into literal spaces.
                 if ($vStartCol % 4 !== 0) {
-                    $s = \substr($s, 0, $vStartIdx)
-                        . \str_repeat(' ', $vLen)
-                        . \substr($s, $i);
+                    $s = \substr($s, 0, $vStartIdx) . \str_repeat(' ', $vLen) . \substr($s, $i);
                 }
             }
         }
         return $s;
-        */
+    }
+    function s3t(string $text, ?int $max = null) {
+        $i = 0;
+        $p = p($text, 0, \strlen($text), null !== $max ? $max - 1 : $max);
+        $r = [];
+        foreach ($p as $n) {
+            $r[] = \substr($text, $i, $n - $i);
+            $i = $n + 1;
+        }
+        $r[] = \substr($text, $i);
+        return $r;
     }
     function t(string $s) {
         return \strtr($s, [
