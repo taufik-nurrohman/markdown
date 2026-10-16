@@ -2335,7 +2335,6 @@ namespace x\markdown\from {
             return $eat ? \substr($s, $eat) : $s;
         }
         $s = "";
-        $start = $d;
         while ($max) {
             $w = \strcspn($value, "\t", $i);
             if ($w > $max) {
@@ -2353,26 +2352,20 @@ namespace x\markdown\from {
             }
         }
         if ($eat) {
-            $s = \substr($s, $eat);
-            $i = 0;
-            $max = \strlen($s);
+            $i = $j = 0;
+            $max = \strlen($s = \substr($s, $eat));
             while ($i < $max && ' ' === $s[$i]) {
+                ++$d;
                 ++$i;
-                ++$start;
             }
             if ($i < $max && "\v" === $s[$i]) {
-                $vStartCol = $start; // The exact column where the first \v lands
-                $vStartIdx = $i;
-                $vLen = 0;
-                while ($i < $max && $s[$i] === "\v") {
-                    $start++;
-                    $vLen++;
-                    $i++;
+                $n = $i;
+                while ($i < $max && "\v" === $s[$i]) {
+                    ++$i;
+                    ++$j;
                 }
-                // 3. Rule: If the first \v does not sit on a 4-column grid boundary,
-                // convert the \v sequence into literal spaces.
-                if ($vStartCol % 4 !== 0) {
-                    $s = \substr($s, 0, $vStartIdx) . \str_repeat(' ', $vLen) . \substr($s, $i);
+                if (0 !== $d % 4) {
+                    $s = \substr($s, 0, $n) . \str_repeat(' ', $j) . \substr($s, $i);
                 }
             }
         }
