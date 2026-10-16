@@ -6,7 +6,7 @@ $strike = [
     // Pre-parse
     static function (?string $value) {
         // Save escaped `~` to allow literal use of `~` character(s) in the HTML result with `\~`
-        return $value ? preg_replace('/(?<!\\\\)((?:\\\\\\\\)*)\\\\~/', '$1' . "\x1a", $value) : $value;
+        return $value && false !== strpos($value, "\\~") ? preg_replace('/(?<!\\\\)((?:\\\\\\\\)*)\\\\~/', '$1' . "\x1a", $value) : $value;
     },
     // Parse
     static function (array $rows) use (&$strike) {
