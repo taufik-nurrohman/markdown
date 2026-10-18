@@ -2352,20 +2352,18 @@ namespace x\markdown\from {
             }
         }
         if ($eat) {
-            $i = $j = 0;
+            $b = $i = 0;
             $max = \strlen($s = \substr($s, $eat));
-            while ($i < $max && ' ' === $s[$i]) {
-                ++$d;
-                ++$i;
-            }
+            $w = \strspn($s, ' ');
+            $d += $w;
+            $i += $w;
             if ($i < $max && "\v" === $s[$i]) {
                 $n = $i;
-                while ($i < $max && "\v" === $s[$i]) {
-                    ++$i;
-                    ++$j;
-                }
+                $w = \strspn($s, "\v", $i);
+                $b += $w;
+                $i += $w;
                 if (0 !== $d % 4) {
-                    $s = \substr($s, 0, $n) . \str_repeat(' ', $j) . \substr($s, $i);
+                    $s = \substr($s, 0, $n) . \str_repeat(' ', $b) . \substr($s, $i);
                 }
             }
         }

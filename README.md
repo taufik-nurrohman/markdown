@@ -100,7 +100,8 @@ echo '</p>';
 
 If this option is set to a number greater than or equal to `0`, it will determine the indent size for block elements,
 which will tidy up the HTML output. If it is set to a string, the string will be used as the indent. For example, you
-can set its value to `"\t"` to indent the HTML output with [Tab](https://www.compart.com/en/unicode/U+0009) characters:
+can set its value to `"\t"` to indent the HTML output with
+[Tab](https://www.unicode.org/Public/18.0.0/charts/nameslist/0000/#0009) characters:
 
 ~~~ php
 <?= from($value, ['tab' => 0]); ?>
@@ -3346,19 +3347,21 @@ but with a few additional features and rules:
 
 ### Tabs
 
-I use a dummy character to hold the visual column position occupied by the [`\t`](https://unicode-explorer.com/c/0009)
-character, so that slicing through the string will retain the correct visual column position. This is the easiest method
-to preserve tab characters compared to tracking tab offsets during every block parsing phase.
+I use a dummy character to hold the visual column position occupied by the
+[`\t`](https://www.unicode.org/Public/18.0.0/charts/nameslist/0000#0009) character, so that slicing through the string
+will retain the correct visual column position. This is the easiest method to preserve tab characters compared to
+tracking tab offsets during every block parsing phase.
 
 Using dummy characters means that the visual column position is stored directly in the string. Thus, I can safely slice
 the string, as every character now holds exactly one column. It’s not perfect. You’ll probably still find bugs when
 using tabs for indentation. For the best results and maximum compatibility, use multiple spaces for indentation.
 
-I chose [`\v`](https://unicode-explorer.com/c/000B) as the dummy character because it is extremely rare for it to be
-written by hand in a standard Markdown document. It’s also very rare to find it in an HTML document. The probability of
-a person wanting to keep a vertical tab in an HTML document exactly as-is is very small. One benefit of using the `\v`
-character instead of a more appropriate character such as [`\x1a`](https://unicode-explorer.com/c/001A) is that `\v`
-character can be trimmed using the PHP’s [`trim()`](https://www.php.net/trim) function, natively.
+I chose [`\v`](https://www.unicode.org/Public/18.0.0/charts/nameslist/0000#000b) as the dummy character because it is
+extremely rare for it to be written by hand in a standard Markdown document. It’s also very rare to find it in an HTML
+document. The probability of a person wanting to keep a vertical tab in an HTML document exactly as-is is very small.
+One benefit of using the `\v` character instead of a more appropriate character such as
+[`\x1a`](https://www.unicode.org/Public/18.0.0/charts/nameslist/0000#001a) is that `\v` character can be trimmed using
+the PHP’s [`trim()`](https://www.php.net/trim) function, natively.
 
 XSS
 ---
