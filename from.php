@@ -2351,23 +2351,7 @@ namespace x\markdown\from {
                 --$max; // Consume 1 tab
             }
         }
-        if ($eat) {
-            $b = $i = 0;
-            $max = \strlen($s = \substr($s, $eat));
-            $w = \strspn($s, ' ');
-            $d += $w;
-            $i += $w;
-            if ($i < $max && "\v" === $s[$i]) {
-                $n = $i;
-                $w = \strspn($s, "\v", $i);
-                $b += $w;
-                $i += $w;
-                if (0 !== $d % 4) {
-                    $s = \substr($s, 0, $n) . \str_repeat(' ', $b) . \substr($s, $i);
-                }
-            }
-        }
-        return $s;
+        return $eat ? \substr($s, $eat) : $s;
     }
     function s3t(string $text, ?int $max = null) {
         $i = 0;
