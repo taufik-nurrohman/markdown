@@ -1170,7 +1170,11 @@ namespace x\markdown\from {
                     $i += $m[0] + $m[1];
                     continue;
                 }
-                $s = s($value, $i, $m[0], 0, 4);
+                $text = s($value, $i, $m[0], 0, 4);
+                if ($w = \strspn($text, " \v") % 4) {
+                    $text = \str_repeat(' ', $w) . \substr($text, $w);
+                }
+                $s = $text;
                 $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
@@ -1182,7 +1186,11 @@ namespace x\markdown\from {
                         }
                         break;
                     }
-                    $s .= "\n" . s($value, $i, $m[0], 0, 4);
+                    $text = s($value, $i, $m[0], 0, 4);
+                    if ($w = \strspn($text, " \v") % 4) {
+                        $text = \str_repeat(' ', $w) . \substr($text, $w);
+                    }
+                    $s .= "\n" . $text;
                     $i += $m[0] + $m[1];
                     // End of the stream
                     if (0 === $m[1]) {
@@ -1250,7 +1258,7 @@ namespace x\markdown\from {
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min - 1, $limit, $min - 1)[0]) < 5) {
                             $min += $w - 1;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], $min, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1384,7 +1392,7 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#block-quotes>
             if ('>' === $value[$d + $i]) {
                 "" !== $s && ($rows[] = ['p', $s, []]) && ($s = "");
-                $text = s($value, $i, $m[0], 0, $d + 1);
+                $text = s($value, $i, $m[0], $d++, $d);
                 if (false !== \strpos(" \v", $text[0] ?? x1)) {
                     $text = \substr($text, 1);
                 }
@@ -1948,7 +1956,7 @@ namespace x\markdown\from {
                         if (!r($value, $i + $min - 1, $limit) && ($w = d($value, $i + $min - 1, $limit, $min - 1)[0]) < 5) {
                             $min += $w - 1;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], $min, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         $current = $next;
                         continue;
@@ -2028,7 +2036,7 @@ namespace x\markdown\from {
                         if (($b = \reset($b)) && 'hr' === $b[0]) {
                             break;
                         }
-                        $s .= "\n" . x3 . s($value, $i, $m[0], $min, $min);
+                        $s .= "\n" . x3 . s($value, $i, $m[0], 0, $min);
                         $i += $m[0] + $m[1];
                         continue;
                     }
