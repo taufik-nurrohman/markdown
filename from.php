@@ -57,7 +57,6 @@ namespace x\markdown\from {
         'option' => 1, 'p' => 1, 'param' => 1, 'search' => 1, 'section' => 1, 'summary' => 1, 'table' => 1,
         'tbody' => 1, 'td' => 1, 'tfoot' => 1, 'th' => 1, 'thead' => 1, 'title' => 1, 'tr' => 1, 'track' => 1, 'ul' => 1
     ];
-    // The `\v` was a dummy character intended to preserve the `\t`. It is not part of the CommonMark specification
     const c1 = " \t\v";
     const c2 = "\n\r";
     const c3 = c1 . c2;
@@ -1751,11 +1750,11 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-133>
                     $str = s($value, $i, $m[0]);
                     if ($x = \min($d, $w)) {
-                        $w = \strspn($str, ' ');
-                        $str = \substr($str, $x);
-                        $t = \strspn($str, "\v");
-                        if ($t && $t % 4 && $d !== $w) {
-                            $str = \str_repeat(' ', $t % 4) . \substr($str, $t % 4);
+                        $w = \strspn($text, ' ');
+                        $text = \substr($text, $x);
+                        $t = \strspn($text, "\v");
+                        if ($t && ($x = $t % 4) && $d !== $w) {
+                            $text = \str_repeat(' ', $x) . \substr($text, $x);
                         }
                     }
                     $s .= $str . "\n";
