@@ -274,15 +274,15 @@ namespace x\markdown\from {
             }
             $w = \strspn($value, $c, $eat, $limit - $eat);
             if ($n === $w && $eat + $w <= $limit) {
-                $text = \substr($value, $i + $n, $eat - ($i + $n));
+                $str = \substr($value, $i + $n, $eat - ($i + $n));
                 // Line break(s) are converted to space(s)
-                $text = \strtr($text, ["\n" => ' ', "\r\n" => ' ', "\r" => ' ']);
+                $str = \strtr($str, ["\n" => ' ', "\r\n" => ' ', "\r" => ' ']);
                 // If the resulting string both begins and ends with a space character, but does not consist entirely of
                 // space character(s), a single space character is removed from the front and back.
-                if (\strlen($text) > 1 && ' ' === $text[0] && ' ' === \substr($text, -1) && "" !== \trim($text, ' ')) {
-                    $text = \substr($text, 1, -1);
+                if (\strlen($str) > 1 && ' ' === $str[0] && ' ' === \substr($str, -1) && "" !== \trim($str, ' ')) {
+                    $str = \substr($str, 1, -1);
                 }
-                return [$text, $eat + $n - $i, [$w, $c]];
+                return [$str, $eat + $n - $i, [$w, $c]];
             }
             $eat += $w;
         }
@@ -334,7 +334,7 @@ namespace x\markdown\from {
                 $end_n = $stack[$right][1][0];
                 $start_n = $stack[$left][1][0];
                 // The “rule of 3” for multiple delimiter(s)
-                if (($stack[$left][1][2] || $stack[$right][1][1]) && 0 === ($start_n + $end_n) % 3 && 0 !== $start_n % 3 && 0 !== $end_n % 3) {
+                if (($stack[$left][1][2] || $stack[$right][1][1]) && 0 === ($start_n + $end_n) % 3 && $start_n % 3 && $end_n % 3) {
                     continue;
                 }
                 $valid = true;
@@ -398,11 +398,11 @@ namespace x\markdown\from {
         return $row;
     }
     // <https://spec.commonmark.org/0.31.2#matches>
-    function f(string $text) {
-        return \defined("\\MB_CASE_FOLD") ? \mb_convert_case($text, \MB_CASE_FOLD, 'UTF-8') : \strtolower($text);
+    function f(string $str) {
+        return \defined("\\MB_CASE_FOLD") ? \mb_convert_case($str, \MB_CASE_FOLD, 'UTF-8') : \strtolower($str);
     }
-    function h(string $text, $deep = false) {
-        return \htmlspecialchars($text, \ENT_HTML5 | \ENT_NOQUOTES, 'UTF-8', $deep);
+    function h(string $str, $deep = false) {
+        return \htmlspecialchars($str, \ENT_HTML5 | \ENT_NOQUOTES, 'UTF-8', $deep);
     }
     // <https://spec.commonmark.org/0.31.2#link-label>
     function k(string $value, int $i, int $limit, int $deep = 0, $void = false) {
@@ -467,16 +467,16 @@ namespace x\markdown\from {
     function m(string $value, int $i, int $limit) {
         return [$n = \strcspn($value, c2, $i, $limit - $i), r($value, $i + $n, $limit)];
     }
-    function n(string $text, $join = false) {
+    function n(string $str, $join = false) {
         $i = 0;
-        $limit = \strlen($text);
+        $limit = \strlen($str);
         $r = [];
         while ($i < $limit) {
-            $i += \strspn($text, c3, $i);
+            $i += \strspn($str, c3, $i);
             if ($i >= $limit) {
                 break;
             }
-            $r[] = \substr($text, $i, $w = \strcspn($text, c3, $i));
+            $r[] = \substr($str, $i, $w = \strcspn($str, c3, $i));
             $i += $w;
         }
         return false !== $join ? \implode($join, $r) : $r;
@@ -612,10 +612,10 @@ namespace x\markdown\from {
         }
         return 0;
     }
-    function r3n(string $text) {
+    function r3n(string $str) {
         $n = $now = 0;
-        for ($i = \strlen($text) - 1; $i >= 0; --$i) {
-            $w = match (\strtolower($text[$i])) {
+        for ($i = \strlen($str) - 1; $i >= 0; --$i) {
+            $w = match (\strtolower($str[$i])) {
                 'i' => 1, 'v' => 5, 'x' => 10, 'l' => 50, 'c' => 100, 'd' => 500, 'm' => 1000, default => 0
             };
             if (!$w) {
@@ -890,7 +890,7 @@ namespace x\markdown\from {
                 }
                 // Iterate over the delimiter stack from the stack’s bottom to find the nearest `[` or `![`
                 for ($at = $last; null !== $at; $at = $stack[$at][2][1]) {
-                    if (('![' === $stack[$at][0] || '[' === $stack[$at][0]) && 0 !== $stack[$at][1][0]) {
+                    if (('![' === $stack[$at][0] || '[' === $stack[$at][0]) && $stack[$at][1][0]) {
                         break;
                     }
                 }
@@ -1010,7 +1010,7 @@ namespace x\markdown\from {
                     if ('^' === $key[0] && isset($lot[2][$key])) {
                         $eat = $i + 1;
                         $suffix = $lot[x1][$key] = ($lot[x1][$key] ?? -1) + 1;
-                        $v = [(string) ($n = \array_search($key, \array_keys($lot[2]), true) + 1), $n . (0 !== $suffix ? '.' . $suffix : ""), [], x1];
+                        $v = [(string) ($n = \array_search($key, \array_keys($lot[2]), true) + 1), $n . ($suffix ? '.' . $suffix : ""), [], x1];
                     } else if ($f = $lot[0][f($key)] ?? 0) {
                         $eat = $i + 1;
                         $v = $f;
@@ -1170,11 +1170,13 @@ namespace x\markdown\from {
                     $i += $m[0] + $m[1];
                     continue;
                 }
-                $text = s($value, $i, $m[0], 0, 4);
-                if ($w = \strspn($text, " \v") % 4) {
-                    $text = \str_repeat(' ', $w) . \substr($text, $w);
+                $str = s($value, $i, $m[0], 0, 4);
+                $w = \strspn($str, ' ');
+                $w += \strspn($str, "\v", $w);
+                if ($w % 4) {
+                    $str = \str_repeat(' ', $w) . \substr($str, $w);
                 }
-                $s = $text;
+                $s = $str;
                 $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $m = m($value, $i, $limit);
@@ -1186,11 +1188,13 @@ namespace x\markdown\from {
                         }
                         break;
                     }
-                    $text = s($value, $i, $m[0], 0, 4);
-                    if ($w = \strspn($text, " \v") % 4) {
-                        $text = \str_repeat(' ', $w) . \substr($text, $w);
+                    $str = s($value, $i, $m[0], 0, 4);
+                    $w = \strspn($str, ' ');
+                    $w += \strspn($str, "\v", $w);
+                    if ($w % 4) {
+                        $str = \str_repeat(' ', $w) . \substr($str, $w);
                     }
-                    $s .= "\n" . $text;
+                    $s .= "\n" . $str;
                     $i += $m[0] + $m[1];
                     // End of the stream
                     if (0 === $m[1]) {
@@ -1392,11 +1396,11 @@ namespace x\markdown\from {
             // <https://spec.commonmark.org/0.31.2#block-quotes>
             if ('>' === $value[$d + $i]) {
                 "" !== $s && ($rows[] = ['p', $s, []]) && ($s = "");
-                $text = s($value, $i, $m[0], $d++, $d);
-                if (false !== \strpos(" \v", $text[0] ?? x1)) {
-                    $text = \substr($text, 1);
+                $str = s($value, $i, $m[0], $d++, $d);
+                if ($str && false !== \strpos(" \v", $str[0])) {
+                    $str = \substr($str, 1);
                 }
-                $s .= $text;
+                $s .= $str;
                 $i += $m[0] + $m[1];
                 while ($i < $limit) {
                     $d = d($value, $i, $limit);
@@ -1408,11 +1412,11 @@ namespace x\markdown\from {
                         continue;
                     }
                     if ($d[0] < 4 && '>' === ($value[$d[1] + $i] ?? 0)) {
-                        $text = s($value, $i, $m[0], 0, $d[1] + 1);
-                        if (' ' === ($text[0] ?? 0)) {
-                            $text = \substr($text, 1);
+                        $str = s($value, $i, $m[0], 0, $d[1] + 1);
+                        if ($str && false !== \strpos(" \v", $str[0])) {
+                            $str = \substr($str, 1);
                         }
-                        $s .= "\n" . $text;
+                        $s .= "\n" . $str;
                         $i += $m[0] + $m[1];
                         continue;
                     }
@@ -1745,16 +1749,16 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-131>
                     // <https://spec.commonmark.org/0.31.2#example-132>
                     // <https://spec.commonmark.org/0.31.2#example-133>
-                    $text = s($value, $i, $m[0]);
+                    $str = s($value, $i, $m[0]);
                     if ($x = \min($d, $w)) {
-                        $w = \strspn($text, ' ');
-                        $text = \substr($text, $x);
-                        $t = \strspn($text, "\v");
-                        if ($t && 0 !== ($t % 4) && $d !== $w) {
-                            $text = \str_repeat(' ', $t % 4) . \substr($text, $t % 4);
+                        $w = \strspn($str, ' ');
+                        $str = \substr($str, $x);
+                        $t = \strspn($str, "\v");
+                        if ($t && $t % 4 && $d !== $w) {
+                            $str = \str_repeat(' ', $t % 4) . \substr($str, $t % 4);
                         }
                     }
-                    $s .= $text . "\n";
+                    $s .= $str . "\n";
                     $i += $m[0] + $m[1];
                     // End of the stream
                     if (0 === $m[1]) {
@@ -2283,7 +2287,7 @@ namespace x\markdown\from {
                     if (false === ($n = \strpos($v, "\n", $i))) {
                         $n = $limit;
                     }
-                    $d = \strspn($v, ' ', $i, $n - $i);
+                    $d = d($v, $i, $limit)[0];
                     if ($d < $n - $i) {
                         if ($d && $d < $min) {
                             $min = $d;
@@ -2299,7 +2303,7 @@ namespace x\markdown\from {
                         if (false === ($n = \strpos($v, "\n", $i))) {
                             $n = $limit;
                         }
-                        $d = \strspn($v, ' ', $i, $n - $i);
+                        $d = d($v, $i, $limit)[0];
                         $max = \min($d, $min);
                         $r .= \substr($v, $i + $max, $n - $i - $max) . "\n";
                         $i = ++$n;
@@ -2319,7 +2323,7 @@ namespace x\markdown\from {
                                 $r[$last][1][] = [false, $y = '&#xa0;', [], [3]];
                             }
                             $r[$last][1][] = ['a', [[false, $y = '&#x21a9;', [], [3]]], [
-                                'href' => '#from:' . ($keys[$k] + 1) . (0 !== $i ? '.' . $i : ""),
+                                'href' => '#from:' . ($keys[$k] + 1) . ($i ? '.' . $i : ""),
                                 'role' => 'doc-backlink'
                             ]];
                         }
@@ -2361,15 +2365,15 @@ namespace x\markdown\from {
         }
         return $eat ? \substr($s, $eat) : $s;
     }
-    function s3t(string $text, ?int $max = null) {
+    function s3t(string $str, ?int $max = null) {
         $i = 0;
-        $p = p($text, 0, \strlen($text), null !== $max ? $max - 1 : $max);
+        $p = p($str, 0, \strlen($str), null !== $max ? $max - 1 : $max);
         $r = [];
         foreach ($p as $n) {
-            $r[] = \substr($text, $i, $n - $i);
+            $r[] = \substr($str, $i, $n - $i);
             $i = $n + 1;
         }
-        $r[] = \substr($text, $i);
+        $r[] = \substr($str, $i);
         return $r;
     }
     function t(string $s) {
@@ -2471,14 +2475,14 @@ namespace x\markdown\from {
         }
         return $s;
     }
-    function u(string $text) {
-        $limit = \strlen($text);
+    function u(string $str) {
+        $limit = \strlen($str);
         $raw = c14 . c15;
         $s = "";
         for ($i = 0; $i < $limit; ++$i) {
-            $c = $text[$i];
-            if ('%' === $c && $i + 2 < $limit && false !== \strpos(c7, $text[$i + 1]) && false !== \strpos(c7, $text[$i + 2])) {
-                $s .= $c . $text[$i + 1] . $text[$i + 2];
+            $c = $str[$i];
+            if ('%' === $c && $i + 2 < $limit && false !== \strpos(c7, $str[$i + 1]) && false !== \strpos(c7, $str[$i + 2])) {
+                $s .= $c . $str[$i + 1] . $str[$i + 2];
                 $i += 2;
                 continue;
             }
@@ -2486,20 +2490,20 @@ namespace x\markdown\from {
         }
         return $s;
     }
-    function v(string $text) {
-        if ("" === $text || false === \strpos($text, "\\")) {
-            return $text;
+    function v(string $str) {
+        if ("" === $str || false === \strpos($str, "\\")) {
+            return $str;
         }
         // <https://spec.commonmark.org/0.31.2#ascii-punctuation-character>
         // <https://spec.commonmark.org/0.31.2#example-12>
         $i = 0;
-        $limit = \strlen($text);
+        $limit = \strlen($str);
         $s = "";
         while ($i < $limit) {
-            if ("\\" === $text[$i] && $i + 1 < $limit && false !== \strpos(c16, $text[$i + 1])) {
+            if ("\\" === $str[$i] && $i + 1 < $limit && false !== \strpos(c16, $str[$i + 1])) {
                 ++$i;
             }
-            $s .= $text[$i++];
+            $s .= $str[$i++];
         }
         return $s;
     }
