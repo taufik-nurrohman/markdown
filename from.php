@@ -1172,7 +1172,7 @@ namespace x\markdown\from {
                 $str = s($value, $i, $m[0], 0, 4);
                 $w = \strspn($str, ' ');
                 $w += \strspn($str, "\v", $w);
-                if ($w % 4) {
+                if ($w = $w % 4) {
                     $str = \str_repeat(' ', $w) . \substr($str, $w);
                 }
                 $s = $str;
@@ -1190,7 +1190,7 @@ namespace x\markdown\from {
                     $str = s($value, $i, $m[0], 0, 4);
                     $w = \strspn($str, ' ');
                     $w += \strspn($str, "\v", $w);
-                    if ($w % 4) {
+                    if ($w = $w % 4) {
                         $str = \str_repeat(' ', $w) . \substr($str, $w);
                     }
                     $s .= "\n" . $str;
@@ -1750,11 +1750,11 @@ namespace x\markdown\from {
                     // <https://spec.commonmark.org/0.31.2#example-133>
                     $str = s($value, $i, $m[0]);
                     if ($x = \min($d, $w)) {
-                        $w = \strspn($text, ' ');
-                        $text = \substr($text, $x);
-                        $t = \strspn($text, "\v");
+                        $w = \strspn($str, ' ');
+                        $str = \substr($str, $x);
+                        $t = \strspn($str, "\v");
                         if ($t && ($x = $t % 4) && $d !== $w) {
-                            $text = \str_repeat(' ', $x) . \substr($text, $x);
+                            $str = \str_repeat(' ', $x) . \substr($str, $x);
                         }
                     }
                     $s .= $str . "\n";
