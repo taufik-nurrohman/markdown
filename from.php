@@ -1056,7 +1056,7 @@ namespace x\markdown\from {
                     $chunk_stack[] = $chunk_v;
                     $chunk_current = \array_key_last($chunk_stack);
                     if (null !== $chunk_current) {
-                        $chunk_stack[$chunk_last][2][2] = $chunk_current;
+                        $chunk_stack[$chunk_last ?? x1][2][2] = $chunk_current;
                     }
                     $chunk_last = $chunk_current;
                     // Cleanly unlink from the main stack
@@ -2417,7 +2417,7 @@ namespace x\markdown\from {
         } else if (!\is_string($tab)) {
             $tab = null;
         }
-        $block = null !== $tab && isset($blocks[$row[0]]);
+        $block = null !== $tab && isset($blocks[$row[0] ?? x1]);
         $tag = null !== $row[0];
         // The `caption`, `dd`, `figcaption`, and `li` can behave as a container or leaf block in the final result
         if ($block && 2 === ($blocks[$row[0]] ?? 0)) {

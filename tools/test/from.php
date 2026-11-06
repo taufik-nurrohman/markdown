@@ -15,11 +15,12 @@ define('PATH', __DIR__);
 
 require PATH . D . '..' . D . '..' . D . 'from.php';
 
-$batch = basename($_GET['batch'] ?? '1');
 $block = !!basename($_GET['block'] ?? '1');
 $line = strtoupper(basename($_GET['line'] ?? 'LF'));
 $test = basename($_GET['test'] ?? 'p');
 $view = basename($_GET['view'] ?? 'source');
+
+$batch = basename($_GET['batch'] ??  glob(PATH . D . 'from' . D . $test . D . '*', GLOB_ONLYDIR)[0] ?? '*');
 
 // <https://github.com/mecha-cms/mecha/blob/v3.2.0/engine/f.php#L20-L35>
 if (!function_exists('array_is_list')) {
@@ -550,7 +551,6 @@ $s .= 'View';
 $s .= '</button>';
 $s .= '</p>';
 $s .= '</fieldset>';
-$s .= '<input name="batch" type="hidden" value="1">';
 $s .= '</form>';
 
 $s .= '<form action="#top" method="get">';
